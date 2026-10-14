@@ -1,0 +1,328 @@
+{
+  "_meta": {
+    "_table": {
+      "label": "Service Provider Capability",
+      "plural": "Service Provider Capabilities",
+      "icon": "BadgeCheck"
+    },
+    "Name": {
+      "type": "Text",
+      "label": "Name",
+      "required": true
+    },
+    "technician_c": {
+      "type": "Lookup",
+      "label": "Service Provider",
+      "lookup": "technician_profiles_c",
+      "required": true
+    },
+    "capability_c": {
+      "type": "Lookup",
+      "label": "Capability",
+      "lookup": "service_capabilities_c",
+      "required": true
+    },
+    "status_c": {
+      "type": "Picklist",
+      "label": "Status",
+      "required": true,
+      "values": "Active,Paused"
+    }
+  },
+  "records": [
+    {
+      "Id": "p2000001-0000-4000-8000-000000000001",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000001",
+        "Name": "Raj Kumar"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000001",
+        "Name": "Car Mechanic"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000002",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000001",
+        "Name": "Raj Kumar"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000003",
+        "Name": "Car Battery Assistance"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000003",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000001",
+        "Name": "Raj Kumar"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000005",
+        "Name": "Tyre Assistance"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000004",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000001",
+        "Name": "Raj Kumar"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000011",
+        "Name": "Key Lockout"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000005",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000001",
+        "Name": "Raj Kumar"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000012",
+        "Name": "Towing Service"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000006",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000001",
+        "Name": "Raj Kumar"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000009",
+        "Name": "Car Auto Electrical"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000007",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000002",
+        "Name": "Amit Verma"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000001",
+        "Name": "Car Mechanic"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000008",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000002",
+        "Name": "Amit Verma"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000009",
+        "Name": "Car Auto Electrical"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000009",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000003",
+        "Name": "Suresh Yadav"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000001",
+        "Name": "Car Mechanic"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000010",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000003",
+        "Name": "Suresh Yadav"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000007",
+        "Name": "Car Roadside Assistance"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000011",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000003",
+        "Name": "Suresh Yadav"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000012",
+        "Name": "Towing Service"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000012",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000004",
+        "Name": "Imran Khan"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000001",
+        "Name": "Car Mechanic"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000013",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000004",
+        "Name": "Imran Khan"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000003",
+        "Name": "Car Battery Assistance"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000014",
+      "technician_c": {
+        "Id": "e3000001-0000-4000-8000-000000000004",
+        "Name": "Imran Khan"
+      },
+      "capability_c": {
+        "Id": "c2000001-0000-4000-8000-000000000005",
+        "Name": "Tyre Assistance"
+      },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000015",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000005", "Name": "Professional Driver Demo" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000019", "Name": "Hourly Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000016",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000005", "Name": "Professional Driver Demo" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000020", "Name": "Full-Day Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000017",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000005", "Name": "Professional Driver Demo" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000021", "Name": "Outstation Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000018",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000005", "Name": "Professional Driver Demo" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000022", "Name": "Emergency Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000019",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000017", "Name": "Car Wash" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000020",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000018", "Name": "Car Service" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000021",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000019", "Name": "Hourly Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000022",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000020", "Name": "Full-Day Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000023",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000021", "Name": "Outstation Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000024",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000022", "Name": "Emergency Driver" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000025",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000007", "Name": "Car Roadside Assistance" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000026",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000003", "Name": "Car Battery Assistance" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000027",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000005", "Name": "Tyre Assistance" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000028",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000006", "Name": "Fuel Delivery" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000029",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000001", "Name": "Car Mechanic" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000030",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000009", "Name": "Car Auto Electrical" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000031",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000011", "Name": "Key Lockout" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000032",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000012", "Name": "Towing Service" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000033",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000006", "Name": "Mr. Saurabh @ SS Customs and Automotive Care" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000015", "Name": "Car General Assistance" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000034",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000007", "Name": "Demo Car Rental One" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000023", "Name": "Car Rental" },
+      "status_c": "Active"
+    },
+    {
+      "Id": "p2000001-0000-4000-8000-000000000035",
+      "technician_c": { "Id": "e3000001-0000-4000-8000-000000000008", "Name": "Demo Car Rental Two" },
+      "capability_c": { "Id": "c2000001-0000-4000-8000-000000000023", "Name": "Car Rental" },
+      "status_c": "Active"
+    }
+  ]
+}

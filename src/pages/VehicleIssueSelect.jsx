@@ -1,0 +1,129 @@
+import { useNavigate, useParams } from 'react-router-dom';
+import ApperIcon from '@/components/ApperIcon';
+import { getLanguage, tr } from '@/services/i18n';
+import { Card } from '@/components/ui/card';
+
+export const route = {
+  path: '/customer/vehicle/:vehicle',
+  layout: 'owner',
+  access: "profile === 'Customer_c'",
+};
+
+const vehicleConfig = {
+  car: {
+    title: 'Select Your Car Issue',
+    icon: 'Car',
+    issues: [
+      ['Battery Jump Start', 'Battery'],
+      ['Flat Tyre / Puncture', 'CircleDot'],
+      ['Out of Fuel', 'Fuel'],
+      ['Key Locked / Lockout', 'KeyRound'],
+      ['Towing Required', 'Truck'],
+    ],
+  },
+  bike: {
+    title: 'Select Your Bike Issue',
+    icon: 'Bike',
+    issues: [
+      ['Battery / Won’t Start', 'Battery'],
+      ['Flat Tyre / Puncture', 'CircleDot'],
+      ['Chain / Drive Problem', 'Link2'],
+      ['Clutch / Gear Problem', 'Cog'],
+      ['Out of Fuel', 'Fuel'],
+      ['Towing Required', 'Truck'],
+    ],
+  },
+};
+
+export default function VehicleIssueSelect() {
+  const { vehicle } = useParams();
+  const navigate = useNavigate();
+  const config = vehicleConfig[vehicle];
+  const language = getLanguage();
+
+  if (!config) {
+    return (
+      <div className="p-6">
+        <Card className="p-6">
+          <div className="font-semibold">{tr('Vehicle type not found.', language)}</div>
+          <button type="button" className="mt-4 text-sm font-medium text-primary hover:underline" onClick={() => navigate('/customer')}>
+            {tr('Back to home', language)}
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
+  function handleIssue(issue) {
+    const params = new URLSearchParams({
+      vehicle,
+      issue,
+    });
+    navigate('/customer/request?' + params.toString());
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-4 flex justify-start">
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => navigate('/customer')}
+          className="flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        >
+          <ApperIcon name="ArrowLeft" size={19} />
+        </button>
+      </div>
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {tr(config.title, language)}
+        </h1>
+      </div>
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
+        {config.issues.filter(([label]) => label !== 'Accident / Recovery').map(([label, icon]) => (
+          <button key={label} type="button" onClick={() => handleIssue(label)} className="w-full text-left">
+            <Card className="flex h-full min-h-[180px] flex-col items-start border-2 p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md active:translate-y-0 sm:min-h-[190px] sm:p-5">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ApperIcon name={icon} size={27} />
+              </div>
+              <div className="mt-4 flex w-full min-w-0 flex-1 items-end justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="break-words font-semibold leading-snug">{tr(label, language)}</div>
+                  {label === 'Towing Required' && (
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      {tr('Rates as per time, place and type of towing', language)}
+                    </p>
+                  )}
+                  {label === 'Out of Fuel' && (
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      {tr('Fuel cost plus delivery fee', language)}
+                    </p>
+                  )}
+                </div>
+                <ApperIcon name="ArrowRight" size={18} className="mb-0.5 shrink-0 text-muted-foreground" />
+              </div>
+            </Card>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => handleIssue('Emergency Car Rental')}
+          className="w-full text-left"
+        >
+          <Card className="flex min-h-[180px] h-full flex-col items-start border-2 p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md sm:min-h-[190px] sm:p-5">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <ApperIcon name="CarTaxiFront" size={27} />
+            </div>
+            <div className="mt-4 flex w-full min-w-0 flex-1 items-end justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="break-words font-semibold leading-snug">{tr('Emergency Car Rental', language)}</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tr('Request a rental quote from available providers and negotiate before booking.', language)}</p>
+              </div>
+              <ApperIcon name="ArrowRight" size={18} className="mb-0.5 shrink-0 text-muted-foreground" />
+            </div>
+          </Card>
+        </button>
+      </div>
+    </div>
+  );
+}

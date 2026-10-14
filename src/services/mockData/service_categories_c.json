@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "_table": { "label": "Service Category", "plural": "Service Categories", "icon": "Layers3" },
+    "Name": { "type": "Text", "label": "Category name", "required": true },
+    "description_c": { "type": "MultilineText", "label": "Description", "required": true },
+    "status_c": { "type": "Picklist", "label": "Status", "required": true, "values": "Active,Paused" }
+  },
+  "records": [
+    { "Id": "c1000001-0000-4000-8000-000000000009", "Name": "Car Assistance", "description_c": "Car roadside assistance requests and on-road vehicle support.", "status_c": "Active", "Owner": { "Id": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90", "Name": "Demo Admin" }, "CreatedOn": "2026-10-07T08:00:00.000Z", "ModifiedOn": "2026-10-07T08:00:00.000Z" },
+    { "Id": "c1000001-0000-4000-8000-000000000010", "Name": "Bike Assistance", "description_c": "Bike roadside assistance requests and on-road vehicle support.", "status_c": "Active", "Owner": { "Id": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90", "Name": "Demo Admin" }, "CreatedOn": "2026-10-07T08:01:00.000Z", "ModifiedOn": "2026-10-07T08:01:00.000Z" },
+    { "Id": "c1000001-0000-4000-8000-000000000011", "Name": "Home Services", "description_c": "In-home service requests including AC technician visits and repairs.", "status_c": "Active", "Owner": { "Id": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90", "Name": "Demo Admin" }, "CreatedOn": "2026-10-13T00:00:00.000Z", "ModifiedOn": "2026-10-13T00:00:00.000Z" }
+  ]
+}

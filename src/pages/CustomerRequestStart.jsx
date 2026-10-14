@@ -1,0 +1,689 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { sdk } from '@/services/sdk';
+import { useFetch } from '@/hooks/useFetch';
+import ApperIcon from '@/components/ApperIcon';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { PageHeader } from '@/components/local/EntityPages';
+import { toast } from 'sonner';
+import { getCapabilityName } from '@/services/providerMatching';
+import { getLanguage, tr } from '@/services/i18n';
+
+const { eq } = window.ApperSDK.CoreSDK;
+
+const VEHICLE_CATEGORY = {
+  car: 'Car Assistance',
+  bike: 'Bike Assistance',
+};
+
+const CAR_WASH_OPTIONS = [
+  {
+    title: 'Complete Car Wash',
+    description: 'Exterior wash and interior cleaning.',
+    icon: 'Sparkles',
+    prices: [
+      { label: 'Small Car (Hatchback / Sedan)', price: 400 },
+      { label: 'SUV / Big Car', price: 500 },
+    ],
+  },
+  {
+    title: 'Exterior Only',
+    description: 'Exterior body wash. Body polish is optional at an extra charge.',
+    icon: 'Droplets',
+    prices: [
+      { label: 'Small Car (Hatchback / Sedan)', price: 300, extra: 'Body polish +₹200' },
+      { label: 'SUV / Big Car', price: 400, extra: 'Body polish +₹500' },
+    ],
+  },
+  {
+    title: 'Interior Only',
+    description: 'Full vacuum cleaning and dashboard polishing included.',
+    icon: 'CarFront',
+    prices: [
+      { label: 'Small Car (Hatchback / Sedan)', price: 200 },
+      { label: 'SUV / Big Car', price: 300 },
+    ],
+  },
+  {
+    title: 'Interior Deep Clean',
+    description: 'Ceiling included. Removal + Refitting of Seats - + Rs. 500. Complimentary exterior wash included.',
+    icon: 'Wind',
+    prices: [
+      { label: 'Small Car (Hatchback / Sedan)', price: 2500, extra: 'Removal + Refitting of Seats - + Rs. 500' },
+      { label: 'SUV / Big Car', price: 4500, extra: 'Removal + Refitting of Seats - + Rs. 500' },
+    ],
+  },
+  {
+    title: 'Rubbing and Detailing',
+    description: 'Choose a basic or premium detailing package.',
+    icon: 'WandSparkles',
+    prices: [
+      { label: 'Small Car (Hatchback / Sedan) — Basic', price: 3000 },
+      { label: 'Small Car (Hatchback / Sedan) — Premium', price: 8000 },
+      { label: 'SUV / Big Car — Basic', price: 5000 },
+      { label: 'SUV / Big Car — Premium', price: 10000 },
+    ],
+  },
+];
+
+const CAR_SERVICE_PACKAGES = [
+  {
+    title: 'Economy Service',
+    checkup: '20-point checkup',
+    prices: [
+      { label: 'Hatchback / Sedan', price: 3999 },
+      { label: 'SUV / Big Car', price: 6999 },
+    ],
+    covered: [
+      'Engine oil — change (Included)',
+      'Mobile filter — change (Included)',
+      'Air filter — change (Included)',
+      'Cabin filter — cleaning only',
+      'Coolant — top-up up to 200 ml',
+    ],
+  },
+  {
+    title: 'Normal Service',
+    checkup: '60-point checkup',
+    prices: [
+      { label: 'Hatchback / Sedan', price: 1500 },
+      { label: 'SUV / Big Car', price: 2000 },
+    ],
+    covered: [
+      'Engine oil — change',
+      'Mobile filter — change',
+      'Air filter — change',
+      'Cabin filter — change',
+      'Coolant — change',
+      'Brake pad — change if required',
+      'Fuel filter — change if required',
+      'Throttle body cleaning',
+    ],
+  },
+  {
+    title: 'Major Service',
+    checkup: '62-point checkup',
+    prices: [
+      { label: 'Hatchback / Sedan', price: 5000 },
+      { label: 'SUV / Big Car', price: 6000 },
+    ],
+    covered: [
+      'Engine oil — change',
+      'Mobile filter — change',
+      'Air filter — change',
+      'Cabin filter — change',
+      'Coolant — change',
+      'Brake pad — change if required',
+      'Fuel filter — change if required',
+      'Throttle body cleaning',
+      'Belt replacement — if required',
+      'Timing chain replacement — if required',
+      'Suspension inspection and replacement — if required',
+    ],
+  },
+];
+
+function getWashPrice(item) {
+  const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
+  const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
+  const storedPrice = Number(item?.price);
+  return Number.isFinite(storedPrice) && storedPrice > 0 ? storedPrice : (Number(priceOption?.price) || 0);
+}
+
+function normalizeWashCart(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
+    const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
+    const price = getWashPrice(item);
+    const qty = Math.max(0, Number.parseInt(item?.qty, 10) || 0);
+    return {
+      ...item,
+      id: item?.id || (item?.title + '::' + item?.variant),
+      title: option?.title || String(item?.title || ''),
+      variant: priceOption?.label || String(item?.variant || ''),
+      price,
+      qty,
+    };
+  }).filter((item) => item.title && item.variant && item.price > 0 && item.qty > 0);
+}
+
+export const route = {
+  path: '/customer/request',
+  layout: 'owner',
+  access: "profile === 'Customer_c'",
+};
+
+export default function CustomerRequestStart() {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const user = useSelector((state) => state.user.user);
+  const vehicle = params.get('vehicle') ?? 'car';
+  const requestedService = params.get('service') ?? '';
+  const issue = params.get('issue') ?? '';
+  const displayIssue = requestedService || issue;
+  const [creating, setCreating] = useState(false);
+  const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
+  const isProfessionalDriverService = ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
+  const [location, setLocation] = useState(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null');
+      if (saved && Number.isFinite(Number(saved.latitude)) && Number.isFinite(Number(saved.longitude))) {
+        return { text: saved.label || 'Confirmed service location', latitude: Number(saved.latitude), longitude: Number(saved.longitude), serviceable: saved.serviceable !== false };
+      }
+    } catch {
+      // A fresh location can be confirmed from the location prompt.
+    }
+    return null;
+  });
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [problemDetails, setProblemDetails] = useState('');
+  const [insuranceFiles, setInsuranceFiles] = useState([]);
+  const isInsuranceClaim = vehicle === 'car' && requestedService === 'Insurance Claim Assistance';
+  const [washCart, setWashCart] = useState(() => {
+    try {
+      const saved = window.sessionStorage.getItem('local_car_wash_cart_v2');
+      return saved ? normalizeWashCart(JSON.parse(saved)) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [includePickupDrop, setIncludePickupDrop] = useState(() => window.sessionStorage.getItem('local_car_wash_pickup_v1') === 'true');
+  const [washDecisions, setWashDecisions] = useState({});
+  function setWashDecision(itemId, decision) {
+    setWashDecisions((current) => ({ ...current, [itemId]: { decision, proposedUnitPrice: current[itemId]?.proposedUnitPrice ?? '' } }));
+  }
+  function setWashProposedPrice(itemId, proposedUnitPrice) {
+    setWashDecisions((current) => ({ ...current, [itemId]: { decision: 'negotiate', proposedUnitPrice } }));
+  }
+  const [serviceTiming, setServiceTiming] = useState('ASAP');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(null);
+  const isCarWash = vehicle === 'car' && requestedService === 'Car Wash';
+  const isCarService = vehicle === 'car' && requestedService === 'Car Service';
+  const isUrgentService = ['Emergency Driver', 'Ambulance'].includes(requestedService) || /jump|battery|tyre|towing|fuel|roadside|breakdown|accident/i.test(issue + ' ' + requestedService);
+  // Only classify Car Wash as fixed-price here because this screen currently has an explicit package rate card.
+  // Driver rates must be configured before those services can honestly be presented as fixed-price bookings.
+  const pricingMode = isUrgentService ? 'Urgent Dispatch' : (isCarWash ? 'Fixed Price' : 'Provider Quote');
+  const pricingModeDescription = pricingMode === 'Fixed Price'
+    ? 'See the listed price and book without waiting for bids.'
+    : pricingMode === 'Urgent Dispatch'
+      ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
+      : 'Nearby eligible providers can send an estimate and arrival time. Choose an offer; negotiation is optional.';
+  const language = getLanguage();
+  // Keep all cart calculations based on the same normalized item list.
+  const normalizedWashCart = normalizeWashCart(washCart);
+  const cartItemCount = normalizedWashCart.reduce((sum, item) => sum + Math.max(0, Number.parseInt(item.qty, 10) || 0), 0);
+  const cartSubtotal = normalizedWashCart.reduce((sum, item) => {
+    const quantity = Math.max(0, Number.parseInt(item.qty, 10) || 0);
+    return sum + (getWashPrice(item) * quantity);
+  }, 0);
+  const [carWashOffer, setCarWashOffer] = useState('');
+  const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
+  const [estimatedTotalValue, setEstimatedTotalValue] = useState(() => {
+    const savedTotal = normalizeWashCart(washCart).reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
+    return savedTotal + (includePickupDrop ? 100 : 0);
+  });
+
+  // Recalculate on cart changes; customers can also explicitly refresh the total before submitting.
+  function refreshEstimatedTotal() {
+    const currentCart = normalizeWashCart(washCart);
+    const nextSubtotal = currentCart.reduce((sum, item) => {
+      const quantity = Math.max(0, Number.parseInt(item.qty, 10) || 0);
+      return sum + (getWashPrice(item) * quantity);
+    }, 0);
+    const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
+    window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
+    window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
+    window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
+    setEstimatedTotalValue(nextTotal);
+    setTotalRefreshed(true);
+    window.location.reload();
+  }
+
+  useEffect(() => {
+    const nextSubtotal = normalizeWashCart(washCart).reduce((sum, item) => {
+      const quantity = Math.max(0, Number.parseInt(item.qty, 10) || 0);
+      return sum + (getWashPrice(item) * quantity);
+    }, 0);
+    setEstimatedTotalValue(nextSubtotal + (includePickupDrop ? 100 : 0));
+  }, [washCart, includePickupDrop]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(normalizedWashCart));
+      window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
+    } catch {
+      // The cart still works for the current page if session storage is unavailable.
+    }
+  }, [normalizedWashCart, includePickupDrop]);
+
+  function addWashItem(option, priceOption) {
+    window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
+    setTotalRefreshed(false);
+    const id = option.title + '::' + priceOption.label;
+    setWashCart((current) => {
+      const existing = current.find((item) => item.id === id);
+      return existing
+        ? current.map((item) => item.id === id ? { ...item, qty: item.qty + 1 } : item)
+        : [...current, { id, title: option.title, variant: priceOption.label, price: priceOption.price, qty: 1 }];
+    });
+    toast.success(option.title + ' added to cart.');
+  }
+
+  function changeWashQty(id, delta) {
+    window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
+    setTotalRefreshed(false);
+    setWashCart((current) => current
+      .map((item) => item.id === id ? { ...item, qty: Math.max(0, item.qty + delta) } : item)
+      .filter((item) => item.qty > 0));
+  }
+
+  const { data: customer } = useFetch(
+    async () => {
+      const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
+      if (!email) return null;
+
+      const res = await sdk
+        .table('customer_profiles_c')
+        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
+        .page(1, 1000)
+        .fetch();
+
+      if (!res.success) throw new Error(res.message);
+      return (res.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
+    },
+    [user?.emailAddress, user?.email],
+  );
+
+  const isOtherIssue = issue === 'Other Issue' && !requestedService;
+  const categoryName = VEHICLE_CATEGORY[vehicle] ?? 'Car Assistance';
+  const { data: category } = useFetch(
+    () => sdk.table('service_categories_c').select(['Id', 'Name', 'status_c']).where(eq('Name', categoryName)).page(1, 1).fetch().then((res) => res.data?.[0] ?? null),
+    [categoryName],
+  );
+  const capabilityName = getCapabilityName(issue, vehicle, requestedService);
+  const { data: capabilities } = useFetch(
+    () =>
+      sdk
+        .table('service_capabilities_c')
+        .select(['Id', 'Name', 'vehicle_type_c', 'status_c'])
+        .where(eq('status_c', 'Active'))
+        .page(1, 100)
+        .fetch()
+        .then((res) => res.data ?? []),
+    [],
+  );
+  const requiredCapability = capabilities?.find((item) => item.Name === capabilityName);
+
+  useEffect(() => {
+    if (!issue) navigate('/customer/vehicle/' + vehicle);
+  }, [issue, vehicle, navigate]);
+
+  function useDemoLocation() {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null');
+      if (!saved || !Number.isFinite(Number(saved.latitude)) || !Number.isFinite(Number(saved.longitude))) {
+        toast.error('Please confirm your current or manual service location from the location prompt first.');
+        return;
+      }
+      setLocation({
+        text: saved.label || 'Confirmed service location',
+        latitude: Number(saved.latitude),
+        longitude: Number(saved.longitude),
+        serviceable: saved.serviceable !== false,
+      });
+      toast.success('Confirmed service location applied.');
+    } catch {
+      toast.error('Could not load your confirmed service location. Please try again.');
+    }
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      toast.error(tr('Browser location is not available.', language));
+      return;
+    }
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          text: 'Current location',
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setLocationLoading(false);
+      },
+      () => {
+        setLocationLoading(false);
+        toast.error(tr('Location permission was not granted.', language));
+      },
+    );
+  }
+
+  async function createRequest() {
+    if (isProfessionalDriverService && !driverDisclaimerAccepted) {
+      toast.error('Please read and accept the Safety & Liability Disclaimer before continuing.');
+      return;
+    }
+    if (!customer?.Id) {
+      toast.error(tr('Customer profile could not be matched.', language));
+      return;
+    }
+    if (!category?.Id) {
+      toast.error(tr('The selected service is not configured yet.', language));
+      return;
+    }
+    if (!requiredCapability?.Id) {
+      toast.error(tr('The selected problem is not yet mapped to a Service Provider capability.', language));
+      return;
+    }
+    if (isCarWash && washCart.length === 0) {
+      toast.error('Add at least one Car Wash service to your cart.');
+      return;
+    }
+    const customerWashOffer = isCarWash ? (carWashOffer.trim() === '' ? estimatedTotalValue : Number(carWashOffer)) : null;
+    if (isCarWash && (!Number.isFinite(customerWashOffer) || customerWashOffer <= 0)) {
+      toast.error('Enter a valid total offer greater than ₹0.');
+      return;
+    }
+    if (isCarService && !selectedCarServicePackage) {
+      toast.error('Please select a Car Service package and vehicle type.');
+      return;
+    }
+    if (!location) {
+      toast.error(tr('Please confirm your location first.', language));
+      return;
+    }
+    if (location.serviceable === false) {
+      toast.error('LOCAL bookings are not available at this location yet. Please choose a service location within the current Naini/Prayagraj coverage area.');
+      return;
+    }
+    if (isOtherIssue && !problemDetails.trim()) {
+      toast.error(tr('Please describe the problem before continuing.', language));
+      return;
+    }
+    if (serviceTiming === 'Scheduled') {
+      const selectedDate = new Date(scheduledAt);
+      if (!scheduledAt || Number.isNaN(selectedDate.getTime()) || selectedDate.getTime() <= Date.now()) {
+        toast.error('Choose a future date and time for the scheduled service.');
+        return;
+      }
+    }
+
+    setCreating(true);
+    try {
+      const res = await sdk.table('service_requests_c').create({
+        Name: vehicle.toUpperCase() + ' • ' + (isCarWash ? 'Car Wash (' + washCart.reduce((sum, item) => sum + item.qty, 0) + ' items)' : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' — ' + selectedCarServicePackage.vehicleType : displayIssue),
+        customer_c: customer.Id,
+        service_category_c: category.Id,
+        required_capability_c: requiredCapability.Id,
+        problem_description_c: (requestedService
+          ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + washCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Customer Car Wash total offer: ₹' + customerWashOffer.toLocaleString('en-IN') + '. The offer covers all selected items; Pickup & Drop is included if selected and cannot be negotiated separately. Prices are indicative demo menu prices. CUSTOMER_CAR_WASH_OFFER_JSON:' + JSON.stringify({ menuTotal: estimatedTotalValue, customerOffer: customerWashOffer }) + ' CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
+          : isOtherIssue
+            ? problemDetails.trim()
+            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
+        location_c: location.text,
+        // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
+        service_area_c: 'Prayagraj',
+        latitude_c: Number(location.latitude),
+        longitude_c: Number(location.longitude),
+        status_c: 'Open',
+        preferred_time_c: serviceTiming,
+        requested_at_c: new Date().toISOString(),
+        scheduled_at_c: serviceTiming === 'Scheduled' ? new Date(scheduledAt).toISOString() : null,
+        service_mode_c: isUrgentService && serviceTiming === 'ASAP' ? 'Urgent' : 'Normal',
+        pricing_mode_c: pricingMode,
+        pricing_mode_description_c: pricingModeDescription,
+      });
+      if (!res.data?.length) {
+        toast.error(res.messages?.[0] ?? 'Service request was not created.');
+        return;
+      }
+      toast.success(tr('Request shared with eligible nearby Service Providers.', language));
+      navigate('/requests/' + res.data[0].Id);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
+        title={tr(displayIssue, language)}
+        description={tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
+        action={
+          <Button asChild variant="outline">
+            <span onClick={() => navigate(['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{tr('Change problem', language)}</span>
+          </Button>
+        }
+      />
+      {isCarService && (
+        <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Service packages">
+          <div>
+            <h2 className="mb-1 text-xl font-semibold">Car Service Packages</h2>
+            <p className="text-sm text-muted-foreground">Compare package coverage and indicative prices for your vehicle type. Final work and price must be confirmed by the Service Provider.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {CAR_SERVICE_PACKAGES.map((pkg) => (
+              <Card key={pkg.title} className="flex h-full flex-col border-2 p-5 sm:p-6">
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-bold">{pkg.title}</h3>
+                  <p className="mt-1 text-sm font-medium text-muted-foreground">{pkg.checkup}</p>
+                  <div className="mt-4 space-y-3">
+                    {pkg.prices.map((price) => {
+                      const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
+                      return (
+                        <div key={price.label} className={'rounded-lg border px-3 py-3 ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'bg-primary/5')}>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-medium">{price.label}</span>
+                            <span className="shrink-0 text-base font-bold">₹{price.price.toLocaleString('en-IN')}</span>
+                          </div>
+                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} className="mt-3 w-full" onClick={() => setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered })}>
+                            {isSelected ? 'Selected' : 'Select this package'}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide">Covered Area</h4>
+                  <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground marker:font-medium marker:text-muted-foreground">
+                    {pkg.covered.map((item) => <li key={item} className="pl-1">{item}</li>)}
+                  </ol>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+      {isCarWash && (
+        <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Wash service packages">
+          <div>
+            <h2 className="mb-1 text-xl font-semibold">Choose Car Wash services</h2>
+            <p className="text-sm text-muted-foreground">Choose your wash services and add-ons. The listed total is shown before you submit your booking.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {CAR_WASH_OPTIONS.map((option) => (
+              <Card key={option.title} className="flex h-full flex-col border-2 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ApperIcon name={option.icon} size={23} />
+                  </div>
+                  <h3 className="font-semibold">{option.title}</h3>
+                </div>
+                <p className="mt-3 min-h-10 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
+                <div className="mt-3 grid flex-1 content-start gap-2">
+                  {option.prices.map((priceOption) => {
+                    const id = option.title + '::' + priceOption.label;
+                    const qty = washCart.find((item) => item.id === id)?.qty ?? 0;
+                    return (
+                      <div key={priceOption.label} className={'rounded-lg border p-3 ' + (qty ? 'border-primary bg-primary/5' : '')}>
+                        <div className="text-sm font-medium">{priceOption.label}</div>
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <div className="text-lg font-bold">₹{priceOption.price.toLocaleString('en-IN')}</div>
+                          <Button type="button" size="sm" variant={qty ? 'outline' : 'default'} onClick={() => addWashItem(option, priceOption)}>
+                            {qty ? 'Add another (' + qty + ')' : 'Add to cart'}
+                          </Button>
+                        </div>
+                        {priceOption.extra && <p className="mt-1 text-xs text-muted-foreground">{priceOption.extra}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            ))}
+            <Card className={'flex flex-col justify-between border-2 p-4 ' + (includePickupDrop ? 'border-primary bg-primary/5' : '')}>
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ApperIcon name="CarTaxiFront" size={23} />
+                  </div>
+                  <h3 className="font-semibold">Pickup &amp; Drop</h3>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">Optional vehicle pickup and return service.</p>
+                <p className="mt-2 text-lg font-bold">₹100</p>
+              </div>
+              <Button type="button" className="mt-4" variant={includePickupDrop ? 'outline' : 'default'} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop((value) => !value); }}>
+                {includePickupDrop ? 'Remove Pickup & Drop' : 'Add Pickup & Drop'}
+              </Button>
+            </Card>
+          </div>
+          <Card className="border-2 border-primary/20 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h3 className="text-lg font-semibold">Your Car Wash Cart ({cartItemCount} items)</h3><p className="mt-1 text-sm text-muted-foreground">Live cart subtotal: ₹{cartSubtotal.toLocaleString('en-IN')}</p></div>
+              <Button type="button" variant="outline" onClick={() => { setWashCart([]); setIncludePickupDrop(false); setTotalRefreshed(false); window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); window.sessionStorage.removeItem('local_car_wash_cart_v1'); window.sessionStorage.removeItem('local_car_wash_pickup_v1'); }} disabled={!washCart.length && !includePickupDrop}>Clear cart</Button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {!washCart.length && !includePickupDrop ? <div className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Your cart is empty. Add Car Wash services above.</div> : <>
+                {normalizedWashCart.map((item) => (
+                  <div key={item.id} className="rounded-lg border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1"><div className="font-medium">{item.title}</div><div className="text-sm text-muted-foreground">{item.variant} · ₹{getWashPrice(item).toLocaleString('en-IN')} each · Qty {item.qty}</div><div className="font-semibold">Listed subtotal: ₹{(getWashPrice(item) * item.qty).toLocaleString('en-IN')}</div></div><div className="flex items-center gap-2"><Button type="button" size="icon" variant="outline" aria-label={'Remove one ' + item.title} onClick={() => changeWashQty(item.id, -1)}><ApperIcon name="Minus" size={15} /></Button><span className="min-w-5 text-center font-semibold">{item.qty}</span><Button type="button" size="icon" variant="outline" aria-label={'Add one ' + item.title} onClick={() => changeWashQty(item.id, 1)}><ApperIcon name="Plus" size={15} /></Button><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setWashCart((current) => current.filter((entry) => entry.id !== item.id)); }}>Remove</Button></div></div>
+                    
+                  </div>
+                ))}
+                {includePickupDrop && <div className="flex items-center justify-between rounded-lg border p-3"><div><div className="font-medium">Pickup &amp; Drop</div><div className="text-sm text-muted-foreground">Optional service</div></div><div className="flex items-center gap-3"><span className="font-semibold">₹100</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop(false); }}>Remove</Button></div></div>}
+              </>}
+            </div>
+            <div className="mt-5 border-t pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-base font-semibold">Estimated Total Value</span><span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={cartSubtotal} className="text-2xl font-bold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
+              <p className="mt-2 text-xs text-muted-foreground">After adding or removing services, click Refresh Total to recalculate and confirm the final menu value. You must refresh the total before sending your offer.</p>
+              <Button type="button" variant={totalRefreshed ? 'secondary' : 'outline'} className="mt-3" onClick={refreshEstimatedTotal}><ApperIcon name="RefreshCw" size={16} /> {totalRefreshed ? 'Total Refreshed ✓' : 'Refresh Total (Required)'}</Button>
+              <p className="mt-2 text-xs text-muted-foreground">Indicative menu prices. You can submit the Menu Total or propose a lower or different total for the whole booking. Pickup &amp; Drop, if selected, is included and is not negotiated separately.</p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:items-end"><div><label htmlFor="car-wash-offer" className="text-sm font-semibold">Your Offer (₹)</label><Input id="car-wash-offer" type="number" min="1" value={carWashOffer} onChange={(event) => setCarWashOffer(event.target.value)} placeholder={String(estimatedTotalValue)} className="mt-2"/><p className="mt-1 text-xs text-muted-foreground">Leave blank to submit the Menu Total.</p></div><div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Menu Total</div><div className="text-lg font-semibold">₹{estimatedTotalValue.toLocaleString('en-IN')}</div><div className="text-xs text-muted-foreground">Convenience Fee is calculated separately after agreement.</div></div></div>
+            </div>
+          </Card>
+        </section>
+      )}
+      <section className="mx-auto mb-4 max-w-4xl"><h2 className="text-xl font-semibold">Book Your Service with LOCAL</h2></section><div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <Card className="border-2 border-primary/20 p-6">
+          <div className="flex items-center gap-4">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ApperIcon name={vehicle === 'car' ? 'Car' : 'Bike'} size={34} />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Service Selected</div>
+              <div className="mt-1 text-lg font-semibold">{tr(displayIssue, language)}</div>
+            </div>
+          </div>
+          <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{pricingModeDescription}</p>
+          </div>
+          {isProfessionalDriverService && (
+            <section className="mt-6 rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4" aria-labelledby="driver-safety-disclaimer-title">
+              <h2 id="driver-safety-disclaimer-title" className="text-base font-bold">Safety &amp; Liability Disclaimer</h2>
+              <div className="mt-3 space-y-3 text-sm leading-relaxed text-foreground">
+                <p>LOCAL connects customers with professional drivers who drive the customer's own vehicle. The customer is responsible for ensuring that the vehicle is roadworthy and has valid insurance applicable to its intended use and the assigned driver.</p>
+                <p>The driver must hold a valid driving licence and comply with applicable traffic laws. LOCAL facilitates the connection and does not guarantee accident-free travel.</p>
+                <p>Any accident, injury, loss or damage will be handled according to applicable law and the relevant insurance policy. The driver and LOCAL are not exempt from liability that the law imposes, including liability arising from their own acts or omissions.</p>
+                <p className="text-xs text-muted-foreground">This disclaimer does not remove any rights or responsibilities that cannot legally be excluded. Please read the full Professional Driver Service terms before booking.</p>
+              </div>
+              <label htmlFor="driver-disclaimer-accept" className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 font-semibold">
+                <input id="driver-disclaimer-accept" type="checkbox" checked={driverDisclaimerAccepted} onChange={(event) => setDriverDisclaimerAccepted(event.target.checked)} className="mt-1 size-4 shrink-0 accent-primary" />
+                <span>I have read and understood the Safety &amp; Liability Disclaimer and agree to proceed.</span>
+              </label>
+              {!driverDisclaimerAccepted && <p className="mt-2 text-xs font-medium text-amber-700">Required: tick the checkbox to continue with this driver booking.</p>}
+            </section>
+          )}
+          {isInsuranceClaim && (
+            <div className="mt-6 rounded-xl border-2 border-primary/20 bg-background p-4">
+              <label htmlFor="insurance-copy-upload" className="text-sm font-semibold">Upload Insurance Copy</label>
+              <p className="mt-1 text-sm text-muted-foreground">Select your insurance policy copy or related claim documents (PDF, JPG, or PNG; you may select multiple files).</p>
+              <Input id="insurance-copy-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple onChange={(event) => setInsuranceFiles(Array.from(event.target.files ?? []))} className="mt-3 cursor-pointer" />
+              {insuranceFiles.length > 0 && <ul className="mt-3 space-y-1 text-sm text-muted-foreground">{insuranceFiles.map((file, index) => <li key={file.name + '-' + index} className="flex items-center gap-2"><ApperIcon name="FileCheck" size={15} />{file.name} <span>({Math.max(1, Math.round(file.size / 1024))} KB)</span></li>)}</ul>}
+              <p className="mt-2 text-xs text-muted-foreground">Document upload is a demo control; secure file storage will be connected when the backend is configured.</p>
+            </div>
+          )}
+          {isOtherIssue && !isInsuranceClaim && (
+            <div className="mt-6 rounded-xl border-2 border-primary/20 bg-background p-4">
+              <label htmlFor="other-issue-details" className="text-sm font-semibold">
+                {tr('Tell us what happened', language)}
+              </label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {tr('Describe the problem so Service Providers can understand it and send you an accurate offer.', language)}
+              </p>
+              <Textarea
+                id="other-issue-details"
+                value={problemDetails}
+                onChange={(event) => setProblemDetails(event.target.value)}
+                placeholder={tr('Example: My car suddenly stopped and now it will not start.', language)}
+                className="mt-3 min-h-32 resize-none"
+                maxLength={500}
+              />
+              <div className="mt-1 text-right text-xs text-muted-foreground">
+                {problemDetails.length}/500
+              </div>
+            </div>
+          )}
+        </Card>
+        <Card className="p-6">
+          <div className="text-sm font-semibold">When do you need the service?</div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button type="button" variant={serviceTiming === 'ASAP' ? 'default' : 'outline'} onClick={() => setServiceTiming('ASAP')}><ApperIcon name="Zap" size={16} /> Book Now</Button>
+            <Button type="button" variant={serviceTiming === 'Scheduled' ? 'default' : 'outline'} onClick={() => setServiceTiming('Scheduled')}><ApperIcon name="CalendarClock" size={16} /> Schedule for Later</Button>
+          </div>
+          {serviceTiming === 'Scheduled' && <div className="mt-3"><label htmlFor="requested-service-time" className="text-sm font-medium">Choose date and time</label><Input id="requested-service-time" type="datetime-local" min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Your selected time is a request, not a confirmed appointment. A Service Provider must accept it.</p></div>}
+          <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">{tr('Your location', language)}</div>
+          <div className="mt-2 text-sm text-muted-foreground">{tr('We need your location to find nearby help.', language)}</div>
+          {location ? (
+            <div className="mt-5 rounded-xl border border-success-border bg-success-muted p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-success">
+                <ApperIcon name="MapPinCheck" size={18} />
+                {tr('Location confirmed', language)}
+              </div>
+              <div className="mt-1 text-sm text-success">{location.text}</div>
+              <div className="mt-1 text-xs text-success/80">
+                {Number(location.latitude).toFixed(3)}, {Number(location.longitude).toFixed(3)}
+              </div>
+              {location.serviceable === false && <p className="mt-2 text-sm font-semibold text-amber-700">This location is outside LOCAL's current service area. Bookings are not available here yet.</p>}
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3">
+              <Button onClick={useCurrentLocation} disabled={locationLoading}>
+                <ApperIcon name="LocateFixed" size={17} />
+                {locationLoading ? tr('Getting location…', language) : tr('Use current location', language)}
+              </Button>
+              <Button variant="outline" onClick={useDemoLocation}>
+                <ApperIcon name="MapPin" size={17} />
+                {tr('Use confirmed location', language)}
+              </Button>
+            </div>
+          )}
+          {location && (
+            <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
+              <ApperIcon name="Send" size={17} />
+              {creating ? tr('Sharing request…', language) : isCarWash ? 'Let LOCAL Find Help Near You' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find Nearby Service Provider', language)}
+            </Button>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}

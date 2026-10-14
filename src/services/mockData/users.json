@@ -1,0 +1,277 @@
+{
+  "_meta": {
+    "Name": {
+      "type": "Text",
+      "label": "Full Name",
+      "required": true
+    },
+    "Email": {
+      "type": "Email",
+      "label": "Email Address",
+      "required": true
+    },
+    "FirstName": {
+      "type": "Text",
+      "label": "First Name",
+      "required": true
+    },
+    "LastName": {
+      "type": "Text",
+      "label": "Last Name",
+      "required": true
+    },
+    "password": {
+      "type": "Password",
+      "label": "Password",
+      "required": true
+    },
+    "AvatarUrl": {
+      "type": "Text",
+      "label": "Avatar Url"
+    }
+  },
+  "records": [
+    {
+      "Id": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90",
+      "userId": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Demo Admin",
+      "FirstName": "Demo",
+      "LastName": "Admin",
+      "Email": "admin@demo.app",
+      "password": "demo1234",
+      "AvatarUrl": null,
+      "IsOwner": true,
+      "accounts": [
+        {
+          "userId": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 1,
+          "isOwner": true,
+          "profile": {
+            "id": 1,
+            "name": "Admin_c"
+          },
+          "companyOwner": {
+            "name": "Demo Admin",
+            "avatarUrl": null,
+            "email": "admin@demo.app"
+          }
+        }
+      ]
+    },
+    {
+      "Id": "b52d8f1c-6a7e-4a90-9d31-2f47c8e10511",
+      "userId": "b52d8f1c-6a7e-4a90-9d31-2f47c8e10511",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Demo Customer",
+      "FirstName": "Demo",
+      "LastName": "Customer",
+      "Email": "aarav@local.demo",
+      "password": "customer123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [
+        {
+          "userId": "b52d8f1c-6a7e-4a90-9d31-2f47c8e10511",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 2,
+          "isOwner": false,
+          "profile": {
+            "id": 2,
+            "name": "Customer_c"
+          },
+          "companyOwner": {
+            "name": "Demo Admin",
+            "avatarUrl": null,
+            "email": "admin@demo.app"
+          }
+        }
+      ]
+    },
+    {
+      "Id": "c63e9a27-4f10-4b82-8d55-1e37a6c90222",
+      "userId": "c63e9a27-4f10-4b82-8d55-1e37a6c90222",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Raj Kumar",
+      "FirstName": "Raj",
+      "LastName": "Kumar",
+      "Email": "raj@local.demo",
+      "password": "provider123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [
+        {
+          "userId": "c63e9a27-4f10-4b82-8d55-1e37a6c90222",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 3,
+          "isOwner": false,
+          "profile": {
+            "id": 3,
+            "name": "ServiceProvider_c"
+          },
+          "companyOwner": {
+            "name": "Demo Admin",
+            "avatarUrl": null,
+            "email": "admin@demo.app"
+          }
+        }
+      ]
+    },
+    {
+      "Id": "d74f1a38-7b8e-4b01-ae42-3f58d9f21622",
+      "userId": "d74f1a38-7b8e-4b01-ae42-3f58d9f21622",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Amit Verma",
+      "FirstName": "Amit",
+      "LastName": "Verma",
+      "Email": "amit@local.demo",
+      "password": "provider123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [
+        {
+          "userId": "d74f1a38-7b8e-4b01-ae42-3f58d9f21622",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 4,
+          "isOwner": false,
+          "profile": {
+            "id": 3,
+            "name": "ServiceProvider_c"
+          },
+          "companyOwner": {
+            "name": "Demo Admin",
+            "avatarUrl": null,
+            "email": "admin@demo.app"
+          }
+        }
+      ]
+    },
+    {
+      "Id": "e85a2b49-8c9f-4c12-bf53-4a69e0a32733",
+      "userId": "e85a2b49-8c9f-4c12-bf53-4a69e0a32733",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Suresh Yadav",
+      "FirstName": "Suresh",
+      "LastName": "Yadav",
+      "Email": "suresh@local.demo",
+      "password": "provider123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [
+        {
+          "userId": "e85a2b49-8c9f-4c12-bf53-4a69e0a32733",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 5,
+          "isOwner": false,
+          "profile": {
+            "id": 3,
+            "name": "ServiceProvider_c"
+          },
+          "companyOwner": {
+            "name": "Demo Admin",
+            "avatarUrl": null,
+            "email": "admin@demo.app"
+          }
+        }
+      ]
+    },
+    {
+      "Id": "f96b3c5a-9da0-4d23-c064-5b7af1b43844",
+      "userId": "f96b3c5a-9da0-4d23-c064-5b7af1b43844",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Imran Khan",
+      "FirstName": "Imran",
+      "LastName": "Khan",
+      "Email": "imran@local.demo",
+      "password": "provider123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [
+        {
+          "userId": "f96b3c5a-9da0-4d23-c064-5b7af1b43844",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 6,
+          "isOwner": false,
+          "profile": {
+            "id": 3,
+            "name": "ServiceProvider_c"
+          },
+          "companyOwner": {
+            "name": "Demo Admin",
+            "avatarUrl": null,
+            "email": "admin@demo.app"
+          }
+        }
+      ]
+    },
+    {
+      "Id": "a07d2f11-3c84-4d95-8b21-61f2c8a93007",
+      "userId": "a07d2f11-3c84-4d95-8b21-61f2c8a93007",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Professional Driver Demo",
+      "FirstName": "Professional",
+      "LastName": "Driver Demo",
+      "Email": "driver@local.demo",
+      "password": "driver123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [
+        {
+          "userId": "a07d2f11-3c84-4d95-8b21-61f2c8a93007",
+          "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+          "companyName": "Demo Team",
+          "companyUserId": 7,
+          "isOwner": false,
+          "profile": { "id": 3, "name": "ServiceProvider_c" },
+          "companyOwner": { "name": "Demo Admin", "avatarUrl": null, "email": "admin@demo.app" }
+        }
+      ]
+    },
+    {
+      "Id": "b17d2f11-3c84-4d95-8b21-61f2c8a93008",
+      "userId": "b17d2f11-3c84-4d95-8b21-61f2c8a93008",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Demo Car Rental One",
+      "FirstName": "Demo",
+      "LastName": "Rental One",
+      "Email": "rental1@local.demo",
+      "password": "rental123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [{ "userId": "b17d2f11-3c84-4d95-8b21-61f2c8a93008", "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3", "companyName": "Demo Team", "companyUserId": 8, "isOwner": false, "profile": { "id": 3, "name": "ServiceProvider_c" }, "companyOwner": { "name": "Demo Admin", "avatarUrl": null, "email": "admin@demo.app" } }]
+    },
+    {
+      "Id": "c28e3a22-4d95-4ea6-9c32-72d9a1b04109",
+      "userId": "c28e3a22-4d95-4ea6-9c32-72d9a1b04109",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Demo Car Rental Two",
+      "FirstName": "Demo",
+      "LastName": "Rental Two",
+      "Email": "rental2@local.demo",
+      "password": "rental123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [{ "userId": "c28e3a22-4d95-4ea6-9c32-72d9a1b04109", "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3", "companyName": "Demo Team", "companyUserId": 9, "isOwner": false, "profile": { "id": 3, "name": "ServiceProvider_c" }, "companyOwner": { "name": "Demo Admin", "avatarUrl": null, "email": "admin@demo.app" } }]
+    },
+    {
+      "Id": "d39f4b33-5ea6-4fb7-ad43-83eab2c15210",
+      "userId": "d39f4b33-5ea6-4fb7-ad43-83eab2c15210",
+      "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3",
+      "Name": "Mr. Saurabh @ SS Customs and Automotive Care",
+      "FirstName": "Mr. Saurabh",
+      "LastName": "SS Customs and Automotive Care",
+      "Email": "Sscustomscare@gmail.com",
+      "password": "saurabh123",
+      "AvatarUrl": null,
+      "IsOwner": false,
+      "accounts": [{ "userId": "d39f4b33-5ea6-4fb7-ad43-83eab2c15210", "companyId": "5c1d8e46-3b9a-4f27-8d64-0a2e7b91c5d3", "companyName": "Demo Team", "companyUserId": 10, "isOwner": false, "profile": { "id": 10, "name": "ServiceProvider_c" }, "companyOwner": { "name": "Demo Admin", "avatarUrl": null, "email": "admin@demo.app" } }]
+    }
+  ]
+}

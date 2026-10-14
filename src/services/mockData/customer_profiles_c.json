@@ -1,0 +1,56 @@
+{
+  "_meta": {
+    "_table": {
+      "label": "Customer",
+      "plural": "Customers",
+      "icon": "Users"
+    },
+    "Name": {
+      "type": "Text",
+      "label": "Customer name",
+      "required": true
+    },
+    "email_c": {
+      "type": "Email",
+      "label": "Email",
+      "required": false
+    },
+    "phone_c": {
+      "type": "Text",
+      "label": "Phone",
+      "required": true
+    },
+    "location_c": {
+      "type": "Text",
+      "label": "Location",
+      "required": true
+    },
+    "status_c": {
+      "type": "Picklist",
+      "label": "Status",
+      "required": true,
+      "values": "Active,Blocked"
+    },
+    "notes_c": {
+      "type": "MultilineText",
+      "label": "Notes"
+    }
+  },
+  "records": [
+    {
+      "Id": "d2000001-0000-4000-8000-000000000001",
+      "Name": "Aarav Sharma",
+      "email_c": "aarav@local.demo",
+      "phone_c": "+91 98765 10001",
+      "location_c": "Civil Lines, Prayagraj",
+      "status_c": "Active",
+      "notes_c": "Prefers evening appointments.",
+      "Owner": {
+        "Id": "a41c9d27-5e8f-4b06-9c3a-d7f218e64b90",
+        "Name": "Demo Admin"
+      },
+      "CreatedOn": "2026-09-28T09:00:00.000Z",
+      "ModifiedOn": "2026-10-04T08:00:00.000Z"
+    }
+  ]
+}

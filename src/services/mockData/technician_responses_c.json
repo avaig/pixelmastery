@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "_table": {
+      "label": "Technician Offer",
+      "plural": "Technician Offers",
+      "icon": "BadgeIndianRupee"
+    },
+    "seed_state": "clean-2026-10-06",
+    "Name": {
+      "type": "Text",
+      "label": "Offer title",
+      "required": true
+    },
+    "request_c": {
+      "type": "Lookup",
+      "label": "Service request",
+      "lookup": "service_requests_c",
+      "required": true
+    },
+    "technician_c": {
+      "type": "Lookup",
+      "label": "Technician",
+      "lookup": "technician_profiles_c",
+      "required": true
+    },
+    "proposed_price_c": {
+      "type": "Decimal",
+      "label": "Current offer price",
+      "required": true,
+      "precision": 2
+    },
+    "original_proposed_price_c": {
+      "type": "Decimal",
+      "label": "Original Service Provider quote",
+      "required": true,
+      "precision": 2
+    },
+    "final_agreed_price_c": {
+      "type": "Decimal",
+      "label": "Final agreed price",
+      "precision": 2
+    },
+    "negotiation_status_c": {
+      "type": "Picklist",
+      "label": "Negotiation status",
+      "values": "Not Started,Negotiating,Agreed,Declined"
+    },
+    "negotiation_history_c": {
+      "type": "MultilineText",
+      "label": "Negotiation history"
+    },
+    "availability_c": {
+      "type": "Picklist",
+      "label": "Availability",
+      "required": true,
+      "values": "Available Now,Within 1 hour,Today,Tomorrow"
+    },
+    "message_c": {
+      "type": "MultilineText",
+      "label": "Message"
+    },
+    "status_c": {
+      "type": "Picklist",
+      "label": "Offer status",
+      "required": true,
+      "values": "Pending,Selected,Declined,Withdrawn"
+    }
+  },
+  "records": []
+}
