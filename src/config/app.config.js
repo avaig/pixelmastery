@@ -9,49 +9,62 @@ export const APP_CONFIG = {
 
 export const AUTH_PROFILES = [
   {
-    key: 'customer',
-    profileSlug: 'customer',
-    redirectAfterAuth: '/customer/car-care',
-    authPage: {
-      loginTitle: 'Customer sign in',
-      signupTitle: 'Create your customer account',
-      loginDescription: 'Request help from nearby service providers and compare offers.',
-      signupDescription: 'Tell LOCAL what you need. Nearby service providers will respond.',
-    },
-    altLinksLeadIn: 'Choose how you use LOCAL',
-    altLinks: [
-      { label: 'Service Provider', href: '/service-provider/login' },
-    ],
-  },
-  {
-    key: 'service-provider',
-    profileSlug: 'service-provider',
-    redirectAfterAuth: '/service-provider',
-    authPage: {
-      loginTitle: 'Service Provider Login',
-      signupTitle: 'Join LOCAL as a Service Provider',
-      loginDescription: 'View nearby service requests, send quotes, and manage your accepted jobs.',
-      signupDescription: 'Choose the services you offer and start receiving local requests.',
-    },
-    altLinksLeadIn: 'Choose how you use LOCAL',
-    altLinks: [
-      { label: 'Customer', href: '/customer/login' },
-    ],
-  },
-  {
     key: 'admin',
-    profileSlug: 'admin',
-    redirectAfterAuth: '/admin',
+    name: 'Admin_c',
+    profileSlug: "|cPAqavYolBZFFPt1x3MJZk4q/d+vO+V+yG3xhUHvdR0=",
+    redirectAfterAuth: '/',
     authPage: {
-      loginTitle: 'LOCAL admin',
-      signupTitle: 'Admin account',
-      loginDescription: 'Manage customers, service providers, categories, requests, offers, and jobs.',
-      signupDescription: 'Administrative access to the LOCAL marketplace.',
+      loginTitle: 'Admin Sign In',
+      signupTitle: 'Create Admin Account',
+      loginDescription: null,
+      signupDescription: null,
     },
-    altLinksLeadIn: 'Protected administration',
-    altLinks: [],
-    hiddenFromNormalAuth: true,
+    altLinksLeadIn: 'Go to the right portal',
+    altLinks: [
+      { href: '/customer/login', label: 'I am Customer' },
+      { href: '/serviceprovider/login', label: 'I am Service Provider' }
+    ],
+    reportsTo: null,
+    hasSignup: false,
   },
+  {
+    key: 'customer',
+    name: 'Customer_c',
+    profileSlug: "|cPAqavYolBZFFPt1x3MJZnO9E84jQcr7it6Qf2WTDmE=",
+    redirectAfterAuth: '/',
+    authPage: {
+      loginTitle: 'Customer Sign In',
+      signupTitle: 'Create Customer Account',
+      loginDescription: null,
+      signupDescription: null,
+    },
+    altLinksLeadIn: 'Go to the right portal',
+    altLinks: [
+      { href: '/admin/login', label: 'I am Admin' },
+      { href: '/serviceprovider/login', label: 'I am Service Provider' }
+    ],
+    reportsTo: "Admin",
+    hasSignup: true,
+  },
+  {
+    key: 'serviceprovider',
+    name: 'ServiceProvider_c',
+    profileSlug: "|cPAqavYolBZFFPt1x3MJZrlxsY2SezR33UsrfqnpKQo=",
+    redirectAfterAuth: '/',
+    authPage: {
+      loginTitle: 'Service Provider Sign In',
+      signupTitle: 'Create Service Provider Account',
+      loginDescription: null,
+      signupDescription: null,
+    },
+    altLinksLeadIn: 'Go to the right portal',
+    altLinks: [
+      { href: '/admin/login', label: 'I am Admin' },
+      { href: '/customer/login', label: 'I am Customer' }
+    ],
+    reportsTo: null,
+    hasSignup: true,
+  }
 ];
 
 export const GENERIC_AUTH = {
