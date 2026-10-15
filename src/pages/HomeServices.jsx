@@ -59,7 +59,7 @@ export default function HomeServices() {
                   {tr(service.label, language)}
                 </div>
                 {service.href ? (
-                  <div className="mt-3 text-xs font-semibold text-teal-700">Find nearby help <ApperIcon name="ArrowUpRight" size={13} className="inline" /></div>
+                  <div className="mt-3 text-xs font-semibold text-teal-700">Find LOCAL Help <ApperIcon name="ArrowUpRight" size={13} className="inline" /></div>
                 ) : (
                   <div className="mt-3 text-xs font-medium text-slate-400">{tr('Coming Soon', language)}</div>
                 )}
