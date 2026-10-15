@@ -23,6 +23,12 @@ const services = [
     href: '/customer/request?vehicle=car&issue=Other%20Issue&service=Car%20Service',
   },
   {
+    title: 'Car Essentials at Your Doorstep',
+    description: 'Essential Car Fluids Delivered to Your Location',
+    icon: 'PackageCheck',
+    href: '/customer/car-essentials',
+  },
+  {
     title: 'Roadside Assistance (RSA)',
     description: 'Breakdown, battery, puncture, fuel and towing help',
     icon: 'Truck',
@@ -33,12 +39,6 @@ const services = [
     description: 'Get help with the next steps after car damage or an accident',
     icon: 'FileCheck',
     href: '/customer/request?vehicle=car&issue=Other%20Issue&service=Insurance%20Claim%20Assistance',
-  },
-  {
-    title: 'Car Essentials at Your Doorstep',
-    description: 'Essential Car Fluids Delivered to Your Location',
-    icon: 'PackageCheck',
-    href: '/customer/car-essentials',
   },
 ];
 
@@ -69,10 +69,10 @@ export default function CarCareAssistance() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
         {services.map((service) => {
           const content = (
-            <Card className={'flex min-h-[170px] flex-col border-2 p-5 transition-all sm:min-h-[190px] sm:p-6 ' + 'hover:-translate-y-1 hover:border-primary hover:shadow-md'}>
+            <Card className={'flex h-full min-h-[220px] flex-col border-2 p-5 transition-all sm:min-h-[220px] sm:p-6 ' + 'hover:-translate-y-1 hover:border-primary hover:shadow-md'}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <ApperIcon name={service.icon} size={30} />
@@ -89,7 +89,7 @@ export default function CarCareAssistance() {
           );
 
           return (
-            <button key={service.title} type="button" onClick={() => navigate(service.href)} className="w-full text-left">
+            <button key={service.title} type="button" onClick={() => navigate(service.href)} className="flex h-full w-full text-left">
               {content}
             </button>
           );
