@@ -205,6 +205,7 @@ export default function CustomerRequestStart() {
   const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(null);
   const isCarWash = vehicle === 'car' && requestedService === 'Car Wash';
   const isCarService = vehicle === 'car' && requestedService === 'Car Service';
+  const isDieselRequest = vehicle === 'car' && issue === 'Out of Fuel';
   const isUrgentService = ['Emergency Driver', 'Ambulance'].includes(requestedService) || /jump|battery|tyre|towing|fuel|roadside|breakdown|accident/i.test(issue + ' ' + requestedService);
   // Only classify Car Wash as fixed-price here because this screen currently has an explicit package rate card.
   // Driver rates must be configured before those services can honestly be presented as fixed-price bookings.
@@ -589,13 +590,24 @@ export default function CustomerRequestStart() {
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Service Selected</div>
-              <div className="mt-1 text-lg font-semibold">{tr(displayIssue, language)}</div>
+              <div className="mt-1 text-lg font-semibold">{tr(isDieselRequest ? 'Diesel on Demand' : displayIssue, language)}</div>
             </div>
           </div>
-          <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{pricingModeDescription}</p>
-          </div>
+          {isDieselRequest ? (
+            <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 font-semibold"><ApperIcon name="Fuel" size={18} />Diesel Cost &amp; Delivery Charges</div>
+              <div className="mt-3 space-y-3 text-sm">
+                <div><div className="font-semibold">Diesel Cost</div><p className="mt-1 text-muted-foreground">As per actual diesel price.</p></div>
+                <div><div className="font-semibold">Delivery Charges</div><p className="mt-1 text-muted-foreground">Based on distance and delivery time.</p></div>
+              </div>
+              <p className="mt-3 border-t border-primary/15 pt-3 text-sm font-medium">Final amount = Actual diesel cost + Delivery charges</p>
+            </div>
+          ) : (
+            <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
+              <p className="mt-1 text-sm text-muted-foreground">{pricingModeDescription}</p>
+            </div>
+          )}
           {isProfessionalDriverService && (
             <section className="mt-6 rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4" aria-labelledby="driver-safety-disclaimer-title">
               <h2 id="driver-safety-disclaimer-title" className="text-base font-bold">Safety &amp; Liability Disclaimer</h2>
