@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { useAuth } from '@/layouts/RootLayout';
 import ApperIcon from '@/components/ApperIcon';
 import { getLanguage, setLanguage, tr } from '@/services/i18n';
 import { sdk } from '@/services/sdk';
@@ -138,17 +140,10 @@ function findHelp(text) {
   return vehicleItem ?? best;
 }
 
-function getMockSession() {
-  try {
-    return JSON.parse(localStorage.getItem('local_mock_session') || 'null');
-  } catch {
-    return null;
-  }
-}
-
 export default function Home() {
   const [city, setCity] = useState('Prayagraj');
-  const [session, setSession] = useState(null);
+  const session = useSelector((state) => state.user.user);
+  const { logout } = useAuth();
   const [language, setLanguageState] = useState(getLanguage);
   const [helpText, setHelpText] = useState('');
   const [helpResult, setHelpResult] = useState(null);
@@ -158,7 +153,6 @@ export default function Home() {
   const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 
   useEffect(() => {
-    setSession(getMockSession());
     const removeAaravSeedRequests = async () => {
       const seededNames = new Set(['CAR • Emergency Car Rental', 'BIKE • Emergency Car Rental']);
       const seededIds = new Set(['r2000001-0000-4000-8000-000000000001', 'r2000001-0000-4000-8000-000000000002']);
@@ -324,12 +318,30 @@ export default function Home() {
                 हिन्दी
               </button>
             </div>
-            <Link
-              to="/login"
-              className="rounded-full bg-[#102c4d] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5"
-            >
-              {tr('Sign In', language)}
-            </Link>
+            {session ? (
+              <>
+                <Link
+                  to={isAdmin ? '/admin' : isProvider ? '/service-provider' : '/customer'}
+                  className="rounded-full bg-[#102c4d] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5"
+                >
+                  {tr(isAdmin ? 'Admin Dashboard' : 'My Dashboard', language)}
+                </Link>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-[#102c4d] transition hover:bg-slate-50 sm:px-5 sm:py-2.5"
+                >
+                  {tr('Sign out', language)}
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="rounded-full bg-[#102c4d] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5"
+              >
+                {tr('Sign In', language)}
+              </Link>
+            )}
           </div>
         </div>
       </header>
