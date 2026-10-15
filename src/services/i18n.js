@@ -49,6 +49,8 @@ const HINDI = {
   'Mechanical Breakdown': 'मैकेनिकल खराबी',
   'Electrical Problem': 'इलेक्ट्रिकल समस्या',
   'Out of Fuel': 'ईंधन खत्म',
+  'Diesel on Demand': 'डीजल ऑन डिमांड',
+  'Diesel Assistance At Your Location': 'आपके स्थान पर डीजल सहायता',
   'Key Locked / Lockout': 'चाबी अंदर लॉक है',
   'Towing Required': 'टोइंग चाहिए',
   'Chain / Drive Problem': 'चेन / ड्राइव समस्या',

@@ -80,7 +80,9 @@ export default function VehicleIssueSelect() {
         </h1>
       </div>
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
-        {config.issues.filter(([label]) => label !== 'Accident / Recovery').map(([label, icon]) => (
+        {config.issues.filter(([label]) => label !== 'Accident / Recovery').map(([label, icon]) => {
+          const cardTitle = vehicle === 'car' && label === 'Out of Fuel' ? 'Diesel on Demand' : label;
+          return (
           <button key={label} type="button" onClick={() => handleIssue(label)} className="w-full text-left">
             <Card className="flex h-full min-h-[180px] flex-col items-start border-2 p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md active:translate-y-0 sm:min-h-[190px] sm:p-5">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -88,7 +90,7 @@ export default function VehicleIssueSelect() {
               </div>
               <div className="mt-4 flex w-full min-w-0 flex-1 items-end justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="break-words font-semibold leading-snug">{tr(label, language)}</div>
+                  <div className="break-words font-semibold leading-snug">{tr(cardTitle, language)}</div>
                   {label === 'Towing Required' && (
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                       {tr('Rates as per time, place and type of towing', language)}
@@ -96,7 +98,7 @@ export default function VehicleIssueSelect() {
                   )}
                   {label === 'Out of Fuel' && (
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                      {tr('Fuel cost plus delivery fee', language)}
+                      {tr(vehicle === 'car' ? 'Diesel Assistance At Your Location' : 'Fuel cost plus delivery fee', language)}
                     </p>
                   )}
                 </div>
@@ -104,7 +106,8 @@ export default function VehicleIssueSelect() {
               </div>
             </Card>
           </button>
-        ))}
+          );
+        })}
         <button
           type="button"
           onClick={() => handleIssue('Emergency Car Rental')}
