@@ -4,7 +4,6 @@ import { useDispatch } from 'react-redux';
 import { sdk } from '@/services/sdk';
 import { setUser } from '@/store/userSlice';
 import { AUTH_PROFILES, GENERIC_AUTH } from '@/config/app.config';
-import { mockData } from '@/services/mockData';
 import ApperIcon from '@/components/ApperIcon';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -53,90 +52,48 @@ export default function AuthPage({ mode, profileKey = null }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // LOCAL is intentionally running in mock/demo mode. Use the app's mock session adapter directly
-  // so demo accounts do not depend on an Apper Member account or live authentication backend.
-  const hasUI = false;
-  const connectionFailed = false;
+  const hasUI = Boolean(sdk.session.ui);
+  const connectionFailed = sdk.session.initFailed;
 
+  // Apper's hosted Member UI renders into #authentication; the profile slug scopes it to this portal.
   useEffect(() => {
-    // Mock/demo authentication intentionally does not mount Apper's hosted Member UI.
-  }, [mode, matchedProfile]);
+    if (!hasUI || connectionFailed) return;
+    const target = `#${AUTH_TARGET_ID}`;
+    const profileData = matchedProfile?.profileSlug ? { profileSlug: matchedProfile.profileSlug } : undefined;
+    if (mode === 'login') sdk.session.ui.showLogin(target, profileData);
+    else sdk.session.ui.showSignup(target, profileData);
+    return () => {
+      if (document.querySelector(target)) sdk.session.ui?.showBlank?.(target);
+    };
+  }, [hasUI, connectionFailed, mode, matchedProfile?.profileSlug]);
 
+  // The hosted UI reports success through the session; mirror it into Redux and leave the auth page.
+  useEffect(() => {
+    return sdk.session.subscribe(() => {
+      const user = sdk.session.user();
+      if (!user) return;
+      dispatch(setUser(user));
+      navigate(redirectAfterAuth, { replace: true });
+    });
+  }, [dispatch, navigate, redirectAfterAuth]);
+
+  // Fallback form, used only when the SDK exposes no hosted UI.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    if (mode === 'signup' && password !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     try {
-      const requestedProfile = matchedProfile?.key === 'admin'
-        ? 'Admin_c'
-        : matchedProfile?.key === 'service-provider'
-          ? 'ServiceProvider_c'
-          : 'Customer_c';
-      const records = mockData.users ?? [];
-      if (mode === 'login') {
-        let record;
-        let account;
-
-        if (matchedProfile) {
-          record = records.find((item) =>
-            String(item.Email ?? '').toLowerCase() === email.trim().toLowerCase()
-            && String(item.password ?? '') === password
-            && item.accounts?.some((candidate) => candidate.profile?.name === requestedProfile)
-          );
-          account = record?.accounts?.find((candidate) => candidate.profile?.name === requestedProfile);
-        } else {
-          record = records.find((item) =>
-            String(item.Email ?? '').toLowerCase() === email.trim().toLowerCase()
-            && String(item.password ?? '') === password
-            && item.accounts?.some((candidate) => ['Customer_c', 'ServiceProvider_c'].includes(candidate.profile?.name))
-          );
-          account = record?.accounts?.find((candidate) => ['Customer_c', 'ServiceProvider_c'].includes(candidate.profile?.name));
-        }
-
-        if (!record || !account) {
-          setError('Invalid demo email or password.');
-          return;
-        }
-        const mockUser = {
-          ...record,
-          emailAddress: record.Email,
-          email: record.Email,
-          firstName: record.FirstName,
-          lastName: record.LastName,
-          profile: account.profile.name,
-          profileLabel: account.profile.name.replace(/_c$/, '').replace(/([a-z])([A-Z])/g, '$1 $2'),
-          userId: record.userId,
-          companyId: record.companyId,
-        };
-        localStorage.setItem('local_mock_session', JSON.stringify(mockUser));
-        dispatch(setUser(mockUser));
-        navigate(
-          matchedProfile
-            ? redirectAfterAuth
-            : account.profile.name === 'ServiceProvider_c'
-              ? '/service-provider'
-              : '/customer'
-        );
-      } else {
-        if (password !== confirmPassword) { setError('Passwords do not match'); setLoading(false); return; }
-        const generatedId = `mock-${Date.now()}`;
-        const mockUser = {
-          Id: generatedId,
-          userId: generatedId,
-          Name: email.split('@')[0],
-          FirstName: email.split('@')[0],
-          LastName: '',
-          Email: email.trim(),
-          emailAddress: email.trim(),
-          email: email.trim(),
-          password,
-          profile: requestedProfile,
-          profileLabel: requestedProfile.replace(/_c$/, '').replace(/([a-z])([A-Z])/g, '$1 $2'),
-        };
-        localStorage.setItem('local_mock_session', JSON.stringify(mockUser));
-        dispatch(setUser(mockUser));
-        navigate(redirectAfterAuth);
+      const credentials = { email: email.trim(), password, profileSlug: matchedProfile?.profileSlug };
+      const result = mode === 'login'
+        ? await sdk.session.login(credentials)
+        : await sdk.session.register({ ...credentials, confirmPassword });
+      if (!result.ok) {
+        setError(result.error?.message || 'Authentication failed');
+        return;
       }
+      dispatch(setUser(result.value));
+      navigate(redirectAfterAuth);
     } catch (err) {
       setError(err?.message || 'Unexpected error');
     } finally {
@@ -176,7 +133,9 @@ export default function AuthPage({ mode, profileKey = null }) {
     return (
       <AuthLayout title={title} description={description}>
         <div id={AUTH_TARGET_ID} className="flex flex-col" />
-        <AuthFooter mode={mode} profilePrefix={effectiveProfilePrefix} altLinksLeadIn={matchedProfile?.altLinksLeadIn} altLinks={matchedProfile?.altLinks} />
+        {matchedProfile?.key !== 'admin' && (
+          <AuthFooter mode={mode} profilePrefix={effectiveProfilePrefix} altLinksLeadIn={matchedProfile?.altLinksLeadIn} altLinks={matchedProfile?.altLinks} />
+        )}
       </AuthLayout>
     );
   }
