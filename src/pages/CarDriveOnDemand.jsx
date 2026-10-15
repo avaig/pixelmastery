@@ -53,7 +53,7 @@ export default function CarDriveOnDemand() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
         {driverServices.map((service) => {
           const selected = selectedService === service.title;
           return (
@@ -62,9 +62,9 @@ export default function CarDriveOnDemand() {
               type="button"
               onClick={() => navigate(service.href)}
               aria-pressed={selected}
-              className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="flex h-full w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <Card className={'flex min-h-[300px] flex-col border-2 p-5 text-left transition-all sm:min-h-[320px] sm:p-6 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:-translate-y-1 hover:border-primary hover:shadow-md')}>
+              <Card className={'flex h-full min-h-[360px] w-full flex-col border-2 p-5 text-left transition-all sm:min-h-[380px] sm:p-6 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:-translate-y-1 hover:border-primary hover:shadow-md')}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
