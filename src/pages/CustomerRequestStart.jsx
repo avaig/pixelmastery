@@ -679,7 +679,7 @@ export default function CustomerRequestStart() {
           {location && (
             <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
               <ApperIcon name="Send" size={17} />
-              {creating ? tr('Sharing request…', language) : isCarWash ? 'Let LOCAL Find Help Near You' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find Nearby Service Provider', language)}
+              {creating ? tr('Sharing request…', language) : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find Nearby Service Provider', language)}
             </Button>
           )}
         </Card>
