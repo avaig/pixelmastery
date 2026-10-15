@@ -69,10 +69,10 @@ export default function CarCareAssistance() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-stretch gap-5 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
         {services.map((service) => {
           const content = (
-            <Card className={'flex h-full min-h-[220px] flex-col border-2 p-5 transition-all sm:min-h-[220px] sm:p-6 ' + 'hover:-translate-y-1 hover:border-primary hover:shadow-md'}>
+            <Card className={'flex h-full min-h-[220px] w-full min-w-0 flex-col border-2 p-5 transition-all sm:min-h-[220px] sm:p-6 ' + 'hover:-translate-y-1 hover:border-primary hover:shadow-md'}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <ApperIcon name={service.icon} size={30} />
@@ -89,7 +89,7 @@ export default function CarCareAssistance() {
           );
 
           return (
-            <button key={service.title} type="button" onClick={() => navigate(service.href)} className="flex h-full w-full text-left">
+            <button key={service.title} type="button" onClick={() => navigate(service.href)} className="flex h-full min-w-0 w-full text-left">
               {content}
             </button>
           );
