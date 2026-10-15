@@ -26,7 +26,7 @@ const NotFoundPage = lazy(() => import('@/pages/NotFound'));
 // Warm every page chunk once the browser is idle, so the first click on a nav item renders from
 // cache instead of waiting on a network fetch (the "URL changed but the page came later" first-open lag).
 if (typeof window !== 'undefined') {
-  const warm = () => { for (const load of Object.values(pageLoaders)) { try { load().catch(() => {}); } catch { /* ignore */ } } };
+  const warm = () => { for (const load of Object.values(pageLoaders)) { try { load().catch(() => { }); } catch { /* ignore */ } } };
   if ('requestIdleCallback' in window) window.requestIdleCallback(warm, { timeout: 4000 });
   else setTimeout(warm, 1500);
 }
@@ -65,25 +65,25 @@ function buildAuthRoutes() {
   const routes = [];
 
   const loginEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="login" /></Suspense>
+    <Suspense key="login" fallback={<AuthLoader />}><AuthPage mode="login" /></Suspense>
   );
   const signupEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="signup" /></Suspense>
+    <Suspense key="signup" fallback={<AuthLoader />}><AuthPage mode="signup" /></Suspense>
   );
   const customerLoginEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="login" profileKey="customer" /></Suspense>
+    <Suspense key="customer-login" fallback={<AuthLoader />}><AuthPage mode="login" profileKey="customer" /></Suspense>
   );
   const customerSignupEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="signup" profileKey="customer" /></Suspense>
+    <Suspense key="customer-signup" fallback={<AuthLoader />}><AuthPage mode="signup" profileKey="customer" /></Suspense>
   );
   const providerLoginEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="login" profileKey="service-provider" /></Suspense>
+    <Suspense key="provider-login" fallback={<AuthLoader />}><AuthPage mode="login" profileKey="service-provider" /></Suspense>
   );
   const providerSignupEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="signup" profileKey="service-provider" /></Suspense>
+    <Suspense key="provider-signup" fallback={<AuthLoader />}><AuthPage mode="signup" profileKey="service-provider" /></Suspense>
   );
   const adminLoginEl = (
-    <Suspense fallback={<AuthLoader />}><AuthPage mode="login" profileKey="admin" /></Suspense>
+    <Suspense key="admin-login" fallback={<AuthLoader />}><AuthPage mode="login" profileKey="admin" /></Suspense>
   );
 
   routes.push(
