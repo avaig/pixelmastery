@@ -47,7 +47,7 @@ export const AUTH_PROFILES = [
     hasSignup: true,
   },
   {
-    key: 'serviceprovider',
+    key: 'service-provider',
     name: 'ServiceProvider_c',
     profileSlug: "|cPAqavYolBZFFPt1x3MJZrlxsY2SezR33UsrfqnpKQo=",
     redirectAfterAuth: '/',
@@ -62,7 +62,7 @@ export const AUTH_PROFILES = [
       { href: '/admin/login', label: 'I am Admin' },
       { href: '/customer/login', label: 'I am Customer' }
     ],
-    reportsTo: null,
+    reportsTo: 'Admin',
     hasSignup: true,
   }
 ];
