@@ -38,14 +38,30 @@ const PRODUCTS = [
 
 export default function CarEssentialsDelivery() {
   const navigate = useNavigate();
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [quantities, setQuantities] = useState({});
   const [vehicle, setVehicle] = useState('');
-  const [quantity, setQuantity] = useState('1');
   const [location, setLocation] = useState('');
 
+  function toggleProduct(productId) {
+    setSelectedProducts((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId]
+    );
+    setQuantities((current) => ({
+      ...current,
+      [productId]: current[productId] || '1',
+    }));
+  }
+
   function checkAvailability() {
-    if (!selectedProduct) {
-      toast.error('Please choose a product first.');
+    if (!selectedProducts.length) {
+      toast.error('Please select at least one product.');
+      return;
+    }
+    if (selectedProducts.some((id) => !quantities[id] || Number(quantities[id]) < 1 || Number(quantities[id]) > 20)) {
+      toast.error('Enter a quantity between 1 and 20 for each selected product.');
       return;
     }
     if (!vehicle.trim()) {
@@ -78,13 +94,13 @@ export default function CarEssentialsDelivery() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         {PRODUCTS.map((product) => {
-          const selected = selectedProduct === product.id;
+          const selected = selectedProducts.includes(product.id);
           return (
             <button
               key={product.id}
               type="button"
               aria-pressed={selected}
-              onClick={() => setSelectedProduct(product.id)}
+              onClick={() => toggleProduct(product.id)}
               className="h-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               <Card className={'flex h-full min-h-[210px] flex-col border-2 p-5 transition-all ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:border-primary/50')}>
@@ -97,6 +113,21 @@ export default function CarEssentialsDelivery() {
                 <h2 className="mt-5 font-semibold leading-snug">{product.title}</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{product.detail}</p>
+                {selected && (
+                  <div className="mt-4 border-t pt-3" onClick={(event) => event.stopPropagation()}>
+                    <label htmlFor={'quantity-' + product.id} className="text-sm font-medium">Quantity / pack count</label>
+                    <Input
+                      id={'quantity-' + product.id}
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={quantities[product.id] || '1'}
+                      onChange={(event) => setQuantities((current) => ({ ...current, [product.id]: event.target.value }))}
+                      onClick={(event) => event.stopPropagation()}
+                      className="mt-2"
+                    />
+                  </div>
+                )}
               </Card>
             </button>
           );
@@ -126,17 +157,13 @@ export default function CarEssentialsDelivery() {
             />
             <p className="mt-1 text-xs text-muted-foreground">Helps identify the correct product specification.</p>
           </div>
-          <div>
-            <label htmlFor="car-essentials-quantity" className="text-sm font-medium">Quantity / pack count</label>
-            <Input
-              id="car-essentials-quantity"
-              type="number"
-              min="1"
-              max="20"
-              value={quantity}
-              onChange={(event) => setQuantity(event.target.value)}
-              className="mt-2"
-            />
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <p className="text-sm font-medium">Selected products</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {selectedProducts.length
+                ? selectedProducts.map((id) => PRODUCTS.find((product) => product.id === id)?.title).join(', ')
+                : 'Select one or more products above.'}
+            </p>
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="car-essentials-location" className="text-sm font-medium">Delivery location</label>
