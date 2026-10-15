@@ -34,6 +34,12 @@ const services = [
     icon: 'FileCheck',
     href: '/customer/request?vehicle=car&issue=Other%20Issue&service=Insurance%20Claim%20Assistance',
   },
+  {
+    title: 'Car Essentials at Your Doorstep',
+    description: 'Essential Car Fluids Delivered to Your Location',
+    icon: 'PackageCheck',
+    href: '/customer/car-essentials',
+  },
 ];
 
 export default function CarCareAssistance() {
