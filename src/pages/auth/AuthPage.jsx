@@ -55,8 +55,8 @@ export default function AuthPage({ mode, profileKey = null }) {
 
   // LOCAL is intentionally running in mock/demo mode. Use the app's mock session adapter directly
   // so demo accounts do not depend on an Apper Member account or live authentication backend.
-  const hasUI = Boolean(sdk.session.ui);
-  const connectionFailed = sdk.session.initFailed;
+  const hasUI = false;
+  const connectionFailed = false;
 
   useEffect(() => {
     // Mock/demo authentication intentionally does not mount Apper's hosted Member UI.
