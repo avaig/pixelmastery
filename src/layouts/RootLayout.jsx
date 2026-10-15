@@ -37,13 +37,11 @@ export default function RootLayout() {
     let isMounted = true;
     const init = async () => {
       try {
-        // LOCAL mock mode owns the browser session. Do not let an Apper Member session
-        // overwrite the selected Customer/Service Provider demo identity.
-        const rawMockSession = window.localStorage.getItem('local_mock_session');
-        const mockUser = rawMockSession ? JSON.parse(rawMockSession) : null;
+        if (sdk.session.initFailed) await sdk.session.retry();
+        const sessionUser = sdk.session.user() ?? await sdk.session.getUser?.();
         if (!isMounted) return;
-        if (mockUser) {
-          dispatch(setUser(mockUser));
+        if (sessionUser) {
+          dispatch(setUser(sessionUser));
           handlePostAuthNavigation();
         } else {
           dispatch(setInitialized());
@@ -66,7 +64,7 @@ export default function RootLayout() {
     }
     const pathname = window.location.pathname;
     // A protected admin login must remain reachable even when a previous Customer or
-    // Service Provider demo session is still stored. The Admin login will replace that session.
+    // Service Provider session is still active. The Admin login will replace that session.
     if (pathname === '/admin/login') return;
     const authMatch = pathname.match(AUTH_PAGE_PATTERN);
     if (authMatch) {
@@ -104,7 +102,7 @@ export default function RootLayout() {
         ? '/service-provider/login'
         : '/customer/login';
 
-    window.localStorage.removeItem('local_mock_session');
+    try { await sdk.session.logout(); } catch { /* clear local state regardless */ }
     dispatch(clearUser());
     // Hard navigation prevents the protected-route access guard from racing the logout redirect.
     window.location.replace(loginRoute);
