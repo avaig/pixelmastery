@@ -51,6 +51,7 @@ const HINDI = {
   'Out of Fuel': 'ईंधन खत्म',
   'Diesel on Demand': 'डीजल ऑन डिमांड',
   'Diesel Assistance At Your Location': 'आपके स्थान पर डीजल सहायता',
+  'Find LOCAL Service Providers': 'LOCAL सेवा प्रदाता खोजें',
   'Key Locked / Lockout': 'चाबी अंदर लॉक है',
   'Towing Required': 'टोइंग चाहिए',
   'Chain / Drive Problem': 'चेन / ड्राइव समस्या',
