@@ -80,7 +80,7 @@ export default function VehicleIssueSelect() {
         </h1>
       </div>
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
-        {config.issues.filter(([label]) => label !== 'Accident / Recovery').map(([label, icon]) => {
+        {config.issues.filter(([label]) => label !== 'Accident / Recovery' && !(vehicle === 'bike' && label === 'Out of Fuel')).map(([label, icon]) => {
           const cardTitle = vehicle === 'car' && label === 'Out of Fuel' ? 'Diesel on Demand' : label;
           return (
           <button key={label} type="button" onClick={() => handleIssue(label)} className="w-full text-left">
