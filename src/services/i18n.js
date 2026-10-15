@@ -1,6 +1,9 @@
 const LANGUAGE_KEY = 'local_language';
 
 const HINDI = {
+  'Admin Dashboard': 'एडमिन डैशबोर्ड',
+  'My Dashboard': 'मेरा डैशबोर्ड',
+  'Sign out': 'साइन आउट',
   'LOCAL Help in': 'LOCAL मदद',
   'Car Assistance': 'कार सहायता',
   'Bike Assistance': 'बाइक सहायता',
