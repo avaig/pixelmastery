@@ -65,6 +65,7 @@ export function providerCanHandleRequest(request, providerCapabilityLinks = []) 
 export const ISSUE_CAPABILITY = {
   'car:Car Wash': 'Car Wash',
   'car:Car Service': 'Car Service',
+  'car:Car Essentials Delivery': 'Car General Assistance',
   'car:Insurance Claim Assistance': 'Car General Assistance',
   'car:Hourly Driver': 'Hourly Driver',
   'car:Full-Day Driver': 'Full-Day Driver',
