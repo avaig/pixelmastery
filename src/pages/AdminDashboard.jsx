@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { sdk } from '@/services/sdk';
+import { toast } from 'sonner';
+import { restoreLocalSetupData } from '@/services/capabilityCatalog';
 import { useFetch } from '@/hooks/useFetch';
 import ApperIcon from '@/components/ApperIcon';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,7 @@ export const nav = {
 };
 
 export default function AdminDashboard() {
+  const [restoringSetup, setRestoringSetup] = useState(false);
   const { data, loading, error, run } = useFetch(async () => {
     const tables = [
       ['service_categories_c', ['Id', 'Name', 'status_c']],
@@ -48,9 +51,22 @@ export default function AdminDashboard() {
   const pipelineValue = useMemo(() => responses.reduce((sum, item) => sum + Number(item.proposed_price_c ?? 0), 0), [responses]);
   const urgentCount = useMemo(() => emergencies.filter((item) => item.emergency_status_c === 'Open').length, [emergencies]);
 
+  async function restoreSetup() {
+    setRestoringSetup(true);
+    try {
+      const result = await restoreLocalSetupData();
+      toast.success(`Setup restored: ${result.categoriesAdded} categories and ${result.capabilitiesAdded} services added.`);
+      await run();
+    } catch (restoreError) {
+      toast.error(restoreError.message || 'Could not restore LOCAL setup data.');
+    } finally {
+      setRestoringSetup(false);
+    }
+  }
+
   return (
     <div>
-      <PageHeader eyebrow="Admin workspace" title="LOCAL marketplace overview" description="Watch the marketplace loop: requests → offers → jobs, plus emergency & urgent services." action={<Button asChild variant="outline"><Link to="/categories"><ApperIcon name="Layers3" size={17} /> Manage categories</Link></Button>} />
+      <PageHeader eyebrow="Admin workspace" title="LOCAL marketplace overview" description="Watch the marketplace loop: requests → offers → jobs, plus emergency & urgent services." action={<div className="flex flex-wrap gap-2"><Button variant="outline" disabled={restoringSetup} onClick={restoreSetup}><ApperIcon name="DatabaseBackup" size={17} /> {restoringSetup ? 'Restoring setup…' : 'Restore service catalogue'}</Button><Button asChild variant="outline"><Link to="/categories"><ApperIcon name="Layers3" size={17} /> Manage categories</Link></Button></div>} />
       {loading && !data ? <div className="grid gap-4 md:grid-cols-3"><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /></div> : error ? <Card className="border-l-4 border-destructive p-6"><div className="font-medium">Could not load the admin dashboard.</div><p className="mt-1 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : (
         <>
           <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
