@@ -59,8 +59,16 @@ export default function OwnerLayout() {
       <LanguageRuntime />
       <aside className="hidden border-r border-sidebar-border bg-sidebar lg:fixed lg:inset-y-0 lg:flex lg:w-[var(--spacing-sidebar)] lg:flex-col lg:px-3 lg:py-5">
         <div className="flex items-center gap-3 px-3 pb-6">
-          <Link to="/" className="block min-w-0" aria-label="LOCAL — Happy to Help">
-            <img src="/local-logo-dark.svg" alt="LOCAL — Happy to Help" className="h-12 w-auto max-w-full" />
+          <Link
+            to="/"
+            className="block min-w-0 rounded-lg bg-white p-1.5"
+            aria-label="LOCAL — Happy to Help"
+          >
+            <img
+              src="/local-logo-dark.svg"
+              alt="LOCAL — Happy to Help"
+              className="h-12 w-auto max-w-full"
+            />
           </Link>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{navigation}</div>
