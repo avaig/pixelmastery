@@ -262,8 +262,6 @@ export default function ServiceProviderProfile() {
         business_name_c: isBusiness ? form.business_name_c.trim() : '',
         business_address_c: isBusiness ? form.business_address_c.trim() : '',
         experience_c: form.experience_c.trim(),
-        primary_service_c: form.primary_service_c || 'c1000001-0000-4000-8000-000000000009',
-        secondary_service_c: form.secondary_service_c || null,
         availability_c: form.availability_c,
         service_area_c: form.service_area_c.trim(),
         latitude_c: Number.isFinite(Number(form.latitude_c)) && form.latitude_c !== null && form.latitude_c !== '' ? Number(form.latitude_c) : null,
