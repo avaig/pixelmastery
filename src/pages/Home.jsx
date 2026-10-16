@@ -570,7 +570,7 @@ export default function Home() {
             className="inline-flex shrink-0 cursor-pointer"
             onClick={(event) => {
               event.preventDefault();
-              window.location.assign('/');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
             <img
