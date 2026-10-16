@@ -29,7 +29,7 @@ const PRODUCTS = [
   },
   {
     id: 'adblue',
-    title: 'AdBlue / Diesel Exhaust Fluid',
+    title: 'UREA / Diesel Exhaust Fluid (DEF) / AdBlue',
     description: 'For diesel vehicles equipped with a compatible SCR system.',
     detail: 'Not required for every diesel vehicle.',
     icon: 'Fuel',
