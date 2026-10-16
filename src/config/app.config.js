@@ -40,7 +40,6 @@ export const AUTH_PROFILES = [
     },
     altLinksLeadIn: 'Go to the right portal',
     altLinks: [
-      { href: '/admin/login', label: 'I am Admin' },
       { href: '/serviceprovider/login', label: 'I am Service Provider' }
     ],
     reportsTo: "Admin",
@@ -59,7 +58,6 @@ export const AUTH_PROFILES = [
     },
     altLinksLeadIn: 'Go to the right portal',
     altLinks: [
-      { href: '/admin/login', label: 'I am Admin' },
       { href: '/customer/login', label: 'I am Customer' }
     ],
     reportsTo: 'Admin',
