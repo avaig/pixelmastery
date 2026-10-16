@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -225,6 +226,24 @@ function EntityForm({ entity, record, onSaved }) {
   const config = entityConfig[entity];
   const [form, setForm] = useState(() => Object.fromEntries(config.fields.map((field) => [field.key, getInitialValue(field, record)])));
   const [saving, setSaving] = useState(false);
+  const [selectedCapabilityIds, setSelectedCapabilityIds] = useState([]);
+  const { data: capabilityCatalog, loading: catalogLoading, error: catalogError } = useFetch(() => entity === 'technicians'
+    ? sdk.table('service_capabilities_c').select(['Id', 'Name', 'vehicle_type_c', 'description_c', 'status_c']).page(1, 200).fetch().then((res) => {
+      if (!res.success) throw new Error(res.message || 'Could not load service capabilities.');
+      return (res.data ?? []).filter((item) => !item.status_c || item.status_c === 'Active');
+    })
+    : Promise.resolve([]), [entity]);
+  const { data: capabilityAssignments, run: reloadCapabilityAssignments } = useFetch(() => entity === 'technicians' && record?.Id
+    ? sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c', 'capability_c', 'status_c']).page(1, 1000).fetch().then((res) => {
+      if (!res.success) throw new Error(res.message || 'Could not load provider capability assignments.');
+      return (res.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c_id ?? item.technician_c ?? '') === String(record.Id));
+    })
+    : Promise.resolve([]), [entity, record?.Id]);
+  useEffect(() => {
+    if (entity === 'technicians' && capabilityAssignments) {
+      setSelectedCapabilityIds(capabilityAssignments.map((item) => String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '')).filter(Boolean));
+    }
+  }, [entity, capabilityAssignments]);
 
   const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -243,8 +262,25 @@ function EntityForm({ entity, record, onSaved }) {
         toast.error(res.messages?.[0] ?? 'The record was not saved.');
         return;
       }
+      const savedRecord = res.data[0];
+      if (entity === 'technicians') {
+        const currentLinks = record ? (capabilityAssignments ?? []) : [];
+        const selectedIds = new Set(selectedCapabilityIds.map(String));
+        const existingIds = new Set(currentLinks.map((item) => String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '')).filter(Boolean));
+        const removals = currentLinks.filter((item) => !selectedIds.has(String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '')));
+        for (const link of removals) {
+          const removed = await sdk.table('service_provider_capabilities_c').remove({ Id: link.Id });
+          if (!removed.data?.length) throw new Error(removed.messages?.[0] || 'Provider details saved, but a capability could not be removed.');
+        }
+        for (const capabilityId of selectedIds) {
+          if (existingIds.has(capabilityId)) continue;
+          const added = await sdk.table('service_provider_capabilities_c').create({ technician_c: savedRecord.Id, capability_c: capabilityId, status_c: 'Pending' });
+          if (!added.data?.length) throw new Error(added.messages?.[0] || 'Provider details saved, but a capability could not be added.');
+        }
+        await reloadCapabilityAssignments();
+      }
       toast.success(record ? config.singular + ' updated.' : config.singular + ' created.');
-      onSaved(res.data[0]);
+      onSaved(savedRecord);
     } finally {
       setSaving(false);
     }
@@ -260,6 +296,22 @@ function EntityForm({ entity, record, onSaved }) {
           </div>
         ))}
       </div>
+      {entity === 'technicians' && <section className="space-y-3 rounded-xl border border-border p-4 md:p-5">
+        <div><h2 className="font-semibold">Service capabilities</h2><p className="mt-1 text-sm text-muted-foreground">Select all active catalogue services this provider is qualified to offer. New capabilities are saved as pending until reviewed.</p></div>
+        {catalogLoading ? <p className="text-sm text-muted-foreground">Loading active capabilities…</p> : catalogError ? <p className="text-sm text-destructive">{catalogError.message}</p> : !capabilityCatalog?.length ? <p className="text-sm text-muted-foreground">No active capabilities found in the central catalogue.</p> : <div className="grid gap-3 md:grid-cols-2">
+          {capabilityCatalog.map((capability) => {
+            const capabilityId = String(capability.Id);
+            const assignment = (capabilityAssignments ?? []).find((item) => String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '') === capabilityId);
+            const isSelected = selectedCapabilityIds.includes(capabilityId);
+            const status = assignment?.status_c === 'Active' ? 'Approved · Active' : assignment?.status_c === 'Approved' ? 'Approved · awaiting activation' : assignment ? 'Pending review' : 'Not assigned';
+            return <label key={capabilityId} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent/50">
+              <Checkbox checked={isSelected} onCheckedChange={(checked) => setSelectedCapabilityIds((current) => checked ? [...new Set([...current, capabilityId])] : current.filter((id) => id !== capabilityId))} />
+              <span className="min-w-0 flex-1"><span className="block font-medium">{capability.Name}</span><span className="mt-1 block text-sm text-muted-foreground">{capability.vehicle_type_c || 'General'}{capability.description_c ? ' · ' + capability.description_c : ''}</span><Badge variant={assignment?.status_c === 'Active' ? 'default' : 'outline'} className="mt-2">{status}</Badge></span>
+            </label>;
+          })}
+        </div>}
+        <p className="text-xs text-muted-foreground">Removing a selected capability removes its provider assignment. Approval is managed separately from the provider profile status.</p>
+      </section>}
       <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
         <Button type="button" variant="outline" asChild><Link to={record ? getEntityRoute(entity, '/' + record.Id) : getEntityRoute(entity)}>Cancel</Link></Button>
         <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Save" size={16} /> Save</>}</Button>
