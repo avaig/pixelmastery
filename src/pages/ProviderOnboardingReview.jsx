@@ -126,6 +126,7 @@ export default function ProviderOnboardingReview() {
         const profileApproved = active.verification_status_c === 'Approved' || active.status_c === 'Active';
         const updatedLinks = await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: status === 'Approved' ? (profileApproved ? 'Active' : 'Approved') : 'Pending' })));
         if (!updatedLinks.data?.length) throw new Error(updatedLinks.messages?.[0] || 'Could not save capability review status.');
+        setServiceStatusOverrides((current) => ({ ...current, [String(active.Id)]: { ...(current[String(active.Id)] || {}), [String(capabilityId)]: status } }));
       }
       await reloadAssignments();
       setNote(active.review_notes_c || '');
@@ -289,7 +290,7 @@ export default function ProviderOnboardingReview() {
                       ...(capabilityAssignments ?? []).filter((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id)).map((link) => String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '')),
                     ].filter(Boolean))).map((id) => {
                       const linked = (capabilityAssignments ?? []).find((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id) && String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '') === String(id));
-                      const serviceStatus = serviceStatusOverrides[String(active.Id)]?.[String(id)] || active._demoServiceStatuses?.[String(id)] || (linked?.status_c === 'Active' ? 'Approved' : 'Pending');
+                      const serviceStatus = serviceStatusOverrides[String(active.Id)]?.[String(id)] || active._demoServiceStatuses?.[String(id)] || (['Approved', 'Active'].includes(String(linked?.status_c ?? '')) ? 'Approved' : 'Pending');
                       const linkedCapabilityName = typeof linked?.capability_c === 'object' ? linked.capability_c?.Name ?? linked.capability_c?.name : '';
                       const demoCapability = (active._demoCapabilities ?? []).find((item) => String(item.Id ?? item.id ?? item) === String(id));
                       const serviceName = serviceNames[String(id)] || linkedCapabilityName || demoCapability?.Name || ('Service capability (' + String(id).slice(0, 8) + ')');
