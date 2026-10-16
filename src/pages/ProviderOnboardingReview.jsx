@@ -114,11 +114,10 @@ export default function ProviderOnboardingReview() {
       });
       if (links.length) {
         const profileApproved = active.verification_status_c === 'Approved' || active.status_c === 'Active';
-        const updatedLinks = await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: status === 'Approved' && profileApproved ? 'Active' : 'Pending' })));
+        const updatedLinks = await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: status === 'Approved' ? (profileApproved ? 'Active' : 'Approved') : 'Pending' })));
         if (!updatedLinks.data?.length) throw new Error(updatedLinks.messages?.[0] || 'Could not save capability review status.');
       }
       await reloadAssignments();
-      }
       setNote(active.review_notes_c || '');
       toast.success((serviceNames[String(capabilityId)] || 'Service') + ' marked ' + status.toLowerCase() + '.');
       await run();
@@ -206,7 +205,7 @@ export default function ProviderOnboardingReview() {
         await sdk.table('service_provider_capabilities_c').update(
           links.map((link) => ({
             Id: link.Id,
-            status_c: status === 'Approved' && savedApplication?._demoServiceStatuses?.[String(link.capability_c?.Id ?? link.capability_c)] === 'Approved' ? 'Active' : 'Pending',
+            status_c: status === 'Approved' && (link.status_c === 'Approved' || savedApplication?._demoServiceStatuses?.[String(link.capability_c?.Id ?? link.capability_c)] === 'Approved') ? 'Active' : 'Pending',
           })),
         );
       }

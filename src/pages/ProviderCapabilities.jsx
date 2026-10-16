@@ -53,6 +53,7 @@ export default function ProviderCapabilities() {
     [profile?.Id],
   );
   const links = allLinks ?? [];
+  const approved = profile?.verification_status_c === 'Approved' || profile?.status_c === 'Active';
   const selected = useMemo(() => new Map((links ?? []).map((link) => [
     String(link.capability_c?.Id ?? link.capability_c),
     link,
