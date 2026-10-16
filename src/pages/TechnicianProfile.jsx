@@ -86,7 +86,7 @@ function StatusPanel({ status, notes }) {
         {status || 'Draft'}
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        {approved ? 'Your profile is approved. Only approved services may receive bookings.' : corrections ? 'Please review the note from LOCAL and update the relevant details.' : 'Complete your details and submit them for LOCAL review before receiving bookings.'}
+        {approved ? 'Your profile is approved. Only approved services may receive bookings.' : corrections ? 'Please review the note from LOCAL and update the relevant details.' : 'Complete your details and submit them for Admin Review before receiving bookings.'}
       </p>
       {notes && <p className="mt-2 text-sm">LOCAL note: {notes}</p>}
     </div>
@@ -420,7 +420,7 @@ export default function ServiceProviderProfile() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
               <Button type="button" variant="outline" disabled={step === 0 || saving} onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</Button>
               <div className="flex gap-2">
-                {step < 1 ? <Button type="submit">Continue <ApperIcon name="ArrowRight" size={16} /></Button> : <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Send" size={16} /> Submit for LOCAL review</>}</Button>}
+                {step < 1 ? <Button type="submit">Continue <ApperIcon name="ArrowRight" size={16} /></Button> : <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Send" size={16} /> Submit for Admin Review</>}</Button>}
               </div>
             </div>
           </form>
