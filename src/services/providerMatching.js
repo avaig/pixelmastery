@@ -185,11 +185,16 @@ export async function getEligibleRequests(providerId) {
     if (requestedTime !== 'scheduled' && providerAvailability !== 'available now') return false;
     const distanceKm = getDistanceKm(profile.latitude_c, profile.longitude_c, request.latitude_c, request.longitude_c);
     const serviceRadiusKm = Math.max(1, Math.min(100, Number(profile.service_radius_km_c) || 10));
-    // GPS distance and the provider's configured radius are the source of truth for nearby matching.
-    // Do not additionally require service_area_c labels to match: a customer in Karchana and a
-    // provider registered under Naini/Prayagraj can still be close enough to serve each other.
-    // Text locality labels are inconsistent and previously hid valid Car Wash/Car Service requests.
-    if (distanceKm === null || distanceKm > serviceRadiusKm) return false;
+    // When both sides have GPS coordinates, enforce the provider's radius. Some existing
+    // provider profiles only have a locality/address (no GPS capture yet); during the Prayagraj
+    // pilot, allow those profiles to see matching-capability requests within the pilot city instead
+    // of silently hiding every request. Distance will be shown as unavailable until GPS is saved.
+    const hasProviderGps = profile.latitude_c !== null && profile.latitude_c !== undefined && String(profile.latitude_c).trim() !== ''
+      && profile.longitude_c !== null && profile.longitude_c !== undefined && String(profile.longitude_c).trim() !== '';
+    const hasRequestGps = request.latitude_c !== null && request.latitude_c !== undefined && String(request.latitude_c).trim() !== ''
+      && request.longitude_c !== null && request.longitude_c !== undefined && String(request.longitude_c).trim() !== '';
+    if (hasProviderGps && hasRequestGps && (distanceKm === null || distanceKm > serviceRadiusKm)) return false;
+    if ((!hasProviderGps || !hasRequestGps) && !/prayagraj/i.test(String(profile.service_area_c ?? '') + ' ' + String(request.service_area_c ?? ''))) return false;
 
     const rentalDemoMatch = capabilityNames.includes('car rental') && /emergency car rental/i.test(String(request.Name ?? ''));
     return providerCanHandleRequest(request, eligibleCapabilities) || rentalDemoMatch;
@@ -243,7 +248,7 @@ export async function getEligibleRequests(providerId) {
   return eligibleRequests.map((request) => {
     const distanceKm = getDistanceKm(profile.latitude_c, profile.longitude_c, request.latitude_c, request.longitude_c);
     return { ...request, distance_km_c: distanceKm, distance_label_c: formatDistance(distanceKm), estimated_eta_c: distanceKm === null ? null : Math.max(5, Math.round((distanceKm / 20) * 60)) };
-  }).filter((request) => request.distance_km_c !== null && request.distance_km_c <= serviceRadiusKm);
+  }).filter((request) => request.distance_km_c === null || request.distance_km_c <= serviceRadiusKm);
 }
 
 export function getCapabilityName(issue, vehicle, service = '') {
