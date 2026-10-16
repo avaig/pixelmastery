@@ -396,11 +396,37 @@ export default function ServiceProviderProfile() {
                   <Field label="Background verification" id="background-status"><Select value={form.background_check_status_c} onValueChange={(value) => update('background_check_status_c', value)}><SelectTrigger id="background-status"><SelectValue /></SelectTrigger><SelectContent>{['Not started', 'In progress', 'Verified', 'Not required'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
                   <Field label="Safety / service training" id="training-status"><Select value={form.training_status_c} onValueChange={(value) => update('training_status_c', value)}><SelectTrigger id="training-status"><SelectValue /></SelectTrigger><SelectContent>{['Not started', 'In progress', 'Completed', 'Not required'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
                 </div>
-                <div className="rounded-lg border border-dashed border-border p-4">
-                  <h3 className="font-medium">Document checklist (demo)</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Choose a local file to keep its filename visible during this session. Files are not uploaded or stored in demo mode.</p>
+                <div className="rounded-xl border border-border bg-muted/20 p-4 md:p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <ApperIcon name="Files" size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Upload supporting documents</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">Choose the relevant file below. Accepted formats: PDF, JPG or PNG.</p>
+                    </div>
+                  </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    {[['identity', 'Identity document'], ['payout', 'Bank / UPI proof'], ...(requiresVehicle ? [['licence', 'Driving licence'], ['vehicle', 'Vehicle documents']] : []), ...(isBusiness ? [['business', 'Business authorization']] : [])].map(([key, label]) => <div key={key}><Label htmlFor={`doc-${key}`}>{label}</Label><Input id={`doc-${key}`} type="file" accept=".pdf,.jpg,.jpeg,.png" className="mt-2" onChange={(event) => chooseDocument(key, event.target.files?.[0])} /><p className="mt-1 truncate text-xs text-muted-foreground">{documents[key] || 'No file selected'}</p></div>)}
+                    {[['identity', 'Identity document'], ['payout', 'Bank / UPI proof'], ...(requiresVehicle ? [['licence', 'Driving licence'], ['vehicle', 'Vehicle documents']] : []), ...(isBusiness ? [['business', 'Business authorization']] : [])].map(([key, label]) => (
+                      <div key={key} className="rounded-xl border border-border bg-card p-4">
+                        <Label htmlFor={`doc-${key}`} className="text-sm font-semibold">{label}</Label>
+                        <p className="mt-1 text-xs text-muted-foreground">{key === 'identity' ? 'A clear image or scan of your selected ID.' : key === 'payout' ? 'A document showing your bank or UPI payout details. Do not upload passwords or PINs.' : key === 'licence' ? 'For services that require a driving licence.' : key === 'vehicle' ? 'Relevant vehicle registration, insurance or permits.' : 'Relevant business registration or authorization.'}</p>
+                        <input id={`doc-${key}`} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="sr-only" onChange={(event) => chooseDocument(key, event.target.files?.[0])} />
+                        <label htmlFor={`doc-${key}`} className="mt-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                          <ApperIcon name="UploadCloud" size={18} />
+                          {documents[key] ? 'Replace selected file' : `Upload ${label}`}
+                        </label>
+                        <div className="mt-3 flex items-start gap-2 rounded-md bg-muted/50 p-2.5">
+                          <ApperIcon name={documents[key] ? 'FileCheck' : 'File'} size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
+                          <p className="min-w-0 flex-1 break-words text-xs text-muted-foreground">{documents[key] || 'No file selected yet'}</p>
+                          {documents[key] && <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => { setDocuments((current) => { const next = { ...current }; delete next[key]; return next; }); const input = document.getElementById(`doc-${key}`); if (input) input.value = ''; }}>Remove</Button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+                    <ApperIcon name="ShieldAlert" size={18} className="mt-0.5 shrink-0 text-amber-700" />
+                    <p className="text-muted-foreground"><span className="font-semibold text-foreground">Demo mode:</span> Selecting a file only displays its filename during this session. Files are not uploaded or stored by LOCAL yet. Do not submit sensitive identity or bank documents until secure document storage is enabled.</p>
                   </div>
                 </div>
               </section>
