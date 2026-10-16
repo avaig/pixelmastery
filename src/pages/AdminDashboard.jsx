@@ -55,7 +55,7 @@ export default function AdminDashboard() {
     setRestoringSetup(true);
     try {
       const result = await restoreLocalSetupData();
-      toast.success(`Setup restored: ${result.categoriesAdded} categories and ${result.capabilitiesAdded} services added.`);
+      toast.success(`Catalogue checked: ${result.categoriesAdded} categories and ${result.capabilitiesAdded} services added; ${result.categoriesRepaired} categories and ${result.capabilitiesRepaired} services repaired.`);
       await run();
     } catch (restoreError) {
       toast.error(restoreError.message || 'Could not restore LOCAL setup data.');

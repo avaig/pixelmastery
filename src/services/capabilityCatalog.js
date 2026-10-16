@@ -53,10 +53,19 @@ export async function restoreLocalSetupData() {
     .page(1, 200)
     .fetch();
   if (!categoryResult.success) throw new Error(categoryResult.message || 'Could not read service categories.');
-  const existingCategories = new Set((categoryResult.data ?? []).map((item) => String(item.Name ?? '').trim().toLowerCase()));
+  const existingCategories = new Map((categoryResult.data ?? []).map((item) => [String(item.Name ?? '').trim().toLowerCase(), item]));
   let categoriesAdded = 0;
+  let categoriesRepaired = 0;
   for (const [name, description] of categorySeeds) {
-    if (existingCategories.has(name.toLowerCase())) continue;
+    const existing = existingCategories.get(name.toLowerCase());
+    if (existing) {
+      if (existing.status_c !== 'Active' || (name === 'Emergency Medical Help' && existing.description_c !== description)) {
+        const updated = await sdk.table('service_categories_c').update({ Id: existing.Id, description_c: description, status_c: 'Active' });
+        if (!updated.data?.length) throw new Error(updated.messages?.[0] || `Could not repair ${name}.`);
+        categoriesRepaired += 1;
+      }
+      continue;
+    }
     const created = await sdk.table('service_categories_c').create({ Name: name, description_c: description, status_c: 'Active' });
     if (!created.data?.length) throw new Error(created.messages?.[0] || `Could not create ${name}.`);
     categoriesAdded += 1;
@@ -67,13 +76,22 @@ export async function restoreLocalSetupData() {
     .page(1, 200)
     .fetch();
   if (!capabilityResult.success) throw new Error(capabilityResult.message || 'Could not read the service catalogue.');
-  const existingCapabilities = new Set((capabilityResult.data ?? []).map((item) => String(item.Name ?? '').trim().toLowerCase()));
+  const existingCapabilities = new Map((capabilityResult.data ?? []).map((item) => [String(item.Name ?? '').trim().toLowerCase(), item]));
   let capabilitiesAdded = 0;
+  let capabilitiesRepaired = 0;
   for (const [name, vehicleType, description] of CAPABILITY_CATALOG) {
-    if (existingCapabilities.has(name.toLowerCase())) continue;
+    const existing = existingCapabilities.get(name.toLowerCase());
+    if (existing) {
+      if (existing.vehicle_type_c !== vehicleType || existing.description_c !== description || existing.status_c !== 'Active') {
+        const updated = await sdk.table('service_capabilities_c').update({ Id: existing.Id, vehicle_type_c: vehicleType, description_c: description, status_c: 'Active' });
+        if (!updated.data?.length) throw new Error(updated.messages?.[0] || `Could not repair ${name}.`);
+        capabilitiesRepaired += 1;
+      }
+      continue;
+    }
     const created = await sdk.table('service_capabilities_c').create({ Name: name, vehicle_type_c: vehicleType, description_c: description, status_c: 'Active' });
     if (!created.data?.length) throw new Error(created.messages?.[0] || `Could not create ${name}.`);
     capabilitiesAdded += 1;
   }
-  return { categoriesAdded, capabilitiesAdded };
+  return { categoriesAdded, categoriesRepaired, capabilitiesAdded, capabilitiesRepaired };
 }
