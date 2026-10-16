@@ -86,7 +86,7 @@ export default function ProviderCapabilities() {
           Name: 'Provider capability',
           technician_c: profile.Id,
           capability_c: capability.Id,
-          status_c: approved ? 'Active' : 'Pending',
+          status_c: 'Pending',
         });
         if (!result.data?.length) throw new Error(result.messages?.[0] || 'Could not add this service.');
       }
@@ -94,7 +94,7 @@ export default function ProviderCapabilities() {
       const prior = Array.isArray(stored[email]) ? stored[email] : [];
       stored[email] = existing ? prior.filter((id) => String(id) !== key) : [...new Set([...prior, key])];
       window.localStorage.setItem('local_demo_provider_capability_selections_v1', JSON.stringify(stored));
-      toast.success(existing ? 'Service removed and saved.' : approved ? 'Service added and saved.' : 'Service saved. It will become available after profile verification.');
+      toast.success(existing ? 'Service removed and saved.' : 'Service submitted for eligibility review. It will not receive requests until approved.');
       await reloadLinks();
       await reloadCapabilities();
       await reloadProfile();
@@ -108,7 +108,7 @@ export default function ProviderCapabilities() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <PageHeader eyebrow="Service provider · Services" title="My Services" description="Add or remove the services you offer whenever your work changes. Every change saves immediately—no onboarding resubmission." />
+      <PageHeader eyebrow="Service provider · Services" title="My Services" description="Manage the services you offer using LOCAL’s existing catalogue. New capabilities remain pending until eligibility checks are complete; existing approved services are kept separate." />
       {!profile && <Card className="p-4 text-sm text-muted-foreground">Please submit your provider profile first. You can manage services as soon as your profile record exists.</Card>}
       {profile && !approved && <Card className="flex gap-3 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><ApperIcon name="ShieldCheck" size={20} />Your profile is awaiting verification. You can manage your service list now; new services will be available for requests after LOCAL approves your profile.</Card>}
       {capabilitiesLoading && <Card className="p-5 text-sm text-muted-foreground">Loading LOCAL service catalogue…</Card>}
@@ -125,7 +125,7 @@ export default function ProviderCapabilities() {
                 <div><div className="font-medium">{capability.Name}</div><div className="mt-1 text-sm text-muted-foreground">{capability.vehicle_type_c || 'Service'}{capability.description_c ? ` · ${capability.description_c}` : ''}</div></div>
                 <span className={`flex size-6 shrink-0 items-center justify-center rounded-full border ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}>{busyId === key ? <ApperIcon name="LoaderCircle" size={14} className="animate-spin" /> : isSelected ? <ApperIcon name="Check" size={14} /> : <ApperIcon name="Plus" size={14} />}</span>
               </div>
-              <div className="mt-3 text-xs font-medium">{isSelected ? (link.status_c === 'Active' ? 'Added · Active' : 'Added · Awaiting profile verification') : 'Tap to add'}</div>
+              <div className="mt-3 text-xs font-medium">{isSelected ? (link.status_c === 'Active' ? 'Approved · Active' : 'Added · Pending eligibility review') : 'Tap to add'}</div>
             </button>
           );
         })}

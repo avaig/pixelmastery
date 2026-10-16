@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import FilePicker from '@/components/FilePicker';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -63,6 +64,7 @@ const initialForm = {
   terms_accepted_c: false,
   verification_status_c: 'Draft',
   review_notes_c: '',
+  profile_photo_c: '',
 };
 
 const documentOptions = ['Not submitted', 'Submitted for review', 'Verified', 'Not applicable'];
@@ -102,9 +104,10 @@ export default function ServiceProviderProfile() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [documents, setDocuments] = useState({});
+  const [profilePhotoFiles, setProfilePhotoFiles] = useState([]);
   const { data: technician, loading, run: reloadTechnician } = useFetch(
     () => sdk.table('technician_profiles_c')
-      .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'status_c'])
+      .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'status_c'])
       .where(eq('email_c', user?.emailAddress ?? user?.email ?? ''))
       .page(1, 1)
       .fetch()
@@ -142,6 +145,12 @@ export default function ServiceProviderProfile() {
       next.email_c = technician.email_c ?? user?.emailAddress ?? user?.email ?? '';
       next.verification_status_c = technician.verification_status_c ?? (technician.status_c === 'Active' ? 'Approved' : 'Draft');
       next.terms_accepted_c = Boolean(technician.terms_accepted_c);
+      try {
+        const savedPhoto = JSON.parse(technician.profile_photo_c || '[]');
+        setProfilePhotoFiles(Array.isArray(savedPhoto) ? savedPhoto : []);
+      } catch {
+        setProfilePhotoFiles([]);
+      }
       return next;
     });
   }, [technician, user]);
@@ -235,6 +244,10 @@ export default function ServiceProviderProfile() {
       toast.error('Enter the business or shop name.');
       return false;
     }
+    if (currentStep === 0 && profilePhotoFiles.length === 0) {
+      toast.error('Capture and upload a fresh profile selfie before continuing.');
+      return false;
+    }
     if (currentStep === 1 && !form.terms_accepted_c) {
       toast.error('Please accept the LOCAL terms and privacy notice to submit.');
       return false;
@@ -271,6 +284,13 @@ export default function ServiceProviderProfile() {
         identity_document_type_c: form.identity_document_type_c,
         pricing_method_c: form.pricing_method_c,
         terms_accepted_c: Boolean(form.terms_accepted_c),
+        profile_photo_c: JSON.stringify(profilePhotoFiles.map((file) => ({
+          Id: file.Id,
+          Name: file.Name ?? file.name ?? 'Provider selfie',
+          Type: file.Type ?? file.type ?? 'image/jpeg',
+          Size: file.Size ?? file.size ?? 0,
+          url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
+        }))),
       };
       const res = technician
         ? await sdk.table('technician_profiles_c').update({ Id: technician.Id, ...payload })
@@ -288,12 +308,8 @@ export default function ServiceProviderProfile() {
       if (!linksResult.success) throw new Error(linksResult.message || 'Could not load existing service assignments.');
       const providerLinks = (linksResult.data ?? []).filter((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(providerId));
       const selectedIds = new Set(selectedCapabilities.map(String));
-      for (const link of providerLinks) {
-        const linkedCapabilityId = String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '');
-        if (!selectedIds.has(linkedCapabilityId)) {
-          await sdk.table('service_provider_capabilities_c').remove({ Id: link.Id });
-        }
-      }
+      // Onboarding resubmission must not silently remove existing approved capabilities.
+      // Providers manage later additions/removals in My Services, where changes are tracked separately.
       for (const capabilityId of selectedIds) {
         const alreadyLinked = providerLinks.some((link) => String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '') === capabilityId);
         if (!alreadyLinked) {
@@ -374,6 +390,14 @@ export default function ServiceProviderProfile() {
             {step === 0 && (
               <section className="space-y-5">
                 <div><h2 className="font-heading text-xl font-semibold">Basic profile</h2><p className="mt-1 text-sm text-muted-foreground">Your mobile number is used for contact. OTP verification should be completed through the authentication provider.</p></div>
+                <div className="space-y-3 rounded-xl border border-border p-4 md:p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="Camera" size={20} /></div>
+                    <div><h3 className="font-semibold">Live profile photograph *</h3><p className="mt-1 text-sm text-muted-foreground">Capture a fresh selfie using your phone camera or webcam. On supported phones, the camera opens directly. Gallery-selected images are not considered live-verified.</p></div>
+                  </div>
+                  <FilePicker value={profilePhotoFiles} onChange={setProfilePhotoFiles} maxFiles={1} capture="user" fieldConfig={{ supportedExtensions: 'jpg,jpeg,png', supportMultipleValues: false, minValue: 1, maxValue: 5120 }} />
+                  <p className="text-xs text-muted-foreground">The photograph is uploaded through LOCAL file storage and attached to your provider profile for Admin review. Camera capture availability depends on your device and browser.</p>
+                </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field label="Full name" id="provider-name" required><Input id="provider-name" value={form.Name} onChange={(event) => update('Name', event.target.value)} required placeholder="Your full name" /></Field>
                   <Field label="Login email" id="provider-email"><Input id="provider-email" value={form.email_c} readOnly className="bg-muted/30" /></Field>

@@ -78,6 +78,7 @@ export default function FilePicker({
   readOnly = false,
   disabled = false,
   allowProviderEdit = false,
+  capture,
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -346,6 +347,7 @@ export default function FilePicker({
         type="file"
         multiple={multiple && effectiveMaxFiles > 1}
         accept={extensions}
+        capture={capture}
         onChange={(e) => processFiles(e.target.files ?? [])}
         className="hidden"
         id={inputId}

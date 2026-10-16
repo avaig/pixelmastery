@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/local/EntityPages';
 import { toast } from 'sonner';
+import FilePicker from '@/components/FilePicker';
 
 export const route = {
   path: '/admin/provider-onboarding',
@@ -25,7 +26,7 @@ export const nav = {
   section: 'Admin',
 };
 
-const fields = ['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'service_area_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'status_c'];
+const fields = ['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'service_area_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'status_c'];
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -240,6 +241,7 @@ export default function ProviderOnboardingReview() {
             {active ? (
               <div className="space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-heading text-xl font-semibold">{active.Name}</h2><p className="mt-1 text-sm text-muted-foreground">{active.email_c} · {active.phone_c}</p></div><StatusTag value={active.verification_status_c || (active.status_c === 'Active' ? 'Approved' : 'Draft')} /></div>
+                <section className="space-y-3"><h3 className="font-medium">Live profile photograph</h3><p className="text-sm text-muted-foreground">Review the submitted profile photo. Camera capture alone is not proof of liveness or identity match.</p><div className="max-w-sm rounded-lg border border-border p-3">{(() => { try { const photo = JSON.parse(active.profile_photo_c || '[]'); return <FilePicker value={Array.isArray(photo) ? photo : []} readOnly maxFiles={1} fieldConfig={{ supportedExtensions: 'jpg,jpeg,png', supportMultipleValues: false }} />; } catch { return <p className="text-sm text-muted-foreground">No readable photo attachment is available for this application.</p>; } })()}</div></section>
                 <section><h3 className="mb-3 font-medium">Basic profile</h3><div className="grid gap-3 sm:grid-cols-2"><ReviewField label="Provider type" value={active.provider_type_c} /><ReviewField label="Preferred language" value={active.preferred_language_c} /><ReviewField label="Current address" value={active.current_address_c} /><ReviewField label="Emergency contact" value={active.emergency_contact_c} /><ReviewField label="Service area" value={active.service_area_c} /><ReviewField label="Experience" value={active.experience_c} /></div></section>
                 {active.provider_type_c === 'Business' && <section><h3 className="mb-3 font-medium">Business details</h3><div className="grid gap-3 sm:grid-cols-2"><ReviewField label="Business name" value={active.business_name_c} /><ReviewField label="Business address" value={active.business_address_c} /><ReviewField label="Business authorization" value={active.business_document_status_c} /></div></section>}
                 <section>
