@@ -72,7 +72,21 @@ export default function CarEssentialsDelivery() {
       toast.error('Enter the delivery location.');
       return;
     }
-    toast.info('Doorstep delivery availability, product price and delivery charges need to be confirmed before an order can be placed.');
+    const orderDetails = {
+      vehicle: vehicle.trim(),
+      deliveryLocation: location.trim(),
+      items: selectedProducts.map((id) => {
+        const product = PRODUCTS.find((entry) => entry.id === id);
+        return {
+          id,
+          title: product?.title ?? id,
+          quantity: Number(quantities[id] || 1),
+        };
+      }),
+      submittedAt: new Date().toISOString(),
+    };
+    window.sessionStorage.setItem('local_car_essentials_order_v1', JSON.stringify(orderDetails));
+    navigate('/customer/request?vehicle=car&issue=Other%20Issue&service=Car%20Essentials%20Delivery');
   }
 
   return (

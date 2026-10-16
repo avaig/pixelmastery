@@ -128,6 +128,20 @@ const CAR_SERVICE_PACKAGES = [
   },
 ];
 
+function getCarEssentialsRequestNote() {
+  try {
+    const raw = window.sessionStorage.getItem('local_car_essentials_order_v1');
+    if (!raw) return '';
+    const order = JSON.parse(raw);
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (!items.length) return '';
+    const itemSummary = items.map((item) => `${item.title} × ${item.quantity}`).join('; ');
+    return ` Car Essentials order details: ${itemSummary}. Vehicle: ${order.vehicle || 'Not specified'}. Requested delivery location: ${order.deliveryLocation || 'Not specified'}. Product compatibility, stock, final price and delivery charges must be confirmed by the Service Provider before fulfilment.`;
+  } catch {
+    return '';
+  }
+}
+
 function getWashPrice(item) {
   const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
   const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
