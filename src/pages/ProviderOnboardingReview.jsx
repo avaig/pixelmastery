@@ -54,6 +54,7 @@ export default function ProviderOnboardingReview() {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [serviceNames, setServiceNames] = useState({});
+  const [serviceCatalogError, setServiceCatalogError] = useState('');
   const [serviceStatusOverrides, setServiceStatusOverrides] = useState({});
   const { data: capabilityAssignments, run: reloadAssignments } = useFetch(
     () => sdk.table('service_provider_capabilities_c')
@@ -77,8 +78,17 @@ export default function ProviderOnboardingReview() {
   useEffect(() => {
     let mounted = true;
     sdk.table('service_capabilities_c').select(['Id', 'Name']).page(1, 200).fetch()
-      .then((res) => { if (mounted) setServiceNames(Object.fromEntries((res.data ?? []).map((item) => [String(item.Id), item.Name]))); })
-      .catch(() => {});
+      .then((res) => {
+        if (!res.success) throw new Error(res.message || 'Could not load service names.');
+        const names = Object.fromEntries((res.data ?? []).map((item) => [String(item.Id), String(item.Name ?? '').trim()]).filter((entry) => entry[1]));
+        if (mounted) {
+          setServiceNames(names);
+          setServiceCatalogError('');
+        }
+      })
+      .catch((err) => {
+        if (mounted) setServiceCatalogError(err.message || 'Service names could not be loaded from the catalogue.');
+      });
     return () => { mounted = false; };
   }, []);
   const filtered = providers.filter((provider) => {
@@ -280,11 +290,15 @@ export default function ProviderOnboardingReview() {
                     ].filter(Boolean))).map((id) => {
                       const linked = (capabilityAssignments ?? []).find((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id) && String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '') === String(id));
                       const serviceStatus = serviceStatusOverrides[String(active.Id)]?.[String(id)] || active._demoServiceStatuses?.[String(id)] || (linked?.status_c === 'Active' ? 'Approved' : 'Pending');
+                      const linkedCapabilityName = typeof linked?.capability_c === 'object' ? linked.capability_c?.Name ?? linked.capability_c?.name : '';
+                      const demoCapability = (active._demoCapabilities ?? []).find((item) => String(item.Id ?? item.id ?? item) === String(id));
+                      const serviceName = serviceNames[String(id)] || linkedCapabilityName || demoCapability?.Name || ('Service capability (' + String(id).slice(0, 8) + ')');
                       return <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
-                        <div><div className="font-medium">{serviceNames[String(id)] || 'Selected service'}</div><div className="mt-1"><StatusTag value={serviceStatus} /></div></div>
+                        <div><div className="font-medium">{serviceName}</div><div className="mt-1"><StatusTag value={serviceStatus} /></div></div>
                         <div className="flex gap-2"><Button size="sm" disabled={saving || active.verification_status_c === 'Rejected'} onClick={() => setServiceStatus(id, 'Approved')}>Approve service</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => setServiceStatus(id, 'Pending')}>Keep pending</Button></div>
                       </div>;
                     })}
+                    {serviceCatalogError && <p role="status" className="text-sm text-amber-700">Some service names could not be loaded from the catalogue: {serviceCatalogError}. Showing the available capability reference where possible.</p>}
                     {!(active._demoCapabilityIds ?? []).length && !(capabilityAssignments ?? []).some((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id)) && <p className="text-sm text-muted-foreground">No service capabilities have been selected for this application.</p>}
                   </div>
                 </section>
