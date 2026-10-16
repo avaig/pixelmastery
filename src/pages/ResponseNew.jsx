@@ -101,7 +101,7 @@ export default function ResponseNew() {
         proposed_price_c: finalOfferPrice,
         original_proposed_price_c: finalOfferPrice,
         final_agreed_price_c: null,
-        negotiation_status_c: isCarWashRequest ? 'Awaiting Provider Response' : 'Not Started',
+        negotiation_status_c: 'Not Started',
         negotiation_history_c: new Date().toLocaleString('en-IN') + (isCarWashRequest ? ' — Customer total offer: ₹' : ' — Service Provider quote: ₹') + finalOfferPrice.toLocaleString('en-IN'),
         availability_c: form.availability_c,
         message_c: responseMessage,
