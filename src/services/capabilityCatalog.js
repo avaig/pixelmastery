@@ -30,6 +30,7 @@ export const CAPABILITY_CATALOG = [
   ['AC Technician — Split AC', 'Home Services', 'Home AC servicing, diagnosis and repair for Split AC units.'],
   ['AC Technician — Window AC', 'Home Services', 'Home AC servicing, diagnosis and repair for Window AC units.'],
   ['AC Technician — Split & Window AC', 'Home Services', 'Home AC technician capable of servicing both Split AC and Window AC units.'],
+  ['Ambulance Service Provider', 'Emergency', 'Emergency medical transport provider available for ambulance requests. Only providers with required vehicle, permits, staffing and operational verification may be approved.'],
 ];
 
 export async function getCapabilityCatalog() {
@@ -45,6 +46,7 @@ export async function restoreLocalSetupData() {
   const categorySeeds = [
     ['Car Assistance', 'Car assistance, maintenance, roadside help and driver services.'],
     ['Bike Assistance', 'Bike maintenance, breakdown and roadside assistance.'],
+    ['Emergency Medical Help', 'Emergency ambulance and medical transport services. Providers require separate operational verification before activation.'],
   ];
   const categoryResult = await sdk.table('service_categories_c')
     .select(['Id', 'Name', 'description_c', 'status_c'])
