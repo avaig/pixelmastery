@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/local/EntityPages';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import ApperIcon from '@/components/ApperIcon';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -37,10 +38,7 @@ export default function ProviderCapabilities() {
     [email],
   );
   const { data: capabilities, run: reloadCapabilities } = useFetch(
-    () => sdk.table('service_capabilities_c')
-      .select(['Id', 'Name', 'vehicle_type_c', 'description_c', 'status_c'])
-      .where(eq('status_c', 'Active')).page(1, 200).fetch()
-      .then((res) => res.data ?? []),
+    () => getCapabilityCatalog(),
     [],
   );
   const { data: allLinks, run: reloadLinks } = useFetch(
