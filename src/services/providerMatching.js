@@ -113,7 +113,8 @@ export async function getProviderCapabilities(providerId) {
   if (!allLinks.success) throw new Error(allLinks.message);
   return (allLinks.data ?? []).filter((item) => {
     const linkedProvider = item.technician_c?.Id ?? item.technician_c_id ?? item.technician_c;
-    return item.status_c === 'Active' && String(linkedProvider ?? '') === String(providerId);
+    const status = String(item.status_c ?? '').trim().toLowerCase();
+    return ['active', 'approved'].includes(status) && String(linkedProvider ?? '') === String(providerId);
   });
 }
 
@@ -176,6 +177,16 @@ export async function getEligibleRequests(providerId) {
     .map((item) => item.capability_c?.Name ?? item.capability_c_name ?? (typeof item.capability_c === 'string' ? item.capability_c : null))
     .filter(Boolean)
     .map((name) => String(name).trim().toLowerCase());
+  // Resolve capability names from the catalogue when a relationship is returned as an ID only.
+  // This supports older records and connected-backend lookup hydration differences.
+  const catalogueRes = await sdk.table('service_capabilities_c').select(['Id', 'Name', 'status_c']).page(1, 500).fetch();
+  if (!catalogueRes.success) throw new Error(catalogueRes.message);
+  const capabilityNameById = new Map((catalogueRes.data ?? []).map((item) => [String(item.Id), String(item.Name ?? '').trim().toLowerCase()]));
+  for (const item of eligibleCapabilities) {
+    const capabilityId = item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c;
+    const name = item.capability_c?.Name ?? item.capability_c_name ?? capabilityNameById.get(String(capabilityId));
+    if (name) capabilityNames.push(String(name).trim().toLowerCase());
+  }
 
   const providerArea = String(profile.service_area_c ?? '').trim().toLowerCase();
   const eligibleRequests = (requestsRes.data ?? []).filter((request) => {
@@ -196,8 +207,12 @@ export async function getEligibleRequests(providerId) {
     if (hasProviderGps && hasRequestGps && (distanceKm === null || distanceKm > serviceRadiusKm)) return false;
     if ((!hasProviderGps || !hasRequestGps) && !/prayagraj/i.test(String(profile.service_area_c ?? '') + ' ' + String(request.service_area_c ?? ''))) return false;
 
+    const requiredId = request.required_capability_c?.Id ?? request.required_capability_c_id ?? request.required_capability_c;
+    const requiredName = request.required_capability_c?.Name ?? request.required_capability_name ?? capabilityNameById.get(String(requiredId ?? ''));
+    const hasMatchingCapability = providerCanHandleRequest({ ...request, required_capability_name: requiredName }, eligibleCapabilities)
+      || (requiredName && capabilityNames.includes(String(requiredName).trim().toLowerCase()));
     const rentalDemoMatch = capabilityNames.includes('car rental') && /emergency car rental/i.test(String(request.Name ?? ''));
-    return providerCanHandleRequest(request, eligibleCapabilities) || rentalDemoMatch;
+    return hasMatchingCapability || rentalDemoMatch;
   });
 
   // MemoryAdapter data is isolated to each browser profile and lookup writes may not persist
