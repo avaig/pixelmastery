@@ -185,14 +185,11 @@ export async function getEligibleRequests(providerId) {
     if (requestedTime !== 'scheduled' && providerAvailability !== 'available now') return false;
     const distanceKm = getDistanceKm(profile.latitude_c, profile.longitude_c, request.latitude_c, request.longitude_c);
     const serviceRadiusKm = Math.max(1, Math.min(100, Number(profile.service_radius_km_c) || 10));
-    // Location and provider-declared radius are the primary match. For existing vehicle requests,
-    // retain the locality guard; AC requests may use a specific street/locality within the same
-    // practical radius even when provider and customer use different locality labels.
+    // GPS distance and the provider's configured radius are the source of truth for nearby matching.
+    // Do not additionally require service_area_c labels to match: a customer in Karchana and a
+    // provider registered under Naini/Prayagraj can still be close enough to serve each other.
+    // Text locality labels are inconsistent and previously hid valid Car Wash/Car Service requests.
     if (distanceKm === null || distanceKm > serviceRadiusKm) return false;
-    if (!isAcTechnicianRequest(request)) {
-      const requestArea = String(request.service_area_c ?? '').trim().toLowerCase();
-      if (!providerArea || !requestArea || !requestArea.split(/[;,]/).some((area) => area.trim() && (providerArea.includes(area.trim()) || area.trim().includes(providerArea)))) return false;
-    }
 
     const rentalDemoMatch = capabilityNames.includes('car rental') && /emergency car rental/i.test(String(request.Name ?? ''));
     return providerCanHandleRequest(request, eligibleCapabilities) || rentalDemoMatch;
