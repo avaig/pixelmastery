@@ -280,7 +280,32 @@ export default function ServiceProviderProfile() {
         return;
       }
       const providerId = technician?.Id ?? res.data[0].Id;
-      // Service Provider Capabilities are managed separately. Never overwrite assignments while saving profile details.
+      // Save selected capabilities as pending assignments; Admin approval is still required before matching.
+      const linksResult = await sdk.table('service_provider_capabilities_c')
+        .select(['Id', 'technician_c', 'capability_c', 'status_c'])
+        .page(1, 1000)
+        .fetch();
+      if (!linksResult.success) throw new Error(linksResult.message || 'Could not load existing service assignments.');
+      const providerLinks = (linksResult.data ?? []).filter((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(providerId));
+      const selectedIds = new Set(selectedCapabilities.map(String));
+      for (const link of providerLinks) {
+        const linkedCapabilityId = String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '');
+        if (!selectedIds.has(linkedCapabilityId)) {
+          await sdk.table('service_provider_capabilities_c').remove({ Id: link.Id });
+        }
+      }
+      for (const capabilityId of selectedIds) {
+        const alreadyLinked = providerLinks.some((link) => String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '') === capabilityId);
+        if (!alreadyLinked) {
+          const assigned = await sdk.table('service_provider_capabilities_c').create({
+            Name: 'Provider capability',
+            technician_c: providerId,
+            capability_c: capabilityId,
+            status_c: 'Pending',
+          });
+          if (!assigned.data?.length) throw new Error(assigned.messages?.[0] || 'Could not save selected service capabilities.');
+        }
+      }
       // MemoryAdapter is re-seeded when the app reloads or a different demo account signs in.
       // Keep a demo-only application snapshot in localStorage so Admin can review it in this browser.
       const demoApplication = {
