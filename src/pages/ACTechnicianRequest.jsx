@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 

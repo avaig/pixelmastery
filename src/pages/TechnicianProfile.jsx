@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 

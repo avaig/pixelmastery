@@ -40,10 +40,8 @@ export async function getCapabilityCatalog() {
   if (!result.success) throw new Error(result.message || 'Could not load service capabilities.');
   const existing = result.data ?? [];
   const byName = new Map(existing.map((item) => [String(item.Name ?? '').trim().toLowerCase(), item]));
-  const active = existing.filter((item) => item.status_c === 'Active');
-  if (active.length) return existing;
   // A cloned project can have the capability table schema but no catalogue records.
-  // Restore the canonical catalogue once, preserving any existing records by name.
+  // Restore missing catalogue entries while preserving existing records by name.
   for (const [name, vehicleType, description] of CAPABILITY_CATALOG) {
     if (byName.has(name.toLowerCase())) {
       const item = byName.get(name.toLowerCase());

@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/local/EntityPages';
 import { toast } from 'sonner';
 import { getCapabilityName } from '@/services/providerMatching';
 import { getLanguage, tr } from '@/services/i18n';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
