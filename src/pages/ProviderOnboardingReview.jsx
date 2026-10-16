@@ -57,40 +57,7 @@ export default function ProviderOnboardingReview() {
   const { data, loading, error, run } = useFetch(
     () => sdk.table('technician_profiles_c').select(fields).orderByDesc('CreatedOn').page(1, 100).fetch().then((res) => {
       if (!res.success) throw new Error(res.message || 'Could not load provider applications.');
-      const baseRows = res.data ?? [];
-      // Demo-mode MemoryAdapter is reset on reload, so merge browser-persisted submissions into the admin queue.
-      const saved = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
-      const applications = Array.isArray(saved) ? saved : [];
-      const merged = new Map(baseRows.map((item) => [String(item.Id), item]));
-      for (const application of applications) {
-        const current = merged.get(String(application.Id));
-        merged.set(String(application.Id), current ? { ...current, ...application } : application);
-      }
-      // Demo submissions are stored in browser-local storage, which is isolated per browser/device.
-      // To keep the Admin review workflow testable when provider and admin sessions use different
-      // browsers, surface the built-in demo provider profiles as clearly marked pending applications
-      // until a shared database is connected. Saved submissions always take precedence.
-      const demoPendingIds = new Set([
-        'e3000001-0000-4000-8000-000000000001',
-        'e3000001-0000-4000-8000-000000000002',
-        'e3000001-0000-4000-8000-000000000003',
-        'e3000001-0000-4000-8000-000000000004',
-        'e3000001-0000-4000-8000-000000000005',
-      ]);
-      for (const row of baseRows) {
-        if (demoPendingIds.has(String(row.Id)) && !applications.some((item) => String(item.Id) === String(row.Id))) {
-          merged.set(String(row.Id), {
-            ...row,
-            verification_status_c: 'Submitted',
-            status_c: 'Pending',
-            review_notes_c: row.review_notes_c || '',
-            _demoCapabilityIds: [],
-            _demoSubmittedAt: row.ModifiedOn || row.CreatedOn || new Date().toISOString(),
-            _demoSeededForReview: true,
-          });
-        }
-      }
-      return [...merged.values()].sort((a, b) => new Date(b._demoSubmittedAt || b.CreatedOn || 0) - new Date(a._demoSubmittedAt || a.CreatedOn || 0));
+      return res.data ?? [];
     }),
     [],
   );
@@ -242,9 +209,11 @@ export default function ProviderOnboardingReview() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Admin · Provider operations" title="Service provider onboarding" description="Review applications, verify the documents relevant to each provider, and record activation decisions." />
-      <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Demo mode: provider submissions saved in one browser are not shared with another browser. Built-in demo provider profiles are shown here as pending review examples. Connect a database only after the demo workflow has been tested and you are ready to replace demo data.
-      </div>
+      {error && (
+        <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Provider applications could not be loaded from the database: {error.message || String(error)}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-3">
         {[['Needs review', providers.filter((item) => ['Submitted', 'In review', 'Corrections requested', 'Draft'].includes(item.verification_status_c || (item.status_c === 'Active' ? 'Approved' : 'Draft'))).length], ['Approved', providers.filter((item) => (item.verification_status_c || (item.status_c === 'Active' ? 'Approved' : 'Draft')) === 'Approved').length], ['Total profiles', providers.length]].map(([label, value]) => <Card key={label} className="p-4"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-2 font-heading text-3xl font-semibold">{value}</div></Card>)}
       </div>
