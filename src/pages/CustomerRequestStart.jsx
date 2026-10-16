@@ -446,7 +446,7 @@ export default function CustomerRequestStart() {
           ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + washCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Customer Car Wash total offer: ₹' + customerWashOffer.toLocaleString('en-IN') + '. The offer covers all selected items; Pickup & Drop is included if selected and cannot be negotiated separately. Prices are indicative demo menu prices. CUSTOMER_CAR_WASH_OFFER_JSON:' + JSON.stringify({ menuTotal: estimatedTotalValue, customerOffer: customerWashOffer }) + ' CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
           : isOtherIssue
             ? problemDetails.trim()
-            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
+            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.')) + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
         location_c: location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
@@ -464,6 +464,7 @@ export default function CustomerRequestStart() {
         toast.error(res.messages?.[0] ?? 'Service request was not created.');
         return;
       }
+      if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
       toast.success(tr('Request shared with eligible nearby Service Providers.', language));
       navigate('/requests/' + res.data[0].Id);
     } finally {
