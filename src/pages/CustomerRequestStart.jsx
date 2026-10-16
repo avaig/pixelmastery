@@ -293,11 +293,21 @@ export default function CustomerRequestStart() {
       const res = await sdk
         .table('customer_profiles_c')
         .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
-        .page(1, 1000)
+        .where(eq('email_c', user?.emailAddress ?? user?.email ?? ''))
+        .page(1, 100)
         .fetch();
 
-      if (!res.success) throw new Error(res.message);
-      return (res.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
+      if (!res.success) throw new Error(res.message || 'Could not look up your customer profile.');
+      const exactMatch = (res.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email);
+      if (exactMatch) return exactMatch;
+
+      // Fall back to a bounded lookup for legacy records whose email casing differs.
+      const fallback = await sdk.table('customer_profiles_c')
+        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
+        .page(1, 1000)
+        .fetch();
+      if (!fallback.success) throw new Error(fallback.message || 'Could not look up your customer profile.');
+      return (fallback.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
     },
     [user?.emailAddress, user?.email],
   );
@@ -366,7 +376,8 @@ export default function CustomerRequestStart() {
       return;
     }
     if (!customer?.Id) {
-      toast.error(tr('Customer profile could not be matched.', language));
+      toast.error('Your LOCAL customer profile is missing or does not match your login email. Complete My Profile, save it, then retry your booking.');
+      navigate('/customer/profile');
       return;
     }
     if (!category?.Id) {
