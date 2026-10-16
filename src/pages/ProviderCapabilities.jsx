@@ -37,7 +37,7 @@ export default function ProviderCapabilities() {
       .then((res) => res.data?.[0] ?? null),
     [email],
   );
-  const { data: capabilities, run: reloadCapabilities } = useFetch(
+  const { data: capabilities, loading: capabilitiesLoading, error: capabilitiesError, run: reloadCapabilities } = useFetch(
     () => getCapabilityCatalog(),
     [],
   );
@@ -111,6 +111,9 @@ export default function ProviderCapabilities() {
       <PageHeader eyebrow="Service provider · Services" title="My Services" description="Add or remove the services you offer whenever your work changes. Every change saves immediately—no onboarding resubmission." />
       {!profile && <Card className="p-4 text-sm text-muted-foreground">Please submit your provider profile first. You can manage services as soon as your profile record exists.</Card>}
       {profile && !approved && <Card className="flex gap-3 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><ApperIcon name="ShieldCheck" size={20} />Your profile is awaiting verification. You can manage your service list now; new services will be available for requests after LOCAL approves your profile.</Card>}
+      {capabilitiesLoading && <Card className="p-5 text-sm text-muted-foreground">Loading LOCAL service catalogue…</Card>}
+      {capabilitiesError && <Card className="border-destructive/40 p-5 text-sm"><div className="font-semibold text-destructive">LOCAL could not load the service catalogue.</div><p className="mt-2">{capabilitiesError.message || String(capabilitiesError)}</p><button type="button" className="mt-3 rounded-md border px-3 py-2 font-medium" onClick={() => reloadCapabilities()}>Retry loading services</button></Card>}
+      {!capabilitiesLoading && !capabilitiesError && (capabilities ?? []).length === 0 && <Card className="p-5 text-sm"><div className="font-semibold">No services are configured yet.</div><p className="mt-1 text-muted-foreground">The catalogue is empty in the connected database. LOCAL needs its service records restored before providers can select services.</p><button type="button" className="mt-3 rounded-md border px-3 py-2 font-medium" onClick={() => reloadCapabilities()}>Retry loading services</button></Card>}
       <div className="grid gap-3 sm:grid-cols-2">
         {(capabilities ?? []).map((capability) => {
           const key = String(capability.Id);
