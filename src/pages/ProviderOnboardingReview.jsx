@@ -55,6 +55,17 @@ export default function ProviderOnboardingReview() {
   const [saving, setSaving] = useState(false);
   const [serviceNames, setServiceNames] = useState({});
   const [serviceStatusOverrides, setServiceStatusOverrides] = useState({});
+  const { data: capabilityAssignments, run: reloadAssignments } = useFetch(
+    () => sdk.table('service_provider_capabilities_c')
+      .select(['Id', 'technician_c', 'capability_c', 'status_c'])
+      .page(1, 1000)
+      .fetch()
+      .then((res) => {
+        if (!res.success) throw new Error(res.message || 'Could not load provider capability assignments.');
+        return res.data ?? [];
+      }),
+    [],
+  );
   const { data, loading, error, run } = useFetch(
     () => sdk.table('technician_profiles_c').select(fields).orderByDesc('CreatedOn').page(1, 100).fetch().then((res) => {
       if (!res.success) throw new Error(res.message || 'Could not load provider applications.');
@@ -102,9 +113,11 @@ export default function ProviderOnboardingReview() {
         return String(providerId) === String(active.Id) && String(serviceId) === String(capabilityId);
       });
       if (links.length) {
-        const app = (Array.isArray(saved) ? saved : []).find((item) => String(item.Id) === String(active.Id));
-        const profileApproved = app?.verification_status_c === 'Approved';
-        await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: status === 'Approved' && profileApproved ? 'Active' : 'Pending' })));
+        const profileApproved = active.verification_status_c === 'Approved' || active.status_c === 'Active';
+        const updatedLinks = await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: status === 'Approved' && profileApproved ? 'Active' : 'Pending' })));
+        if (!updatedLinks.data?.length) throw new Error(updatedLinks.messages?.[0] || 'Could not save capability review status.');
+      }
+      await reloadAssignments();
       }
       setNote(active.review_notes_c || '');
       toast.success((serviceNames[String(capabilityId)] || 'Service') + ' marked ' + status.toLowerCase() + '.');
@@ -262,14 +275,18 @@ export default function ProviderOnboardingReview() {
                 <section className="space-y-3">
                   <div><h3 className="font-medium">Service-by-service approval</h3><p className="mt-1 text-sm text-muted-foreground">Approve only services whose requirements you have checked. Profile approval alone does not activate a service.</p></div>
                   <div className="space-y-2">
-                    {(active._demoCapabilityIds ?? []).map((id) => {
-                      const serviceStatus = serviceStatusOverrides[String(active.Id)]?.[String(id)] || active._demoServiceStatuses?.[String(id)] || 'Pending';
+                    {Array.from(new Set([
+                      ...(active._demoCapabilityIds ?? []).map(String),
+                      ...(capabilityAssignments ?? []).filter((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id)).map((link) => String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '')),
+                    ].filter(Boolean))).map((id) => {
+                      const linked = (capabilityAssignments ?? []).find((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id) && String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '') === String(id));
+                      const serviceStatus = serviceStatusOverrides[String(active.Id)]?.[String(id)] || active._demoServiceStatuses?.[String(id)] || (linked?.status_c === 'Active' ? 'Approved' : 'Pending');
                       return <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
                         <div><div className="font-medium">{serviceNames[String(id)] || 'Selected service'}</div><div className="mt-1"><StatusTag value={serviceStatus} /></div></div>
                         <div className="flex gap-2"><Button size="sm" disabled={saving || active.verification_status_c === 'Rejected'} onClick={() => setServiceStatus(id, 'Approved')}>Approve service</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => setServiceStatus(id, 'Pending')}>Keep pending</Button></div>
                       </div>;
                     })}
-                    {!(active._demoCapabilityIds ?? []).length && <p className="text-sm text-muted-foreground">No demo service selection snapshot is available for this application.</p>}
+                    {!(active._demoCapabilityIds ?? []).length && !(capabilityAssignments ?? []).some((link) => String(link.technician_c?.Id ?? link.technician_c_id ?? link.technician_c ?? '') === String(active.Id)) && <p className="text-sm text-muted-foreground">No service capabilities have been selected for this application.</p>}
                   </div>
                 </section>
                 <section className="space-y-2"><Label htmlFor="review-note">Review note</Label><Textarea id="review-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Record verification, missing documents or corrections required." /></section>

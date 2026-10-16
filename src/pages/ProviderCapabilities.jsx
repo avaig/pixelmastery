@@ -57,7 +57,6 @@ export default function ProviderCapabilities() {
     String(link.capability_c?.Id ?? link.capability_c),
     link,
   ])), [links]);
-  const approved = profile?.verification_status_c === 'Approved' || profile?.status_c === 'Active';
 
   useEffect(() => {
     const stored = JSON.parse(window.localStorage.getItem('local_demo_provider_capability_selections_v1') || '{}');

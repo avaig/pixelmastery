@@ -38,7 +38,7 @@ export async function getCapabilityCatalog() {
     .page(1, 200)
     .fetch();
   if (!result.success) throw new Error(result.message || 'Could not load service capabilities.');
-  return result.data ?? [];
+  return (result.data ?? []).filter((item) => !item.status_c || item.status_c === 'Active');
 }
 
 export async function restoreLocalSetupData() {
