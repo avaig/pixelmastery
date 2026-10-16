@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { getCapabilityName } from '@/services/providerMatching';
 import { getLanguage, tr } from '@/services/i18n';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -310,14 +311,7 @@ export default function CustomerRequestStart() {
   );
   const capabilityName = getCapabilityName(issue, vehicle, requestedService);
   const { data: capabilities } = useFetch(
-    () =>
-      sdk
-        .table('service_capabilities_c')
-        .select(['Id', 'Name', 'vehicle_type_c', 'status_c'])
-        .where(eq('status_c', 'Active'))
-        .page(1, 100)
-        .fetch()
-        .then((res) => res.data ?? []),
+    () => getCapabilityCatalog(),
     [],
   );
   const requiredCapability = capabilities?.find((item) => item.Name === capabilityName);

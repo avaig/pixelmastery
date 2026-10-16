@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -117,7 +118,7 @@ export default function ServiceProviderProfile() {
     [user?.emailAddress, user?.email],
   );
   const { data: capabilities } = useFetch(
-    () => sdk.table('service_capabilities_c').select(['Id', 'Name', 'vehicle_type_c', 'description_c', 'status_c']).where(eq('status_c', 'Active')).page(1, 100).fetch().then((res) => res.data ?? []),
+    () => getCapabilityCatalog(),
     [],
   );
   const { data: capabilityLinks, run: reloadCapabilityLinks } = useFetch(
@@ -376,8 +377,26 @@ export default function ServiceProviderProfile() {
                 {isBusiness && <div className="grid gap-5 md:grid-cols-2"><Field label="Business / shop name" id="business-name" required><Input id="business-name" value={form.business_name_c} onChange={(event) => update('business_name_c', event.target.value)} required placeholder="Registered or trading name" /></Field><Field label="Business address" id="business-address"><Input id="business-address" value={form.business_address_c} onChange={(event) => update('business_address_c', event.target.value)} placeholder="Shop address" /></Field></div>}
                 <Field label="Experience and qualifications" id="provider-experience" hint="Mention years of experience, relevant certificates or specialties."><Textarea id="provider-experience" value={form.experience_c} onChange={(event) => update('experience_c', event.target.value)} placeholder="e.g. 6 years of car electrical and battery work" /></Field>
                 <Field label="How will you price jobs?" id="provider-pricing"><Select value={form.pricing_method_c} onValueChange={(value) => update('pricing_method_c', value)}><SelectTrigger id="provider-pricing"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Fixed rate">Fixed rate for defined services</SelectItem><SelectItem value="Provider quote">Quote after reviewing the job</SelectItem><SelectItem value="Distance/time">Distance- or time-based rate</SelectItem></SelectContent></Select></Field>
-                <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-                  Service capabilities are managed separately under Service Provider Capabilities. Submit your profile first; LOCAL can add or remove services separately.
+                <div className="space-y-3 rounded-lg border border-border p-4">
+                  <div>
+                    <h3 className="font-semibold">Services you can provide</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Select every service you are qualified and equipped to offer. LOCAL will match requests only to your selected, approved capabilities.</p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(capabilities ?? []).map((capability) => {
+                      const selected = selectedCapabilities.includes(String(capability.Id));
+                      return (
+                        <label key={capability.Id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'}`}>
+                          <Checkbox checked={selected} onCheckedChange={() => toggleCapability(capability.Id)} />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium">{capability.Name}</span>
+                            <span className="mt-1 block text-xs text-muted-foreground">{capability.vehicle_type_c} · {capability.description_c}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{selectedCapabilities.length} service(s) selected. You can change this list later under My Services.</p>
                 </div>
               </section>
             )}

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -76,12 +77,7 @@ export default function ACTechnicianRequest() {
   );
 
   const { data: capabilities } = useFetch(
-    () => sdk.table('service_capabilities_c')
-      .select(['Id', 'Name', 'vehicle_type_c', 'status_c'])
-      .where(eq('status_c', 'Active'))
-      .page(1, 200)
-      .fetch()
-      .then((result) => result.data ?? []),
+    () => getCapabilityCatalog(),
     [],
   );
 

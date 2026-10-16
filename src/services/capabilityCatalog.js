@@ -45,9 +45,6 @@ export async function getCapabilityCatalog() {
   for (const [name, vehicleType, description] of CAPABILITY_CATALOG) {
     if (byName.has(name.toLowerCase())) {
       const item = byName.get(name.toLowerCase());
-      if (item.status_c !== 'Active') {
-        await sdk.table('service_capabilities_c').update({ Id: item.Id, status_c: 'Active' });
-      }
       continue;
     }
     const created = await sdk.table('service_capabilities_c').create({
