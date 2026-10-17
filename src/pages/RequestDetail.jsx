@@ -211,10 +211,32 @@ export default function RequestDetail() {
       // are restricted by row-level security, so querying the full provider table
       // here falsely treated valid providers as missing. Never resolve by name:
       // multiple providers can share a name.
-      const providerId = response.technician_c?.Id ?? response.technician_c;
-      const providerName = String(response.technician_c?.Name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
+      let providerId = response.technician_c?.Id ?? response.technician_c?.id ?? response.technician_c?.recordId ?? response.technician_c;
+      const providerName = String(response.technician_c?.Name ?? response.technician_c?.name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
       if (providerId == null || String(providerId).trim() === '') {
-        throw new Error('This offer has no linked Service Provider record. The booking was not created; the provider must submit a fresh offer.');
+        throw new Error('This offer has no linked Service Provider record. The booking was not created. Ask LOCAL Admin to repair the offer link.');
+      }
+      // A provider profile may have been recreated after this offer was submitted.
+      // Negotiation still works because the offer row exists, but jobs_c rejects a
+      // lookup to the deleted profile. Verify the reference and safely repair it
+      // only when the provider name resolves to exactly one current profile.
+      const providerProfilesRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
+      if (!providerProfilesRes.success) throw new Error(providerProfilesRes.message || 'Could not validate the Service Provider record.');
+      const providerProfiles = providerProfilesRes.data ?? [];
+      let currentProvider = providerProfiles.find((item) => String(item.Id) === String(providerId)) ?? null;
+      if (!currentProvider) {
+        const normalizedName = providerName.trim().toLowerCase();
+        const matches = providerProfiles.filter((item) => String(item.Name ?? '').trim().toLowerCase() === normalizedName);
+        if (matches.length !== 1) {
+          throw new Error(matches.length > 1
+            ? 'This offer points to an old Service Provider record, and more than one current profile has the same name. LOCAL Admin must repair this offer link before booking.'
+            : 'This offer points to a Service Provider profile that no longer exists. No booking was created. LOCAL Admin must restore or relink the provider record before confirmation.');
+        }
+        currentProvider = matches[0];
+        const relink = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: currentProvider.Id });
+        if (!relink.data?.length) throw new Error(relink.messages?.[0] || 'The offer exists, but its Service Provider link could not be repaired. LOCAL Admin must repair it before booking.');
+        providerId = currentProvider.Id;
+        response.technician_c = currentProvider;
       }
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
