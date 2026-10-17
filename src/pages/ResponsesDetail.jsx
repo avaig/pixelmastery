@@ -119,9 +119,18 @@ export default function ResponsesDetail() {
       throw new Error('The accepted offer points to a Service Provider record that no longer exists, and no matching active profile was found. The booking has not been changed. Open Provider onboarding for this provider and restore the profile, or ask LOCAL Admin to repair the provider record.');
     }
     const providerId = validProvider.Id;
+    async function updateProviderLookup(tableName, recordId) {
+      // Apper Lookup fields may require a record-reference object rather than a raw scalar ID.
+      let result = await sdk.table(tableName).update({ Id: recordId, technician_c: { Id: providerId } });
+      if (result.data?.length) return result;
+      const firstMessage = result.messages?.filter(Boolean).join(' | ') || result.message || '';
+      result = await sdk.table(tableName).update({ Id: recordId, technician_c: providerId });
+      if (result.data?.length) return result;
+      const secondMessage = result.messages?.filter(Boolean).join(' | ') || result.message || '';
+      throw new Error('Could not save the Service Provider reference. Object-reference attempt: ' + firstMessage + '. ID-reference attempt: ' + secondMessage);
+    }
     if (String(linkedProviderId ?? '') !== String(providerId)) {
-      const relink = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: providerId });
-      if (!relink.data?.length) throw new Error(relink.messages?.filter(Boolean).join(' | ') || relink.message || 'The provider profile was found, but the accepted offer could not be linked to it.');
+      await updateProviderLookup('technician_responses_c', response.Id);
       response.technician_c = validProvider;
     }
     const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
@@ -152,7 +161,7 @@ export default function ResponsesDetail() {
         request_c: request.Id,
         response_c: response.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c,
-        technician_c: providerId,
+        technician_c: { Id: providerId },
         agreed_price_c: billing.servicePrice,
         original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
         booking_commitment_amount_c: billing.bookingCommitment,
