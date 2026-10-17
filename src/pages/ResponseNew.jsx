@@ -49,7 +49,8 @@ export default function ResponseNew() {
   const providerDistanceLabel = providerDistanceKm === null ? null : formatDistance(providerDistanceKm);
   const providerEtaMinutes = providerDistanceKm === null ? null : Math.max(5, Math.round((providerDistanceKm / 20) * 60));
   const requestDescription = String(request?.problem_description_c ?? '');
-  const isCarWashRequest = /car wash/i.test(String(request?.Name ?? '')) || /Car Wash services/i.test(requestDescription);\n  const isEmergencyRequest = String(request?.service_mode_c ?? '').trim().toLowerCase() === 'urgent' || (/battery jump start|battery assistance|flat tyre|puncture|out of fuel|towing required|vehicle recovery|ambulance|emergency|roadside assistance|key locked|lockout/i.test(String(request?.Name ?? '') + ' ' + requestDescription) && ['asap', 'book now', 'urgent'].includes(String(request?.preferred_time_c ?? '').trim().toLowerCase()));
+  const isCarWashRequest = /car wash/i.test(String(request?.Name ?? '')) || /Car Wash services/i.test(requestDescription);
+  const isEmergencyRequest = String(request?.service_mode_c ?? '').trim().toLowerCase() === 'urgent' || (/battery jump start|battery assistance|flat tyre|puncture|out of fuel|towing required|vehicle recovery|ambulance|emergency|roadside assistance|key locked|lockout/i.test(String(request?.Name ?? '') + ' ' + requestDescription) && ['asap', 'book now', 'urgent'].includes(String(request?.preferred_time_c ?? '').trim().toLowerCase()));
   let washItems = [];
   try { const marker = 'CAR_WASH_DECISIONS_JSON:'; const start = requestDescription.indexOf(marker); const jsonStart = start >= 0 ? start + marker.length : -1; const jsonEnd = jsonStart >= 0 ? requestDescription.indexOf(']', jsonStart) + 1 : -1; if (jsonStart >= 0 && jsonEnd > jsonStart) washItems = JSON.parse(requestDescription.slice(jsonStart, jsonEnd)); } catch { washItems = []; }
   const washMenuTotal = washItems.reduce((sum, item) => sum + (Number(item.listedUnitPrice ?? 0) * Number(item.quantity ?? 1)), 0);
@@ -69,7 +70,12 @@ export default function ResponseNew() {
 
   async function submit(event) {
     event.preventDefault();
-    if (isEmergencyRequest) {\n      toast.error('This is an urgent request. Return to the request details and use the direct-accept action; do not send a quote.');\n      navigate('/requests/' + encodeURIComponent(request.Id));\n      return;\n    }\n    if (request?.preferred_time_c === 'Scheduled' && form.availability_c !== 'Available at requested time') {
+    if (isEmergencyRequest) {
+      toast.error('This is an urgent request. Return to the request details and use the direct-accept action; do not send a quote.');
+      navigate('/requests/' + encodeURIComponent(request.Id));
+      return;
+    }
+    if (request?.preferred_time_c === 'Scheduled' && form.availability_c !== 'Available at requested time') {
       toast.error('You must confirm availability at the requested time before sending an offer.');
       return;
     }
