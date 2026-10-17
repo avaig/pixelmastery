@@ -562,7 +562,7 @@ export default function ServiceProviderProfile() {
                     })}
                   </div>
                   {selectedCapabilities.length > 0 && <div className="space-y-3 rounded-lg border border-border p-4">
-                    <div><h4 className="font-semibold">Experience for each selected service</h4><p className="mt-1 text-sm text-muted-foreground">Describe the work you have actually done for every capability. Admin will review each service separately.</p></div>
+                    <div><h4 className="font-semibold">Optional experience details</h4><p className="mt-1 text-sm text-muted-foreground">You may add details, but this is not required. LOCAL Admin will review each selected service.</p></div>
                     {(capabilities ?? []).filter((item) => selectedCapabilities.includes(String(item.Id))).map((capability) => <Field key={capability.Id} label={`${capability.Name} — experience (optional)`} id={`experience-${capability.Id}`} hint="You can briefly describe jobs you have done, or leave this blank."><Textarea id={`experience-${capability.Id}`} value={capabilityExperience[String(capability.Id)] ?? ''} onChange={(event) => setCapabilityExperience((current) => ({ ...current, [String(capability.Id)]: event.target.value }))} placeholder={`Optional: work you have done for ${capability.Name}`} /></Field>)}
                   </div>}
                   <p className="text-xs text-muted-foreground">{selectedCapabilities.length} service(s) selected. Every selected capability is submitted for manual Admin approval; adding a capability later under My Services creates a separate pending review.</p>
