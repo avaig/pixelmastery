@@ -85,16 +85,44 @@ export function EntityListPage({ entity }) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [serviceFilter, setServiceFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deletingSelected, setDeletingSelected] = useState(false);
   const isProviderList = entity === 'technicians';
   const fields = useMemo(() => getFields(config), [config]);
+  const { data: providerAssignments = [] } = useFetch(
+    () => isProviderList ? sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c', 'capability_c', 'status_c']).page(1, 1000).fetch().then((res) => {
+      if (!res.success) throw new Error(res.message || 'Could not load provider service assignments.');
+      return res.data ?? [];
+    }) : Promise.resolve([]),
+    [isProviderList],
+  );
+  const { data: serviceCatalog = [] } = useFetch(
+    () => isProviderList ? sdk.table('service_capabilities_c').select(['Id', 'Name']).page(1, 200).fetch().then((res) => {
+      if (!res.success) throw new Error(res.message || 'Could not load service names.');
+      return res.data ?? [];
+    }) : Promise.resolve([]),
+    [isProviderList],
+  );
+  const serviceNameById = useMemo(() => Object.fromEntries(serviceCatalog.map((item) => [String(item.Id), String(item.Name ?? '').trim()]).filter(([, name]) => name)), [serviceCatalog]);
+  const providerServices = useMemo(() => {
+    const grouped = {};
+    for (const assignment of providerAssignments) {
+      const providerId = assignment.technician_c?.Id ?? assignment.technician_c_id ?? assignment.technician_c;
+      const serviceId = assignment.capability_c?.Id ?? assignment.capability_c_id ?? assignment.capability_c;
+      const serviceName = serviceNameById[String(serviceId)] || (typeof assignment.capability_c === 'object' ? assignment.capability_c?.Name : '') || '';
+      if (!providerId || !serviceName) continue;
+      if (!grouped[String(providerId)]) grouped[String(providerId)] = [];
+      if (!grouped[String(providerId)].some((item) => item.name === serviceName)) grouped[String(providerId)].push({ name: serviceName, status: assignment.status_c || 'Pending' });
+    }
+    return grouped;
+  }, [providerAssignments, serviceNameById]);
 
   useEffect(() => {
     setPage(1);
     setSelectedIds([]);
-  }, [search, status]);
+  }, [search, status, serviceFilter]);
 
   async function deleteSelectedProviders() {
     if (!isProviderList || !selectedIds.length || deletingSelected) return;
@@ -170,7 +198,8 @@ export function EntityListPage({ entity }) {
     setSelectedIds((current) => current.filter((id) => visibleIds.has(String(id))));
   }, [data]);
 
-  const rows = data?.rows ?? [];
+  const allRows = data?.rows ?? [];
+  const rows = isProviderList && serviceFilter !== 'all' ? allRows.filter((row) => (providerServices[String(row.Id)] ?? []).some((service) => service.name === serviceFilter)) : allRows;
   const firstLoad = loading && data === undefined;
 
   return (
@@ -195,6 +224,11 @@ export function EntityListPage({ entity }) {
             </SelectContent>
           </Select>
         )}
+        {isProviderList && <Select value={serviceFilter} onValueChange={setServiceFilter}>
+          <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Filter by service" /></SelectTrigger>
+          <SelectContent><SelectItem value="all">All services</SelectItem>{Object.values(serviceNameById).sort((a, b) => a.localeCompare(b)).map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
+        </Select>}
+        {isProviderList && <Button variant="outline" onClick={() => { setSearch(''); setStatus('all'); setServiceFilter('all'); }}>Reset</Button>}
       </div>
       {firstLoad ? (
         <ListSkeleton rows={8} />
@@ -216,6 +250,7 @@ export function EntityListPage({ entity }) {
                 <tr>
                   {isProviderList && <th className="w-12 px-3 py-3 text-left font-medium text-muted-foreground">Select</th>}
                   {config.columns.map((column) => <th key={column} className="px-4 py-3 text-left font-medium text-muted-foreground">{columnLabel(config, column)}</th>)}
+                  {isProviderList && <th className="px-4 py-3 text-left font-medium text-muted-foreground">Service capabilities</th>}
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">Open</th>
                 </tr>
               </thead>
@@ -227,6 +262,7 @@ export function EntityListPage({ entity }) {
                       const field = config.fields.find((item) => item.key === column);
                       return <td key={column} className="max-w-xs px-4 py-3 align-top">{column === config.statusField ? <StatusBadge value={row[column]} /> : <span className={column === 'Name' ? 'font-medium' : 'text-muted-foreground'}>{formatCell(row[column], field)}</span>}</td>;
                     })}
+                    {isProviderList && <td className="max-w-sm px-4 py-3 align-top"><div className="flex flex-wrap gap-1.5">{(providerServices[String(row.Id)] ?? []).length ? <>{(providerServices[String(row.Id)] ?? []).slice(0, 2).map((service) => <Badge key={service.name} variant="outline" title={`Service status: ${service.status}`} className="whitespace-nowrap">{service.name}</Badge>)}{(providerServices[String(row.Id)] ?? []).length > 2 && <Badge variant="secondary">+{providerServices[String(row.Id)].length - 2} more</Badge>}</> : <span className="text-muted-foreground">Not assigned</span>}</div></td>}
                     <td className="px-4 py-3 text-right"><Button variant="ghost" size="sm" onClick={() => navigate(getEntityRoute(entity, '/' + row.Id))}>View</Button></td>
                   </tr>
                 ))}
