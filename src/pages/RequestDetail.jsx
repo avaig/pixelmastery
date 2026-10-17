@@ -200,10 +200,18 @@ export default function RequestDetail() {
       // providers' profiles from customers.
       const responseProviderId = response.technician_c?.Id ?? response.technician_c;
       const providerName = String(response.technician_c?.Name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
-      if (!responseProviderId || typeof responseProviderId === 'object') {
-        throw new Error('This accepted offer is missing its Service Provider profile link. The offer needs an Admin-side data repair before confirmation; do not submit a duplicate offer.');
+      // Legacy demo offers can retain an ID from a deleted/recreated provider profile.
+      // Resolve the current profile before writing the job lookup, which must receive a scalar record ID.
+      const providerProfilesRes = await sdk.table('technician_profiles_c').select(['Id', 'Name']).page(1, 1000).fetch();
+      if (!providerProfilesRes.success) throw new Error(providerProfilesRes.message ?? 'Could not verify the Service Provider profile.');
+      const providerProfiles = providerProfilesRes.data ?? [];
+      const normalizedProviderName = providerName.toLowerCase().replace(/\s+/g, ' ').trim();
+      const validProvider = providerProfiles.find((item) => String(item.Id) === String(responseProviderId ?? ''))
+        ?? providerProfiles.find((item) => String(item.Name ?? '').toLowerCase().replace(/\s+/g, ' ').trim() === normalizedProviderName);
+      if (!validProvider?.Id) {
+        throw new Error('The offer for ' + providerName + ' points to a Service Provider profile that is missing or not accessible. The booking was not created. Ask the provider to reopen Provider onboarding and resubmit, then create a fresh offer.');
       }
-      const providerId = responseProviderId;
+      const providerId = validProvider.Id;
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
 
@@ -230,8 +238,8 @@ export default function RequestDetail() {
           request_c: request.Id,
           response_c: response.Id,
           customer_c: request.customer_c?.Id ?? request.customer_c,
-          // jobs_c.technician_c is a Lookup to technician_profiles_c; pass a record reference object so Apper resolves the relation rather than treating the ID as a missing reference.
-          technician_c: { Id: providerId },
+          // Lookup fields require the referenced record's scalar integer/UUID ID.
+          technician_c: providerId,
           agreed_price_c: billing.servicePrice,
           original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
           booking_commitment_amount_c: billing.bookingCommitment,
@@ -265,7 +273,7 @@ export default function RequestDetail() {
       const agreedHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
       const responseUpdate = await sdk.table('technician_responses_c').update({
         Id: response.Id,
-        technician_c: { Id: providerId },
+        technician_c: providerId,
         status_c: 'Selected',
         final_agreed_price_c: finalPrice,
         negotiation_status_c: 'Agreed',
