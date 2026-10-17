@@ -78,9 +78,10 @@ export default function ProviderOnboardingReview() {
   const providers = data ?? [];
   useEffect(() => {
     let mounted = true;
-    sdk.table('service_capabilities_c').select(['Id', 'Name']).page(1, 200).fetch()
+    Promise.resolve()
+      .then(() => sdk.table('service_capabilities_c').select(['Id', 'Name']).page(1, 200).fetch())
       .then((res) => {
-        if (!res.success) throw new Error(res.message || 'Could not load service names.');
+        if (!res?.success) throw new Error(res?.message || 'Service names are unavailable.');
         const names = Object.fromEntries((res.data ?? []).map((item) => [String(item.Id), String(item.Name ?? '').trim()]).filter((entry) => entry[1]));
         if (mounted) {
           setServiceNames(names);
@@ -88,7 +89,10 @@ export default function ProviderOnboardingReview() {
         }
       })
       .catch((err) => {
-        if (mounted) setServiceCatalogError(err.message || 'Service names could not be loaded from the catalogue.');
+        if (mounted) {
+          setServiceNames({});
+          setServiceCatalogError(err?.message || 'Service names are unavailable; provider review remains usable.');
+        }
       });
     return () => { mounted = false; };
   }, []);
