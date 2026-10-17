@@ -8,6 +8,7 @@ import { APP_CONFIG, AUTH_PROFILES, GENERIC_AUTH } from '@/config/app.config';
 import AppLoader from '@/components/AppLoader';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import CustomerLocationGate from '@/components/local/CustomerLocationGate';
+import ServiceProviderLocationGate from '@/components/local/ServiceProviderLocationGate';
 
 const AuthContext = createContext(null);
 
@@ -78,6 +79,7 @@ export default function RootLayout() {
   const deepestMatch = matches[matches.length - 1];
   const accessRule = deepestMatch?.handle?.access ?? 'public';
   const requiresCustomerLocation = user?.profile === 'Customer_c' && String(accessRule).includes('Customer_c');
+  const requiresProviderLocation = user?.profile === 'ServiceProvider_c' && String(accessRule).includes('ServiceProvider_c');
   // Decided during render, not after it: a route this session may not open never paints.
   const allowed = isInitialized && verifyRouteAccess(accessRule, user);
 
@@ -115,6 +117,7 @@ export default function RootLayout() {
   return (
     <AuthContext.Provider value={{ logout: handleLogout, user, isAuthenticated }}>
       <CustomerLocationGate required={requiresCustomerLocation} />
+      {requiresProviderLocation && <ServiceProviderLocationGate />}
       <ErrorBoundary fullPage>
         <Outlet />
       </ErrorBoundary>
