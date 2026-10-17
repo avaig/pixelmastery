@@ -325,8 +325,14 @@ export default function RequestDetail() {
             <div className="flex items-center justify-between"><div className="text-xs text-muted-foreground">{tr('Status', language)}</div><StatusBadge value={request.status_c} /></div>
             {isCustomer && request.status_c === 'Confirmed' && relatedJob && <div className="rounded-lg border border-highlight/40 bg-highlight/5 p-4"><div className="font-semibold">Booking confirmed</div><p className="mt-1 text-sm text-muted-foreground">Your Service Provider is selected. Continue to the job page to review the booking commitment, LOCAL Service Fee, and available demo payment methods.</p><Button className="mt-3 w-full" onClick={() => navigate('/jobs/' + relatedJob.Id)}><ApperIcon name="CreditCard" size={16} /> {['Booking Commitment & LOCAL Fee Paid', 'Final Payment Paid'].includes(relatedJob.payment_status_c) ? 'View job & payment status' : 'Proceed to payment'}</Button></div>}
           </div>
-          {(user?.profile === 'Customer_c' || user?.profile === 'Admin_c') && (
-            <div className="mt-7 border-t border-border pt-5"><Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}><ApperIcon name="Trash2" size={15} /> Delete request</Button></div>
+          {isCustomer && ['Open', 'Quoted', 'Negotiating', 'Confirmed', 'In progress'].includes(String(request.status_c ?? '')) && (
+            <div className="mt-7 border-t border-border pt-5">
+              <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                <ApperIcon name={canDeleteRequest ? 'Trash2' : 'XCircle'} size={15} />
+                {canDeleteRequest ? 'Delete request' : 'Cancel request'}
+              </Button>
+              {!canDeleteRequest && <p className="mt-2 text-xs text-muted-foreground">Offers or booking history exist, so LOCAL will preserve the record and cancel it instead of deleting it.</p>}
+            </div>
           )}
         </Card>
         <Card className="border-l-4 border-highlight p-4 md:p-5">
@@ -382,7 +388,22 @@ export default function RequestDetail() {
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete this service request?</AlertDialogTitle><AlertDialogDescription>Delete “{request.Name}” from the mock marketplace? Its Service Provider offers will also be removed.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={working}>Cancel</AlertDialogCancel><AlertDialogAction onClick={removeRequest} disabled={working}>{working ? 'Deleting…' : 'Delete request'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{canDeleteRequest ? 'Delete this service request?' : 'Cancel this service request?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {canDeleteRequest
+                ? 'Delete “' + request.Name + '”? This request has no provider offers or job history.'
+                : 'Cancel “' + request.Name + '”? LOCAL will preserve provider offers and booking history for records and audit purposes.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={working}>Keep request</AlertDialogCancel>
+            <AlertDialogAction onClick={removeRequest} disabled={working}>
+              {working ? (canDeleteRequest ? 'Deleting…' : 'Cancelling…') : (canDeleteRequest ? 'Delete request' : 'Cancel request')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
