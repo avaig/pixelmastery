@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { sdk } from '@/services/sdk';
@@ -105,6 +105,11 @@ export default function ServiceProviderProfile() {
   const [saving, setSaving] = useState(false);
   const [documents, setDocuments] = useState({});
   const [profilePhotoFiles, setProfilePhotoFiles] = useState([]);
+  const [capabilityExperience, setCapabilityExperience] = useState({});
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraBusy, setCameraBusy] = useState(false);
+  const videoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const { data: technician, loading, run: reloadTechnician } = useFetch(
     () => sdk.table('technician_profiles_c')
       .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'status_c'])
@@ -230,6 +235,66 @@ export default function ServiceProviderProfile() {
       : [...current, String(id)]);
   }
 
+  async function startProfileCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Camera-only capture is not supported in this browser. Open LOCAL on a device/browser with camera access over HTTPS.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      cameraStreamRef.current = stream;
+      setCameraActive(true);
+    } catch (error) {
+      toast.error(error.name === 'NotAllowedError' ? 'Allow camera permission to take your profile photograph.' : 'Could not open the camera. Check that your camera is available and not being used by another app.');
+    }
+  }
+
+  function stopProfileCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraActive(false);
+  }
+
+  useEffect(() => {
+    if (cameraActive && videoRef.current && cameraStreamRef.current) {
+      videoRef.current.srcObject = cameraStreamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraActive]);
+
+  useEffect(() => () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  async function captureProfilePhoto() {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      toast.error('Camera is still starting. Please wait and try again.');
+      return;
+    }
+    setCameraBusy(true);
+    try {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, 1200 / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Camera image could not be prepared.');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Camera image could not be captured.')), 'image/jpeg', 0.82));
+      const file = new File([blob], `LOCAL-provider-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const uploaded = await sdk.storage.upload(file);
+      const previewDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+      setProfilePhotoFiles([{ ...uploaded, name: uploaded.name || file.name, type: uploaded.type || file.type, size: uploaded.size || file.size, previewDataUrl }]);
+      stopProfileCamera();
+      toast.success('Camera photograph captured. Retake it if needed before submission.');
+    } catch (error) {
+      toast.error(error.message || 'Could not save the camera photograph. Please try again.');
+    } finally {
+      setCameraBusy(false);
+    }
+  }
+
   function chooseDocument(key, file) {
     setDocuments((current) => ({ ...current, [key]: file ? file.name : '' }));
     if (file) toast.info('File selected for this demo. Files are not uploaded while LOCAL uses demo data.');
@@ -245,8 +310,19 @@ export default function ServiceProviderProfile() {
       return false;
     }
     if (currentStep === 0 && profilePhotoFiles.length === 0) {
-      toast.error('Capture and upload a fresh profile selfie before continuing.');
+      toast.error('Take your profile photograph using the live camera before continuing. Gallery uploads are not accepted.');
       return false;
+    }
+    if (currentStep === 0 && selectedCapabilities.length === 0) {
+      toast.error('Select at least one service capability.');
+      return false;
+    }
+    if (currentStep === 0) {
+      const missingExperience = selectedCapabilities.some((id) => (capabilityExperience[id] ?? '').trim().length < 5);
+      if (missingExperience) {
+        toast.error('Add your relevant experience for every selected capability (at least a short description).');
+        return false;
+      }
     }
     if (currentStep === 1 && !form.terms_accepted_c) {
       toast.error('Please accept the LOCAL terms and privacy notice to submit.');
@@ -275,7 +351,11 @@ export default function ServiceProviderProfile() {
         emergency_contact_c: form.emergency_contact_c.trim(),
         business_name_c: isBusiness ? form.business_name_c.trim() : '',
         business_address_c: isBusiness ? form.business_address_c.trim() : '',
-        experience_c: form.experience_c.trim(),
+        experience_c: [
+          form.experience_c.trim() ? `General experience: ${form.experience_c.trim()}` : '',
+          'Capability-specific experience:',
+          ...(capabilities ?? []).filter((item) => selectedCapabilities.includes(String(item.Id))).map((item) => `${item.Name}: ${(capabilityExperience[String(item.Id)] ?? '').trim()}`),
+        ].filter(Boolean).join('\n'),
         availability_c: form.availability_c,
         service_area_c: form.service_area_c.trim(),
         latitude_c: Number.isFinite(Number(form.latitude_c)) && form.latitude_c !== null && form.latitude_c !== '' ? Number(form.latitude_c) : null,
@@ -396,8 +476,21 @@ export default function ServiceProviderProfile() {
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="Camera" size={20} /></div>
                     <div><h3 className="font-semibold">Live profile photograph *</h3><p className="mt-1 text-sm text-muted-foreground">Capture a fresh selfie using your phone camera or webcam. On supported phones, the camera opens directly. Gallery-selected images are not considered live-verified.</p></div>
                   </div>
-                  <FilePicker value={profilePhotoFiles} onChange={setProfilePhotoFiles} maxFiles={1} capture="user" fieldConfig={{ supportedExtensions: 'jpg,jpeg,png', supportMultipleValues: false, minValue: 1, maxValue: 5120 }} />
-                  <p className="text-xs text-muted-foreground">The photograph is uploaded through LOCAL file storage and attached to your provider profile for Admin review. Camera capture availability depends on your device and browser.</p>
+                  {cameraActive ? (
+                    <div className="space-y-3 rounded-lg border border-border p-3">
+                      <video ref={videoRef} autoPlay playsInline muted className="max-h-80 w-full rounded-lg bg-black object-contain" aria-label="Live camera preview" />
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" disabled={cameraBusy} onClick={captureProfilePhoto}>{cameraBusy ? 'Saving photo…' : 'Capture photograph'}</Button>
+                        <Button type="button" variant="outline" disabled={cameraBusy} onClick={stopProfileCamera}>Cancel camera</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Button type="button" onClick={startProfileCamera}><ApperIcon name="Camera" size={16} /> {profilePhotoFiles.length ? 'Retake using camera' : 'Open camera and take photograph'}</Button>
+                      {profilePhotoFiles.length > 0 && <div className="rounded-lg border border-border p-3"><p className="mb-2 text-sm font-medium">Photograph captured</p><FilePicker value={profilePhotoFiles} readOnly maxFiles={1} fieldConfig={{ supportedExtensions: 'jpg,jpeg,png', supportMultipleValues: false }} /></div>}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">LOCAL opens the live camera and captures the image directly. There is no Gallery upload control for the profile photograph. Camera access requires browser permission and a secure HTTPS connection.</p>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field label="Full name" id="provider-name" required><Input id="provider-name" value={form.Name} onChange={(event) => update('Name', event.target.value)} required placeholder="Your full name" /></Field>
@@ -445,22 +538,26 @@ export default function ServiceProviderProfile() {
                       );
                     })}
                   </div>
-                  <p className="text-xs text-muted-foreground">{selectedCapabilities.length} service(s) selected. You can change this list later under My Services.</p>
+                  {selectedCapabilities.length > 0 && <div className="space-y-3 rounded-lg border border-border p-4">
+                    <div><h4 className="font-semibold">Experience for each selected service</h4><p className="mt-1 text-sm text-muted-foreground">Describe the work you have actually done for every capability. Admin will review each service separately.</p></div>
+                    {(capabilities ?? []).filter((item) => selectedCapabilities.includes(String(item.Id))).map((capability) => <Field key={capability.Id} label={`${capability.Name} — relevant experience`} id={`experience-${capability.Id}`} required hint="Mention years of experience, typical jobs completed, or relevant training."><Textarea id={`experience-${capability.Id}`} value={capabilityExperience[String(capability.Id)] ?? ''} onChange={(event) => setCapabilityExperience((current) => ({ ...current, [String(capability.Id)]: event.target.value }))} required placeholder={`Describe your experience with ${capability.Name}`} /></Field>)}
+                  </div>}
+                  <p className="text-xs text-muted-foreground">{selectedCapabilities.length} service(s) selected. Every selected capability is submitted for manual Admin approval; adding a capability later under My Services creates a separate pending review.</p>
                 </div>
               </section>
             )}
             {step === 1 && (
               <>
               <section className="space-y-5">
-                <div><h2 className="font-heading text-xl font-semibold">Documents and payout readiness</h2><p className="mt-1 text-sm text-muted-foreground">Select the status of each document. LOCAL staff will inspect originals or secure copies as appropriate. Do not enter Aadhaar numbers or bank account numbers in this demo form.</p></div>
+                <div><h2 className="font-heading text-xl font-semibold">Documents and payout readiness</h2><p className="mt-1 text-sm text-muted-foreground">Submit the applicable documents for review. Providers cannot mark their own documents as verified; LOCAL Admin must verify them. Do not enter Aadhaar numbers, bank account numbers, UPI PINs or passwords into text fields.</p></div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field label="Identity document type" id="identity-type" required><Select value={form.identity_document_type_c} onValueChange={(value) => update('identity_document_type_c', value)}><SelectTrigger id="identity-type"><SelectValue /></SelectTrigger><SelectContent>{['Aadhaar verified securely', 'Voter ID', 'Passport', 'Driving licence', 'Other accepted ID'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
-                  <Field label="Identity document status" id="identity-status"><Select value={form.identity_document_status_c} onValueChange={(value) => update('identity_document_status_c', value)}><SelectTrigger id="identity-status"><SelectValue /></SelectTrigger><SelectContent>{documentOptions.filter((value) => value !== 'Not applicable').map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
-                  <Field label="PAN status" id="pan-status" hint="Required only where applicable for compliance or payout records."><Select value={form.pan_status_c} onValueChange={(value) => update('pan_status_c', value)}><SelectTrigger id="pan-status"><SelectValue /></SelectTrigger><SelectContent>{documentOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
-                  <Field label="Bank / UPI payout status" id="bank-status"><Select value={form.bank_status_c} onValueChange={(value) => update('bank_status_c', value)}><SelectTrigger id="bank-status"><SelectValue /></SelectTrigger><SelectContent>{documentOptions.filter((value) => value !== 'Not applicable').map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
-                  {requiresVehicle && <><Field label="Driving licence status" id="licence-status"><Select value={form.driving_licence_status_c} onValueChange={(value) => update('driving_licence_status_c', value)}><SelectTrigger id="licence-status"><SelectValue /></SelectTrigger><SelectContent>{documentOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field><Field label="Vehicle RC / insurance / permits status" id="vehicle-status"><Select value={form.vehicle_documents_status_c} onValueChange={(value) => update('vehicle_documents_status_c', value)}><SelectTrigger id="vehicle-status"><SelectValue /></SelectTrigger><SelectContent>{documentOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field></>}
-                  {isBusiness && <Field label="Business licence / authorization status" id="business-doc-status"><Select value={form.business_document_status_c} onValueChange={(value) => update('business_document_status_c', value)}><SelectTrigger id="business-doc-status"><SelectValue /></SelectTrigger><SelectContent>{documentOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>}
-                  <Field label="Background verification" id="background-status"><Select value={form.background_check_status_c} onValueChange={(value) => update('background_check_status_c', value)}><SelectTrigger id="background-status"><SelectValue /></SelectTrigger><SelectContent>{['Not started', 'In progress', 'Verified', 'Not required'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
+                  <Field label="Identity document status" id="identity-status" hint="Set by LOCAL after review."><Input id="identity-status" value={form.identity_document_status_c || 'Not submitted'} readOnly className="bg-muted/30" /></Field>
+                  <Field label="PAN status" id="pan-status" hint="Conditional: LOCAL Admin records verification when required. Lack of PAN alone does not automatically block every worker."><Input id="pan-status" value={form.pan_status_c || 'Not applicable'} readOnly className="bg-muted/30" /></Field>
+                  <Field label="Bank / UPI payout status" id="bank-status" hint="Payout details must be verified before payouts are enabled."><Input id="bank-status" value={form.bank_status_c || 'Not submitted'} readOnly className="bg-muted/30" /></Field>
+                  {requiresVehicle && <><Field label="Driving licence status" id="licence-status" hint="Set by LOCAL after checking the applicable licence."><Input id="licence-status" value={form.driving_licence_status_c || 'Not submitted'} readOnly className="bg-muted/30" /></Field><Field label="Vehicle RC / insurance / permits status" id="vehicle-status" hint="Required only for capabilities where the provider's vehicle or activity requires it."><Input id="vehicle-status" value={form.vehicle_documents_status_c || 'Not applicable'} readOnly className="bg-muted/30" /></Field></>}
+                  {isBusiness && <Field label="Business licence / authorization status" id="business-doc-status" hint="Set by LOCAL after review, where applicable."><Input id="business-doc-status" value={form.business_document_status_c || 'Not applicable'} readOnly className="bg-muted/30" /></Field>}
+                  <Field label="Background verification" id="background-status" hint="Tracked by LOCAL where required."><Input id="background-status" value={form.background_check_status_c || 'Not started'} readOnly className="bg-muted/30" /></Field>
                   <Field label="Safety / service training" id="training-status"><Select value={form.training_status_c} onValueChange={(value) => update('training_status_c', value)}><SelectTrigger id="training-status"><SelectValue /></SelectTrigger><SelectContent>{['Not started', 'In progress', 'Completed', 'Not required'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
                 </div>
                 <div className="rounded-xl border border-border bg-muted/20 p-4 md:p-5">
