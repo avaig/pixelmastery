@@ -111,8 +111,12 @@ export default function ResponsesDetail() {
       const billing = isCarWashBooking || isAcBooking
         ? { ...calculatedBilling, servicePrice: finalPrice, bookingCommitment: 0, remainingServiceAmount: finalPrice, customerPayableNow: 0, localServiceFee: 0 }
         : calculatedBilling;
+      const requestTitle = String(request.Name ?? 'Service Request');
+      const categoryText = String(request.service_category_c?.Name ?? request.service_category_c ?? '') + ' ' + requestTitle + ' ' + String(request.problem_description_c ?? '');
+      const jobPrefix = /car wash/i.test(categoryText) ? 'CW' : /bike/i.test(categoryText) ? 'BA' : /car assistance|battery|tyre|towing|fuel|lockout|car/i.test(categoryText) ? 'CA' : /ambulance/i.test(categoryText) ? 'AMB' : /ac technician|air conditioner/i.test(categoryText) ? 'AC' : 'LOC';
+      const requestShortId = String(request.Id).replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase();
       const jobRes = await sdk.table('jobs_c').create({
-        Name: request.Name + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
+        Name: jobPrefix + '-' + requestShortId + ' • ' + requestTitle + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
         request_c: request.Id,
         response_c: response.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c,
@@ -176,13 +180,16 @@ export default function ResponsesDetail() {
       const nextHistory = acceptedAlready ? history : (history ? history + '\\n' : '') + new Date().toLocaleString('en-IN') + ' — Service Provider accepted customer offer at ₹' + price.toLocaleString('en-IN');
       const update = await sdk.table('technician_responses_c').update({
         Id: response.Id,
+        status_c: 'Vendor Accepted',
         final_agreed_price_c: price,
         negotiation_status_c: 'Agreed',
         negotiation_history_c: nextHistory,
-        message_c: 'Service Provider accepted customer offer: ₹' + price.toLocaleString('en-IN'),
+        message_c: 'Vendor accepted customer offer: ₹' + price.toLocaleString('en-IN') + '. Waiting for customer to confirm booking.',
       });
       if (!update.data?.length) throw new Error(update.messages?.filter(Boolean).join(' | ') || update.message || 'Could not save your acceptance. Please refresh and try again.');
-      toast.success('Offer accepted. The customer can now confirm the booking.');
+      const requestUpdate = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Vendor Accepted' });
+      if (!requestUpdate.data?.length) throw new Error(requestUpdate.messages?.filter(Boolean).join(' | ') || requestUpdate.message || 'Offer accepted, but request status could not be updated.');
+      toast.success('Vendor Accepted. Waiting for the customer to confirm the booking.');
       await run();
     } catch (err) {
       toast.error(err.message ?? 'Could not accept the customer offer.');
@@ -311,7 +318,7 @@ export default function ResponsesDetail() {
             <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Customer</div><div className="mt-1 font-medium">{request.customer_c?.Name ?? 'Customer'}</div></div>
             <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Customer location</div><div className="mt-1 font-medium">{request.location_c || 'Address not available'}</div></div>
             {isCarWashOffer && <div className="rounded-md bg-muted/40 p-3"><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Distance & arrival estimate</div>{providerDistanceLabel ? <div className="mt-1 font-semibold">{providerDistanceLabel} away{providerEtaMinutes !== null ? ' · approx. ' + providerEtaMinutes + ' min' : ''}</div> : <div className="mt-1 text-sm text-muted-foreground">Distance unavailable — provider or customer coordinates are missing.</div>}<div className="mt-1 text-xs text-muted-foreground">Straight-line distance; ETA is approximate and does not include live traffic.</div></div>}
-            <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Booking status</div><div className="mt-1"><StatusBadge value={response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed' ? 'Job Accepted' : response.status_c} /></div>{response.status_c === 'Price Accepted' && <p className="mt-2 text-sm text-muted-foreground">Price accepted by customer. Sent for Service Provider acceptance.</p>}</div>
+            <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Booking status</div><div className="mt-1"><StatusBadge value={response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed' ? 'Job Accepted' : response.status_c} /></div>{response.status_c === 'Price Accepted' && <p className="mt-2 text-sm text-muted-foreground">Price accepted by customer. Sent for Service Provider acceptance.</p>}{response.status_c === 'Vendor Accepted' && <p className="mt-2 text-sm text-muted-foreground">Vendor accepted the price. Waiting for customer to confirm booking.</p>}</div>
           </div>
         </Card>
 
@@ -339,7 +346,7 @@ export default function ResponsesDetail() {
           </div>
           <p className="mt-5 border-t border-border pt-5 text-sm leading-7">{response.message_c || 'No additional message.'}</p>
 
-          {(response.status_c === 'Pending' || response.status_c === 'Price Accepted') && (
+          {(response.status_c === 'Pending' || response.status_c === 'Price Accepted' || response.status_c === 'Vendor Accepted') && (
             <div className="mt-6 border-t border-border pt-5">
               {isCustomer && response.status_c === 'Pending' && (
                 <div className="flex flex-wrap gap-2">
@@ -351,8 +358,14 @@ export default function ResponsesDetail() {
                   <Button onClick={confirmProvider} disabled={working}>Confirm Service Provider</Button>
                 </div>
               )}
+              {isCustomer && response.status_c === 'Vendor Accepted' && (
+                <div className="space-y-3 rounded-lg border border-success-border bg-success-muted p-4">
+                  <p className="text-sm text-success"><strong>Vendor Accepted.</strong> The Service Provider accepted ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Confirm the booking to create your job.</p>
+                  <Button onClick={confirmProvider} disabled={working}>{working ? 'Confirming…' : 'Confirm Booking & Create Job'}</Button>
+                </div>
+              )}
 
-              {isProvider && response.status_c === 'Price Accepted' && (
+              {isProvider && (response.status_c === 'Price Accepted' || response.status_c === 'Vendor Accepted') && (
                 <div className="space-y-3 rounded-lg border border-highlight/40 bg-muted/30 p-4">
                   <p className="text-sm">The customer has accepted ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Accept this booking to create the job and move it to Jobs.</p>
                   <Button onClick={confirmProvider} disabled={working}>{working ? 'Accepting…' : 'Accept Job & Confirm Booking'}</Button>
@@ -402,6 +415,11 @@ export default function ResponsesDetail() {
           {response.status_c === 'Price Accepted' && isCustomer && (
             <div className="mt-6 rounded-md border border-highlight/40 bg-muted/30 p-4 text-sm">
               <strong>Price Accepted</strong><p className="mt-1">Your accepted price has been sent to the Service Provider. The job will be created after the Service Provider accepts.</p>
+            </div>
+          )}
+          {response.status_c === 'Vendor Accepted' && isCustomer && (
+            <div className="mt-6 rounded-md border border-success-border bg-success-muted p-4 text-sm text-success">
+              <strong>Vendor Accepted</strong><p className="mt-1">The Service Provider accepted the negotiated price. Confirm the booking above to create the job and assign it to this provider.</p>
             </div>
           )}
           {response.status_c === 'Selected' && (

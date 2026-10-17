@@ -38,7 +38,7 @@ export function PageHeader({ eyebrow, title, description, action }) {
 
 export function StatusBadge({ value }) {
   const state = String(value ?? '—');
-  const positive = ['Completed', 'Settled', 'Confirmed', 'Selected', 'Active'];
+  const positive = ['Completed', 'Settled', 'Confirmed', 'Selected', 'Active', 'Vendor Accepted', 'Price Accepted'];
   const negative = ['Cancelled', 'Declined', 'Blocked', 'Suspended'];
   const attention = ['Negotiating', 'Quoted', 'Pending', 'In Progress', 'Payment Due'];
   const className = positive.includes(state)
