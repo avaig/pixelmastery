@@ -135,8 +135,8 @@ export async function getEligibleRequests(providerId) {
   const profileStatus = String(profile?.verification_status_c ?? (profile?.status_c === 'Active' ? 'Approved' : 'Draft')).trim().toLowerCase();
   if (!profile || profileStatus !== 'approved' || String(profile.status_c ?? '').trim().toLowerCase() !== 'active') return [];
   const providerAvailability = String(profile.availability_c ?? '').trim().toLowerCase();
-  // Availability is controlled from the provider dashboard. Only Available Now receives Book Now requests; Available Later may see scheduled requests; Unavailable Today receives no new requests.
-  if (!['available now', 'available later', 'today'].includes(providerAvailability)) return [];
+  // Availability is controlled from the persistent header dropdown. Available Now receives immediate and scheduled requests; Available Later receives scheduled requests only; Unavailable Today receives no new requests.
+  if (!['available now', 'available later', 'unavailable today'].includes(providerAvailability)) return [];
   // getProviderCapabilities already returns only persisted Active/Approved assignments.
   // Do not re-filter them using browser-local demo selections: those snapshots are not
   // shared with Admin and can incorrectly hide an approved capability in another browser.
