@@ -175,12 +175,22 @@ export default function ProviderOnboardingReview() {
         const serviceId = link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c;
         return String(providerId) === String(active.Id) && String(serviceId) === String(capabilityId);
       });
+      const profileApproved = active.verification_status_c === 'Approved' || active.status_c === 'Active';
+      const storedStatus = status === 'Approved' ? (profileApproved ? 'Active' : 'Approved') : 'Pending';
       if (links.length) {
-        const profileApproved = active.verification_status_c === 'Approved' || active.status_c === 'Active';
-        const updatedLinks = await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: status === 'Approved' ? (profileApproved ? 'Active' : 'Approved') : 'Pending' })));
+        const updatedLinks = await sdk.table('service_provider_capabilities_c').update(links.map((link) => ({ Id: link.Id, status_c: storedStatus })));
         if (!updatedLinks.data?.length) throw new Error(updatedLinks.messages?.[0] || 'Could not save capability review status.');
-        setServiceStatusOverrides((current) => ({ ...current, [String(active.Id)]: { ...(current[String(active.Id)] || {}), [String(capabilityId)]: status } }));
+      } else {
+        // A previous review could update only the demo browser snapshot when no DB link existed.
+        // Create the missing database assignment now so approval is available throughout LOCAL.
+        const created = await sdk.table('service_provider_capabilities_c').create({
+          technician_c: active.Id,
+          capability_c: capabilityId,
+          status_c: storedStatus,
+        });
+        if (!created.data?.length) throw new Error(created.messages?.[0] || 'Capability status was not saved because the provider-service assignment could not be created.');
       }
+      setServiceStatusOverrides((current) => ({ ...current, [String(active.Id)]: { ...(current[String(active.Id)] || {}), [String(capabilityId)]: status } }));
       await reloadAssignments();
       setNote(active.review_notes_c || '');
       toast.success((serviceNames[String(capabilityId)] || 'Service') + ' marked ' + status.toLowerCase() + '.');

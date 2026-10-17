@@ -367,11 +367,27 @@ function EntityForm({ entity, record, onSaved }) {
       return (res.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c_id ?? item.technician_c ?? '') === String(record.Id));
     })
     : Promise.resolve([]), [entity, record?.Id]);
+  const demoProviderApplication = useMemo(() => {
+    if (entity !== 'technicians' || !record?.Id) return null;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
+      if (!Array.isArray(saved)) return null;
+      const email = String(record.email_c ?? '').trim().toLowerCase();
+      const phone = String(record.phone_c ?? '').replace(/\\D/g, '');
+      const name = String(record.Name ?? '').trim().toLowerCase();
+      return saved.find((item) => String(item.Id ?? '') === String(record.Id))
+        || saved.find((item) => email && String(item.email_c ?? '').trim().toLowerCase() === email)
+        || saved.find((item) => phone && String(item.phone_c ?? '').replace(/\\D/g, '') === phone)
+        || saved.find((item) => name && String(item.Name ?? '').trim().toLowerCase() === name)
+        || null;
+    } catch { return null; }
+  }, [entity, record?.Id, record?.email_c, record?.phone_c, record?.Name]);
   useEffect(() => {
-    if (entity === 'technicians' && capabilityAssignments) {
-      setSelectedCapabilityIds(capabilityAssignments.map((item) => String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '')).filter(Boolean));
-    }
-  }, [entity, capabilityAssignments]);
+    if (entity !== 'technicians' || !capabilityAssignments) return;
+    const dbIds = capabilityAssignments.map((item) => String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '')).filter(Boolean);
+    const fallbackIds = Array.isArray(demoProviderApplication?._demoCapabilityIds) ? demoProviderApplication._demoCapabilityIds.map(String) : [];
+    setSelectedCapabilityIds(dbIds.length ? dbIds : fallbackIds);
+  }, [entity, capabilityAssignments, demoProviderApplication]);
 
   const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -431,7 +447,12 @@ function EntityForm({ entity, record, onSaved }) {
             const capabilityId = String(capability.Id);
             const assignment = (capabilityAssignments ?? []).find((item) => String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c ?? '') === capabilityId);
             const isSelected = selectedCapabilityIds.includes(capabilityId);
-            const status = assignment?.status_c === 'Active' ? 'Approved · Active' : assignment?.status_c === 'Approved' ? 'Approved · awaiting activation' : assignment ? 'Pending review' : 'Not assigned';
+            const savedReviewStatus = demoProviderApplication?._demoServiceStatuses?.[capabilityId];
+            const status = assignment?.status_c === 'Active' ? 'Approved · Active'
+              : assignment?.status_c === 'Approved' ? 'Approved · awaiting activation'
+              : assignment ? 'Pending review'
+              : isSelected && ['Approved', 'Active'].includes(String(savedReviewStatus)) ? (String(savedReviewStatus) === 'Active' ? 'Approved · Active' : 'Approved · awaiting activation')
+              : isSelected ? 'Selected · assignment missing' : 'Not assigned';
             return <label key={capabilityId} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent/50">
               <Checkbox checked={isSelected} onCheckedChange={(checked) => setSelectedCapabilityIds((current) => checked ? [...new Set([...current, capabilityId])] : current.filter((id) => id !== capabilityId))} />
               <span className="min-w-0 flex-1"><span className="block font-medium">{capability.Name}</span><span className="mt-1 block text-sm text-muted-foreground">{capability.vehicle_type_c || 'General'}{capability.description_c ? ' · ' + capability.description_c : ''}</span><Badge variant={assignment?.status_c === 'Active' ? 'default' : 'outline'} className="mt-2">{status}</Badge></span>
