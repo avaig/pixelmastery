@@ -48,7 +48,6 @@ const initialForm = {
   latitude_c: null,
   longitude_c: null,
   service_radius_km_c: 10,
-  availability_c: 'Available Now',
   primary_service_c: '',
   secondary_service_c: '',
   identity_document_type_c: 'Other accepted ID',
@@ -360,7 +359,6 @@ export default function ServiceProviderProfile() {
           'Capability-specific experience:',
           ...(capabilities ?? []).filter((item) => selectedCapabilities.includes(String(item.Id))).map((item) => `${item.Name}: ${(capabilityExperience[String(item.Id)] ?? '').trim()}`),
         ].filter(Boolean).join('\n'),
-        availability_c: form.availability_c,
         service_area_c: form.service_area_c.trim(),
         latitude_c: Number.isFinite(Number(form.latitude_c)) && form.latitude_c !== null && form.latitude_c !== '' ? Number(form.latitude_c) : null,
         longitude_c: Number.isFinite(Number(form.longitude_c)) && form.longitude_c !== null && form.longitude_c !== '' ? Number(form.longitude_c) : null,
@@ -455,9 +453,8 @@ export default function ServiceProviderProfile() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <PageHeader eyebrow="Service Provider onboarding" title="Join LOCAL as a service provider" description="Complete your profile once. Only documents relevant to your services are required before activation." />
+      <PageHeader eyebrow="Service Provider onboarding" title="Join LOCAL as a service provider" description="Complete your profile once. Manage your availability and moving location from the dashboard whenever you start or move during the day." />
       <StatusPanel status={form.verification_status_c} notes={form.review_notes_c} />
-      {alreadyApproved && <Card className="space-y-3 border-primary/30 p-5"><div><h2 className="font-heading text-lg font-semibold">Location for nearby matching</h2><p className="mt-1 text-sm text-muted-foreground">Keep your work/base location and service radius current so LOCAL can match you to nearby customers. Only capture your location when you are comfortable sharing it for matching.</p></div><Button type="button" variant="outline" onClick={captureProviderLocation}><ApperIcon name="MapPin" size={16} /> Capture current location</Button>{form.latitude_c != null && form.longitude_c != null && <p className="text-sm text-success">Coordinates: {Number(form.latitude_c).toFixed(5)}, {Number(form.longitude_c).toFixed(5)}</p>}<Field label="Service radius (km)" id="provider-radius-approved" hint="Maximum distance you normally accept jobs from your base."><Input id="provider-radius-approved" type="number" min="1" max="100" value={form.service_radius_km_c ?? 10} onChange={(event) => update('service_radius_km_c', event.target.value)} /></Field><Button type="button" onClick={saveProviderLocation} disabled={saving || form.latitude_c == null || form.longitude_c == null}>{saving ? 'Saving location…' : 'Save location settings'}</Button>{(form.latitude_c == null || form.longitude_c == null) && <p className="text-xs text-amber-700">No GPS coordinates saved yet. Distance-based matching cannot be accurate until a location is captured.</p>}</Card>}
       {alreadyApproved ? (
         <Card className="flex items-start gap-3 border-success/40 bg-success/5 p-5">
           <ApperIcon name="BadgeCheck" size={24} className="text-success" />

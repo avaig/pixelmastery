@@ -135,8 +135,8 @@ export async function getEligibleRequests(providerId) {
   const profileStatus = String(profile?.verification_status_c ?? (profile?.status_c === 'Active' ? 'Approved' : 'Draft')).trim().toLowerCase();
   if (!profile || profileStatus !== 'approved' || String(profile.status_c ?? '').trim().toLowerCase() !== 'active') return [];
   const providerAvailability = String(profile.availability_c ?? '').trim().toLowerCase();
-  // Never expose new requests to providers who are busy, offline, or have no declared availability.
-  if (!['available now', 'today'].includes(providerAvailability)) return [];
+  // Availability is controlled from the provider dashboard. Only Available Now receives Book Now requests; Available Later may see scheduled requests; Unavailable Today receives no new requests.
+  if (!['available now', 'available later', 'today'].includes(providerAvailability)) return [];
   // getProviderCapabilities already returns only persisted Active/Approved assignments.
   // Do not re-filter them using browser-local demo selections: those snapshots are not
   // shared with Admin and can incorrectly hide an approved capability in another browser.
@@ -197,8 +197,9 @@ export async function getEligibleRequests(providerId) {
   const providerArea = String(profile.service_area_c ?? '').trim().toLowerCase();
   const eligibleRequests = (requestsRes.data ?? []).filter((request) => {
     if (!activeRequestStatuses.has(String(request.status_c ?? '').trim().toLowerCase())) return false;
-    // Book Now requests require a provider marked Available Now. Scheduled requests can be shown to providers marked Available Now or Today, but still require provider acceptance.
+    // Current availability controls request visibility: Available Now can receive immediate and scheduled requests; Available Later sees scheduled requests only; Unavailable Today was filtered above.
     const requestedTime = String(request.preferred_time_c ?? '').trim().toLowerCase();
+    if (providerAvailability === 'available later' && requestedTime !== 'scheduled') return false;
     if (requestedTime !== 'scheduled' && providerAvailability !== 'available now') return false;
     const distanceKm = getDistanceKm(profile.latitude_c, profile.longitude_c, request.latitude_c, request.longitude_c);
     const serviceRadiusKm = Math.max(1, Math.min(100, Number(profile.service_radius_km_c) || 10));
