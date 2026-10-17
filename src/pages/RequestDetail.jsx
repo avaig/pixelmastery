@@ -295,7 +295,12 @@ export default function RequestDetail() {
       toast.success(job.status_c === 'Assigned' ? 'Service Provider confirmed. Job is now Assigned.' : 'This booking already exists; its statuses are synchronized.');
       navigate('/jobs/' + job.Id);
     } catch (err) {
-      toast.error(err.message ?? 'Could not confirm Service Provider.');
+      const message = String(err?.message ?? '');
+      if (/reference record does not exist|must be a record id|invalid.*technician_c/i.test(message)) {
+        toast.error('This offer is linked to a Service Provider profile that no longer exists in the database. No booking was created. Do not repeat onboarding: ask Vijay Kumar to open Service Requests and submit a fresh offer from his current account, then refresh this request and confirm the new offer.');
+      } else {
+        toast.error(message || 'Could not confirm Service Provider.');
+      }
     } finally {
       setWorking(false);
     }
