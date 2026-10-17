@@ -201,7 +201,7 @@ export default function ResponsesDetail() {
   async function confirmProvider() {
     setWorking(true);
     try {
-      if (isCustomer) {
+      if (isCustomer && response.status_c !== 'Vendor Accepted') {
         const price = Number(response.final_agreed_price_c ?? response.proposed_price_c);
         if (!Number.isFinite(price) || price <= 0) throw new Error('The offer does not contain a valid price.');
         const history = String(response.negotiation_history_c ?? '').trim();
@@ -365,13 +365,13 @@ export default function ResponsesDetail() {
                 </div>
               )}
 
-              {isProvider && (response.status_c === 'Price Accepted' || response.status_c === 'Vendor Accepted') && (
+              {isProvider && response.status_c === 'Price Accepted' && (
                 <div className="space-y-3 rounded-lg border border-highlight/40 bg-muted/30 p-4">
                   <p className="text-sm">The customer has accepted ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Accept this booking to create the job and move it to Jobs.</p>
                   <Button onClick={confirmProvider} disabled={working}>{working ? 'Accepting…' : 'Accept Job & Confirm Booking'}</Button>
                 </div>
               )}
-              {isProvider && response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed' && (
+              {isProvider && (response.status_c === 'Vendor Accepted' || (response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed')) && (
                 <div className="rounded-lg border border-success-border bg-success-muted p-4 text-sm text-success">You accepted the customer's price of ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Waiting for the customer to confirm the booking.</div>
               )}
               {isProvider && response.status_c === 'Pending' && response.negotiation_status_c !== 'Agreed' && (isCounterOffer || isCarWashOffer) && (
