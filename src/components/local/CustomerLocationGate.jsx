@@ -4,7 +4,9 @@ import ApperIcon from '@/components/ApperIcon';
 const SERVICE_CENTER = { latitude: 25.382, longitude: 81.875, label: 'Naini, Prayagraj' };
 const SERVICE_RADIUS_KM = 25;
 const LOCATION_KEY = 'local_service_location_c';
-const CHECK_KEY = 'local_location_check_complete';
+// Versioned so an old completion flag from earlier testing cannot silently bypass
+// the location gate for customers after this flow update.
+const CHECK_KEY = 'local_location_check_complete_v2';
 
 function distanceKm(a, b) {
   const toRadians = (value) => (value * Math.PI) / 180;
