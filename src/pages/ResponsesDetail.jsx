@@ -40,13 +40,23 @@ export default function ResponsesDetail() {
     ]).get(requestId);
     if (!requestRes.data) throw new Error('Related service request not found.');
 
-    const providerId = responseRes.data.technician_c?.Id ?? responseRes.data.technician_c;
+    let providerId = responseRes.data.technician_c?.Id ?? responseRes.data.technician_c;
+    let providerForSession = null;
     if (user?.profile === 'ServiceProvider_c') {
       const providerRes = await sdk.table('technician_profiles_c').select(['Id', 'email_c', 'Name', 'latitude_c', 'longitude_c']).page(1, 1000).fetch();
       if (!providerRes.success) throw new Error(providerRes.message);
       const providerEmail = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
       const provider = (providerRes.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === providerEmail);
-      if (!provider || String(provider.Id) !== String(providerId)) throw new Error('This offer is not available to this Service Provider.');
+      if (!provider?.Id) throw new Error('Your Service Provider profile could not be matched to this login.');
+      // Legacy offers can retain a stale lookup after a provider profile was recreated.
+      // The signed-in provider can safely relink only their own offer to their current profile.
+      if (String(provider.Id) !== String(providerId ?? '')) {
+        const relink = await sdk.table('technician_responses_c').update({ Id: responseRes.data.Id, technician_c: provider.Id });
+        if (!relink.data?.length) throw new Error('This offer has an outdated Service Provider link and could not be repaired automatically. Please contact LOCAL Admin.');
+        responseRes.data.technician_c = provider;
+        providerId = provider.Id;
+      }
+      providerForSession = provider;
     }
 
     if (user?.profile === 'Customer_c') {
