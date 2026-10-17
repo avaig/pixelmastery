@@ -194,18 +194,16 @@ export default function RequestDetail() {
     if (working || !request?.Id || !response?.Id) return;
     setWorking(true);
     try {
+      // technician_c is a Lookup to technician_profiles_c. Its Id is already the
+      // authoritative profile foreign key; do not re-query that owner-restricted
+      // table from the customer's session, because RLS correctly hides other
+      // providers' profiles from customers.
       const responseProviderId = response.technician_c?.Id ?? response.technician_c;
-      const responseProviderName = String(response.technician_c?.Name ?? '').trim();
-      const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
-      if (!providersRes.success) throw new Error(providersRes.message ?? 'Could not verify the selected Service Provider.');
-      const providers = providersRes.data ?? [];
-      let provider = providers.find((item) => String(item.Id) === String(responseProviderId));
-      if (!provider && responseProviderName) {
-        const nameMatches = providers.filter((item) => String(item.Name ?? '').trim().toLowerCase() === responseProviderName.toLowerCase());
-        if (nameMatches.length === 1) provider = nameMatches[0];
+      const providerName = String(response.technician_c?.Name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
+      if (!responseProviderId || typeof responseProviderId === 'object') {
+        throw new Error('This accepted offer is missing its Service Provider profile link. The offer needs an Admin-side data repair before confirmation; do not submit a duplicate offer.');
       }
-      if (!provider?.Id) throw new Error('The Service Provider profile linked to this offer could not be found. Please ask the provider to refresh their profile and submit a new offer.');
-      const providerId = provider.Id;
+      const providerId = responseProviderId;
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
 
@@ -228,7 +226,7 @@ export default function RequestDetail() {
           ? { ...calculatedBilling, servicePrice: finalPrice, bookingCommitment: 0, remainingServiceAmount: finalPrice, customerPayableNow: 0, localServiceFee: 0 }
           : calculatedBilling;
         const jobRes = await sdk.table('jobs_c').create({
-          Name: request.Name + ' • ' + provider.Name,
+          Name: request.Name + ' • ' + providerName,
           request_c: request.Id,
           response_c: response.Id,
           customer_c: request.customer_c?.Id ?? request.customer_c,
