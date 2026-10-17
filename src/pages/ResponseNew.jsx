@@ -32,7 +32,7 @@ export default function ResponseNew() {
   const providerEmail = String(user?.emailAddress ?? user?.email ?? user?.email_c ?? user?.username ?? '').trim().toLowerCase();
   const { data: technician, loading: technicianLoading, error: technicianError, run: reloadTechnician } = useFetch(() => {
     if (!providerEmail) return Promise.resolve(null);
-    const profileLookup = sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c', 'latitude_c', 'longitude_c']).page(1, 100).fetch().then((res) => {
+    const profileLookup = sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c', 'latitude_c', 'longitude_c']).page(1, 1000).fetch().then((res) => {
       if (!res?.success) throw new Error(res?.messages?.[0] || res?.message || 'Could not load Service Provider profile.');
       return (res.data ?? []).find((profile) => String(profile.email_c ?? '').trim().toLowerCase() === providerEmail) ?? null;
     });
@@ -70,11 +70,6 @@ export default function ResponseNew() {
 
   async function submit(event) {
     event.preventDefault();
-    if (isEmergencyRequest) {
-      toast.error('This is an urgent request. Return to the request details and use the direct-accept action; do not send a quote.');
-      navigate('/requests/' + encodeURIComponent(request.Id));
-      return;
-    }
     if (request?.preferred_time_c === 'Scheduled' && form.availability_c !== 'Available at requested time') {
       toast.error('You must confirm availability at the requested time before sending an offer.');
       return;
