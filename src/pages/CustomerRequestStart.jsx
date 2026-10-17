@@ -397,23 +397,37 @@ export default function CustomerRequestStart() {
     }
     setLocationLoading(true);
     try {
-      const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=' + encodeURIComponent(query));
-      if (!response.ok) throw new Error('Address lookup unavailable');
-      const results = await response.json();
+      // Prefer the LOCAL launch city for ambiguous locality names (e.g. "Civil Lines"),
+      // but still accept a fully specified address in another city so coverage can be checked.
+      const hasExplicitCity = /prayagraj|allahabad|delhi|kanpur|lucknow|varanasi|noida|ghaziabad|mumbai|kolkata|chennai|bengaluru|hyderabad|pune|jaipur|agra/i.test(query);
+      const searchQueries = hasExplicitCity ? [query] : [query + ', Prayagraj, Uttar Pradesh, India', query + ', India'];
+      let results = [];
+      for (const searchQuery of searchQueries) {
+        const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=in&q=' + encodeURIComponent(searchQuery));
+        if (!response.ok) throw new Error('Address lookup unavailable');
+        const candidates = await response.json();
+        if (candidates.length) {
+          results = candidates;
+          break;
+        }
+      }
       if (!results.length) {
-        toast.error('We could not find that address. Try a nearby landmark or include the city.');
+        toast.error('We could not find that address. Try adding the locality, city and state.');
         return;
       }
-      const result = results[0];
+      const distanceFromLaunch = (candidate) => {
+        const lat = Number(candidate.lat);
+        const lon = Number(candidate.lon);
+        const toRad = (value) => value * Math.PI / 180;
+        const dLat = toRad(lat - 25.382);
+        const dLon = toRad(lon - 81.875);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(25.382)) * Math.cos(toRad(lat)) * Math.sin(dLon / 2) ** 2;
+        return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      };
+      const result = [...results].sort((a, b) => distanceFromLaunch(a) - distanceFromLaunch(b))[0];
       const latitude = Number(result.lat);
       const longitude = Number(result.lon);
-      const toRadians = (value) => value * Math.PI / 180;
-      const dLat = toRadians(latitude - 25.382);
-      const dLon = toRadians(longitude - 81.875);
-      const lat1 = toRadians(25.382);
-      const lat2 = toRadians(latitude);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-      const distance = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = distanceFromLaunch(result);
       const confirmed = {
         text: result.display_name.split(',').slice(0, 4).join(', '),
         latitude,
@@ -739,18 +753,18 @@ export default function CustomerRequestStart() {
               <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setLocation(null)}>Change service location</Button>
             </div>
           )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Button type="button" onClick={useCurrentLocation} disabled={locationLoading}>
+          <div className="mt-4 grid grid-cols-1 gap-3">
+            <Button type="button" className="w-full whitespace-normal" onClick={useCurrentLocation} disabled={locationLoading}>
               <ApperIcon name="LocateFixed" size={17} />
               {locationLoading ? 'Checking location…' : 'Use current location'}
             </Button>
-            <Button type="button" variant="outline" onClick={useDemoLocation}>
+            <Button type="button" className="w-full whitespace-normal" variant="outline" onClick={useDemoLocation}>
               <ApperIcon name="MapPin" size={17} /> Use previously confirmed location
             </Button>
           </div>
           <form onSubmit={useManualServiceAddress} className="mt-4 space-y-2">
             <label htmlFor="booking-service-address" className="text-sm font-medium">Or enter another address</label>
-            <Input id="booking-service-address" value={manualServiceAddress} onChange={(event) => setManualServiceAddress(event.target.value)} placeholder="Street, landmark, locality, city" autoComplete="street-address" />
+            <Input id="booking-service-address" value={manualServiceAddress} onChange={(event) => setManualServiceAddress(event.target.value)} placeholder="e.g. Civil Lines, Prayagraj, Uttar Pradesh" autoComplete="street-address" />
             <Button type="submit" variant="outline" className="w-full" disabled={locationLoading || manualServiceAddress.trim().length < 3}>
               <ApperIcon name="Search" size={16} /> Confirm address for this booking
             </Button>
