@@ -607,6 +607,16 @@ export default function ServiceProviderProfile() {
                     </div>
                   ))}
                 </div>
+                <div className="rounded-lg border border-border p-4">
+                  <h3 className="font-semibold">Uploaded documents</h3>
+                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {[
+                      ['Identity proof', 'identity'], ['PAN card', 'pan'], ['Bank-account proof', 'bank'],
+                      ['Driving licence', 'licence'], ['Vehicle documents', 'vehicle'], ['Business proof', 'business'], ['Service certificates', 'certificates'],
+                    ].filter(([, key]) => (documents[key] ?? []).length > 0).map(([label, key]) => <li key={key}>{label}: {(documents[key] ?? []).map((file) => file.Name ?? file.name).join(', ')}</li>)}
+                    {!Object.values(documents).some((files) => (files ?? []).length > 0) && <li>No documents uploaded yet.</li>}
+                  </ul>
+                </div>
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                   <div className="flex items-start gap-3">
                     <ApperIcon name="ShieldCheck" size={21} className="mt-0.5 shrink-0 text-primary" />
