@@ -125,17 +125,22 @@ export async function getEligibleRequests(providerId) {
   const profileRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c', 'verification_status_c', 'status_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c']).page(1, 1000).fetch();
   if (!profileRes.success) throw new Error(profileRes.message);
   const baseProfile = (profileRes.data ?? []).find((item) => String(item.Id) === String(providerId));
+  // Shared database state must be authoritative across browser sessions. Admin and
+  // Provider may be using different browser profiles, so localStorage can contain a stale
+  // Draft application or outdated capability selections. Use local demo data only to fill
+  // fields missing from the database; never let it override persisted approval.
   const saved = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
   const demoApplication = Array.isArray(saved) ? saved.find((item) => String(item.Id) === String(providerId)) : null;
-  const profile = baseProfile && demoApplication ? { ...baseProfile, ...demoApplication } : baseProfile;
-  const profileStatus = demoApplication?.verification_status_c ?? profile?.verification_status_c ?? (profile?.status_c === 'Active' ? 'Approved' : 'Draft');
-  if (!profile || profileStatus !== 'Approved' || profile.status_c !== 'Active') return [];
+  const profile = baseProfile && demoApplication ? { ...demoApplication, ...baseProfile } : (baseProfile || demoApplication);
+  const profileStatus = String(profile?.verification_status_c ?? (profile?.status_c === 'Active' ? 'Approved' : 'Draft')).trim().toLowerCase();
+  if (!profile || profileStatus !== 'approved' || String(profile.status_c ?? '').trim().toLowerCase() !== 'active') return [];
   const providerAvailability = String(profile.availability_c ?? '').trim().toLowerCase();
   // Never expose new requests to providers who are busy, offline, or have no declared availability.
   if (!['available now', 'today'].includes(providerAvailability)) return [];
-  const capabilities = await getProviderCapabilities(providerId);
-  const approvedIds = new Set((demoApplication?._demoCapabilityIds ?? []).filter((id) => demoApplication?._demoServiceStatuses?.[String(id)] === 'Approved').map(String));
-  const eligibleCapabilities = demoApplication ? capabilities.filter((item) => approvedIds.has(String(item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c))) : capabilities;
+  // getProviderCapabilities already returns only persisted Active/Approved assignments.
+  // Do not re-filter them using browser-local demo selections: those snapshots are not
+  // shared with Admin and can incorrectly hide an approved capability in another browser.
+  const eligibleCapabilities = await getProviderCapabilities(providerId);
   const capabilityIds = eligibleCapabilities
     .map((item) => item.capability_c?.Id ?? item.capability_c_id ?? item.capability_c)
     .filter((value) => value !== null && value !== undefined)
