@@ -503,16 +503,7 @@ export default function ServiceProviderProfile() {
                   <Field label="Preferred language" id="provider-language"><Select value={form.preferred_language_c} onValueChange={(value) => update('preferred_language_c', value)}><SelectTrigger id="provider-language"><SelectValue /></SelectTrigger><SelectContent>{['Hindi', 'English', 'Urdu', 'Other'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
                   <Field label="Current address" id="provider-address" required><Textarea id="provider-address" value={form.current_address_c} onChange={(event) => update('current_address_c', event.target.value)} required placeholder="House / shop, locality, city" /></Field>
                   <Field label="Service area" id="provider-area" required hint="List localities you can realistically reach."><Input id="provider-area" value={form.service_area_c} onChange={(event) => update('service_area_c', event.target.value)} required placeholder="Naini, Civil Lines, Allahpur…" /></Field>
-                  <div className="space-y-2 rounded-lg border border-border p-3 md:col-span-2">
-                    <div className="font-medium">Provider location for nearby matching</div>
-                    <p className="text-sm text-muted-foreground">Capture your current work/base location so LOCAL can calculate distance to customer pickup points. Browser permission is required. This demo stores the coordinates with your profile.</p>
-                    <Button type="button" variant="outline" onClick={captureProviderLocation}><ApperIcon name="MapPin" size={16} /> Use current provider location</Button>
-                    {form.latitude_c != null && form.longitude_c != null && <p className="text-xs text-success">Location saved in form: {Number(form.latitude_c).toFixed(5)}, {Number(form.longitude_c).toFixed(5)}</p>}
-                    <Field label="Service radius (km)" id="provider-radius" hint="Maximum distance you normally accept jobs from your base. Use 10 km as a demo default and adjust to your real coverage."><Input id="provider-radius" type="number" min="1" max="100" value={form.service_radius_km_c ?? 10} onChange={(event) => update('service_radius_km_c', event.target.value)} /></Field>
-                    {(form.latitude_c == null || form.longitude_c == null) && <p className="text-xs text-amber-700">Coordinates not captured yet. Address and service area alone cannot provide accurate distance or ETA.</p>}
-                  </div>
                   <Field label="Emergency contact" id="provider-emergency"><Input id="provider-emergency" type="tel" value={form.emergency_contact_c} onChange={(event) => update('emergency_contact_c', event.target.value)} placeholder="Name and contact number" /></Field>
-                  <Field label="Availability" id="provider-availability"><Select value={form.availability_c} onValueChange={(value) => update('availability_c', value)}><SelectTrigger id="provider-availability"><SelectValue /></SelectTrigger><SelectContent>{['Available Now', 'Today', 'Busy', 'Offline'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
                 </div>
               </section>
             )}
@@ -562,7 +553,6 @@ export default function ServiceProviderProfile() {
                     ['Provider type', form.provider_type_c],
                     ['Mobile', form.phone_c],
                     ['Service area', form.service_area_c],
-                    ['Working radius', `${form.service_radius_km_c || 10} km`],
                     ['Pricing method', form.pricing_method_c],
                     ['Selected services', `${selectedCapabilities.length} service(s)`],
                   ].map(([label, value]) => (
