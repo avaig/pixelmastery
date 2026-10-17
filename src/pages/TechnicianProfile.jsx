@@ -329,20 +329,11 @@ export default function ServiceProviderProfile() {
       toast.error('Select at least one service capability.');
       return false;
     }
-    if (currentStep === 1) {
-      const missingExperience = selectedCapabilities.some((id) => (capabilityExperience[id] ?? '').trim().length < 5);
-      if (missingExperience) {
-        toast.error('Add your relevant experience for every selected capability (at least a short description).');
-        return false;
-      }
-    }
+    // Experience helps Admin review capability, but should not block workers who are
+    // more comfortable demonstrating practical skills than writing descriptions.
     if (currentStep === 2) {
       if (!(documents.identity ?? []).length) {
         toast.error('Upload one identity proof before continuing.');
-        return false;
-      }
-      if (!(documents.bank ?? []).length) {
-        toast.error('Upload bank-account proof for payout verification before continuing.');
         return false;
       }
       if (requiresDrivingDocs && (!(documents.licence ?? []).length || !(documents.vehicle ?? []).length)) {
@@ -545,7 +536,6 @@ export default function ServiceProviderProfile() {
                 <Field label="Provider type" id="provider-type" required><Select value={form.provider_type_c} onValueChange={(value) => update('provider_type_c', value)}><SelectTrigger id="provider-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Individual">Individual</SelectItem><SelectItem value="Business">Business / workshop</SelectItem></SelectContent></Select></Field>
                 {isBusiness && <div className="grid gap-5 md:grid-cols-2"><Field label="Business / shop name" id="business-name" required><Input id="business-name" value={form.business_name_c} onChange={(event) => update('business_name_c', event.target.value)} required placeholder="Registered or trading name" /></Field><Field label="Business address" id="business-address"><Input id="business-address" value={form.business_address_c} onChange={(event) => update('business_address_c', event.target.value)} placeholder="Shop address" /></Field></div>}
                 <Field label="Experience and qualifications" id="provider-experience" hint="Mention years of experience, relevant certificates or specialties."><Textarea id="provider-experience" value={form.experience_c} onChange={(event) => update('experience_c', event.target.value)} placeholder="e.g. 6 years of car electrical and battery work" /></Field>
-                <Field label="How will you price jobs?" id="provider-pricing"><Select value={form.pricing_method_c} onValueChange={(value) => update('pricing_method_c', value)}><SelectTrigger id="provider-pricing"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Fixed rate">Fixed rate for defined services</SelectItem><SelectItem value="Provider quote">Quote after reviewing the job</SelectItem><SelectItem value="Distance/time">Distance- or time-based rate</SelectItem></SelectContent></Select></Field>
                 <div className="space-y-3 rounded-lg border border-border p-4">
                   <div>
                     <h3 className="font-semibold">Services you can provide</h3>
@@ -598,7 +588,6 @@ export default function ServiceProviderProfile() {
                     ['Provider type', form.provider_type_c],
                     ['Mobile', form.phone_c],
                     ['Service area', form.service_area_c],
-                    ['Pricing method', form.pricing_method_c],
                     ['Selected services', `${selectedCapabilities.length} service(s)`],
                   ].map(([label, value]) => (
                     <div key={label} className="rounded-lg border border-border p-3">
