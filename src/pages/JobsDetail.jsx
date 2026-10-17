@@ -62,6 +62,10 @@ export default function JobsDetail() {
   let savedInspection = null;
   try { savedInspection = job?.vehicle_condition_report_c ? JSON.parse(job.vehicle_condition_report_c) : null; } catch { savedInspection = null; }
   const inspectionStatus = job?.vehicle_condition_status_c ?? 'Not Started';
+  const requiredVehicleViews = ['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space'];
+  const savedVehiclePhotos = Array.isArray(savedInspection?.photos) ? savedInspection.photos : [];
+  const hasSixBeforePhotos = requiredVehicleViews.every((view) => savedVehiclePhotos.some((photo) => photo.view === 'pre-' + view && photo.data));
+  const hasSixAfterPhotos = requiredVehicleViews.every((view) => savedVehiclePhotos.some((photo) => photo.view === 'post-' + view && photo.data));
   useEffect(() => {
     if (savedInspection) setInspectionDraft({ registration: savedInspection.registration ?? '', notes: savedInspection.notes ?? '', photos: Array.isArray(savedInspection.photos) ? savedInspection.photos : [] });
   }, [job?.Id, job?.vehicle_condition_report_c]);
@@ -166,6 +170,10 @@ export default function JobsDetail() {
   }
 
   async function confirmCustomerCompletion() {
+    if (isCarWash && (!hasSixBeforePhotos || !hasSixAfterPhotos)) {
+      toast.error('Completion confirmation is locked until all six before-service and all six after-service vehicle photos are saved to this job.');
+      return;
+    }
     if (job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review') {
       toast.error('This job has an open dispute. Admin review is required before completion.');
       return;
@@ -450,6 +458,20 @@ export default function JobsDetail() {
 
         {isCarWash && isCustomer && (
           <div className="mt-7 space-y-5 border-t border-border pt-5">
+            <section className="space-y-4 rounded-lg border border-border p-4">
+              <div><h2 className="font-heading text-xl font-semibold">Vehicle photo evidence</h2><p className="mt-1 text-sm text-muted-foreground">Review the six photos taken before the wash and the six photos taken after it. These records help both sides resolve condition or damage disputes. Completion confirmation and post-service payment remain locked if either set is incomplete.</p></div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {[{ title: 'Before service', prefix: 'pre-', complete: hasSixBeforePhotos }, { title: 'After service', prefix: 'post-', complete: hasSixAfterPhotos }].map((group) => (
+                  <div key={group.prefix} className="rounded-lg border border-border p-3">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{group.title}</h3><StatusBadge value={group.complete ? '6 of 6 photos saved' : `${savedVehiclePhotos.filter((photo) => photo.view?.startsWith(group.prefix) && photo.data).length} of 6 photos`} /></div>
+                    <div className="grid grid-cols-2 gap-2">{requiredVehicleViews.map((view) => { const photo = savedVehiclePhotos.find((item) => item.view === group.prefix + view && item.data); return <div key={view} className="rounded-md border border-border p-2"><div className="mb-1 text-xs font-medium">{view}</div>{photo ? <a href={photo.data} target="_blank" rel="noreferrer" aria-label={`Open ${view} ${group.title.toLowerCase()} photo`}><img src={photo.data} alt={`${view} ${group.title.toLowerCase()}`} className="h-24 w-full rounded object-cover" /></a> : <div className="flex h-24 items-center justify-center rounded bg-muted/50 text-center text-xs text-muted-foreground">Not uploaded</div>}</div>; })}</div>
+                    {group.prefix === 'pre-' && savedInspection?.inspectedAt && <p className="mt-2 text-xs text-muted-foreground">Captured: {formatTimestamp(savedInspection.inspectedAt)}</p>}
+                    {group.prefix === 'post-' && savedInspection?.postServicePhotosAt && <p className="mt-2 text-xs text-muted-foreground">Captured: {formatTimestamp(savedInspection.postServicePhotosAt)}</p>}
+                  </div>
+                ))}
+              </div>
+              {(!hasSixBeforePhotos || !hasSixAfterPhotos) && <p className="text-sm font-medium text-highlight">Evidence incomplete. The Service Provider must save all six photos before and after service before you can confirm completion.</p>}
+            </section>
             <section>
               {job.status_c === 'Assigned' && !isPaid && <section className="rounded-lg border border-highlight/30 bg-highlight/5 p-4"><h2 className="font-heading text-lg font-semibold">Choose when to pay</h2><p className="mt-1 text-sm text-muted-foreground">No booking fee or partial payment. Choose to pay the full agreed amount now, or pay the full amount after the car is returned and you confirm completion.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><Button type="button" variant={(paymentTimingDraft === 'confirmation' || job.payment_timing_c === 'Pay at confirmation') ? 'default' : 'outline'} className="h-auto min-h-16 whitespace-normal py-3" onClick={() => savePaymentTiming('confirmation')} disabled={working}><ApperIcon name="CreditCard" size={17} /> Pay full amount before service starts</Button><Button type="button" variant={(paymentTimingDraft === 'after_completion' || !job.payment_timing_c || job.payment_timing_c === 'Pay after completion') ? 'default' : 'outline'} className="h-auto min-h-16 whitespace-normal py-3" onClick={() => savePaymentTiming('after_completion')} disabled={working}><ApperIcon name="Clock" size={17} /> Pay after service completion</Button></div>{(paymentTimingDraft === 'confirmation' || job.payment_timing_c === 'Pay at confirmation') && <div className="mt-4 rounded-lg border bg-background p-4"><p className="font-semibold">Full amount due now: {displayMoney(job.agreed_price_c)}</p><p className="mt-1 text-sm text-muted-foreground">Demo payment only. No real money will be collected.</p><Button className="mt-3 w-full sm:w-auto" onClick={() => setShowDemoQr(true)} disabled={working}><ApperIcon name="QrCode" size={16} /> Pay Now — {displayMoney(job.agreed_price_c)}</Button>{showDemoQr && <div className="mt-4 rounded-lg border p-4"><div className="flex items-center gap-2 font-semibold"><ApperIcon name="QrCode" size={18} /> LOCAL Demo Payment</div><p className="mt-1 text-sm text-muted-foreground">Test-only QR placeholder. It is not scannable and is not connected to Razorpay or any bank.</p><div className="mx-auto my-4 flex size-44 items-center justify-center rounded-md border-2 border-dashed bg-muted p-4 text-center"><div><ApperIcon name="QrCode" size={64} /><p className="mt-2 text-xs font-semibold">DEMO QR</p><p className="text-[10px] text-muted-foreground">Not scannable</p></div></div><div className="flex flex-col gap-2 sm:flex-row"><Button onClick={simulatePayment} disabled={working}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Recording demo…' : 'Simulate successful payment'}</Button><Button type="button" variant="outline" onClick={() => setShowDemoQr(false)} disabled={working}>Cancel</Button></div></div>}</div>}</section>}
               <h2 className="font-heading text-xl font-semibold">Your review and confirmation</h2>
