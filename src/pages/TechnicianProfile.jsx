@@ -59,7 +59,6 @@ const initialForm = {
   business_document_status_c: 'Not applicable',
   background_check_status_c: 'Not started',
   training_status_c: 'Not started',
-  pricing_method_c: 'Provider quote',
   terms_accepted_c: false,
   verification_status_c: 'Draft',
   review_notes_c: '',
@@ -109,7 +108,7 @@ export default function ServiceProviderProfile() {
   const cameraStreamRef = useRef(null);
   const { data: technician, loading, run: reloadTechnician } = useFetch(
     () => sdk.table('technician_profiles_c')
-      .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'provider_documents_c', 'status_c'])
+      .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'provider_documents_c', 'status_c'])
       .where(eq('email_c', user?.emailAddress ?? user?.email ?? ''))
       .page(1, 1)
       .fetch()
@@ -388,7 +387,6 @@ export default function ServiceProviderProfile() {
         identity_document_type_c: form.identity_document_type_c,
         // Verification/status fields are Admin-controlled and intentionally omitted from provider writes.
         // Document filenames and storage references are saved in provider_documents_c for Admin review.
-        pricing_method_c: form.pricing_method_c,
         terms_accepted_c: Boolean(form.terms_accepted_c),
         profile_photo_c: JSON.stringify(profilePhotoFiles.map((file) => ({
           Id: file.Id,

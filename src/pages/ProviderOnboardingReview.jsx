@@ -26,7 +26,7 @@ export const nav = {
   section: 'Admin',
 };
 
-const fields = ['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'service_area_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'status_c'];
+const fields = ['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'service_area_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'status_c'];
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -344,7 +344,6 @@ export default function ProviderOnboardingReview() {
                     {active.provider_type_c === 'Business' && <div className="rounded-md border border-border p-3"><ReviewField label="Business authorization" value={active.business_document_status_c} /><div className="mt-2 flex items-center justify-between gap-2"><StatusTag value={active.business_document_status_c} /><Button size="sm" variant="outline" disabled={saving} onClick={() => markVerified('business_document_status_c')}>Mark verified</Button></div></div>}
                     <ReviewField label="Background check" value={active.background_check_status_c} />
                     <ReviewField label="Safety / service training" value={active.training_status_c} />
-                    <ReviewField label="Pricing method" value={active.pricing_method_c} />
                     <ReviewField label="Terms accepted" value={active.terms_accepted_c} />
                   </div>
                 </section>
