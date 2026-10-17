@@ -100,7 +100,7 @@ export default function ServiceProviderProfile() {
   const [selectedCapabilities, setSelectedCapabilities] = useState([]);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [documents, setDocuments] = useState({});
+  const [documents, setDocuments] = useState({ identity: [], pan: [], bank: [], licence: [], vehicle: [], business: [], certificates: [] });
   const [profilePhotoFiles, setProfilePhotoFiles] = useState([]);
   const [capabilityExperience, setCapabilityExperience] = useState({});
   const [cameraActive, setCameraActive] = useState(false);
@@ -173,7 +173,9 @@ export default function ServiceProviderProfile() {
     if (application?._demoCapabilityIds) setSelectedCapabilities(application._demoCapabilityIds.map(String));
   }, [capabilityLinks, user?.emailAddress, user?.email]);
 
-  const requiresVehicle = useMemo(() => (capabilities ?? []).some((item) => selectedCapabilities.includes(String(item.Id)) && /driver|towing|fuel|roadside|jump|tyre|tyre|bike|car assistance/i.test(item.Name ?? '')), [capabilities, selectedCapabilities]);
+  const selectedCapabilityNames = useMemo(() => (capabilities ?? []).filter((item) => selectedCapabilities.includes(String(item.Id))).map((item) => String(item.Name ?? '')), [capabilities, selectedCapabilities]);
+  const requiresVehicle = useMemo(() => selectedCapabilityNames.some((name) => /driver|towing|fuel|roadside|jump|tyre|bike|car assistance|ambulance/i.test(name)), [selectedCapabilityNames]);
+  const requiresDrivingDocs = useMemo(() => selectedCapabilityNames.some((name) => /professional driver|driver on demand|towing|ambulance|vehicle recovery/i.test(name)), [selectedCapabilityNames]);
   const isBusiness = form.provider_type_c === 'Business';
   const alreadyApproved = form.verification_status_c === 'Approved' || technician?.status_c === 'Active';
 
@@ -298,9 +300,16 @@ export default function ServiceProviderProfile() {
     }
   }
 
-  function chooseDocument(key, file) {
-    setDocuments((current) => ({ ...current, [key]: file ? file.name : '' }));
-    if (file) toast.info('File selected for this demo. Files are not uploaded while LOCAL uses demo data.');
+  function updateDocumentFiles(key, files) {
+    setDocuments((current) => ({ ...current, [key]: Array.isArray(files) ? files : [] }));
+  }
+
+  function documentPicker(label, key, hint, required = false, multiple = false) {
+    return <div className="space-y-2 rounded-lg border border-border p-3" key={key}>
+      <div className="flex flex-wrap items-center gap-2"><Label>{label}{required ? ' *' : ' (if applicable)'}</Label>{required && <span className="text-xs text-destructive">Required for review</span>}</div>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+      <FilePicker value={documents[key] ?? []} onChange={(files) => updateDocumentFiles(key, files)} maxFiles={multiple ? 5 : 1} fieldConfig={{ supportedExtensions: 'pdf,jpg,jpeg,png', supportMultipleValues: multiple, maxValue: 10240 }} />
+    </div>;
   }
 
   function validateStep(currentStep) {
@@ -327,7 +336,21 @@ export default function ServiceProviderProfile() {
         return false;
       }
     }
-    if (currentStep === 2 && !form.terms_accepted_c) {
+    if (currentStep === 2) {
+      if (!(documents.identity ?? []).length) {
+        toast.error('Upload one identity proof before continuing.');
+        return false;
+      }
+      if (!(documents.bank ?? []).length) {
+        toast.error('Upload bank-account proof for payout verification before continuing.');
+        return false;
+      }
+      if (requiresDrivingDocs && (!(documents.licence ?? []).length || !(documents.vehicle ?? []).length)) {
+        toast.error('The selected service requires a driving licence and relevant vehicle documents.');
+        return false;
+      }
+    }
+    if (currentStep === 3 && !form.terms_accepted_c) {
       toast.error('Please accept the LOCAL terms and privacy notice to submit.');
       return false;
     }
@@ -337,7 +360,7 @@ export default function ServiceProviderProfile() {
   async function save(event) {
     event.preventDefault();
     if (!validateStep(step)) return;
-    if (step < 2) {
+    if (step < 3) {
       setStep((current) => current + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -364,6 +387,12 @@ export default function ServiceProviderProfile() {
         longitude_c: Number.isFinite(Number(form.longitude_c)) && form.longitude_c !== null && form.longitude_c !== '' ? Number(form.longitude_c) : null,
         service_radius_km_c: Math.max(1, Math.min(100, Number(form.service_radius_km_c) || 10)),
         identity_document_type_c: form.identity_document_type_c,
+        identity_document_status_c: (documents.identity ?? []).length ? 'Submitted' : 'Not submitted',
+        pan_status_c: (documents.pan ?? []).length ? 'Submitted' : 'Not submitted',
+        bank_status_c: (documents.bank ?? []).length ? 'Submitted' : 'Not submitted',
+        driving_licence_status_c: requiresDrivingDocs ? ((documents.licence ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
+        vehicle_documents_status_c: requiresDrivingDocs ? ((documents.vehicle ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
+        business_document_status_c: isBusiness ? ((documents.business ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
         pricing_method_c: form.pricing_method_c,
         terms_accepted_c: Boolean(form.terms_accepted_c),
         profile_photo_c: JSON.stringify(profilePhotoFiles.map((file) => ({
@@ -374,6 +403,8 @@ export default function ServiceProviderProfile() {
           url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
           previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
         }))),
+        // Uploaded file metadata is also kept in the browser-local demo application below.
+        // The uploaded files themselves are sent through FilePicker to LOCAL storage.
       };
       // A browser-local demo application is not proof that a database row exists.
       // Updating its stale Id produces "record not found"; create the database row instead.
@@ -414,12 +445,13 @@ export default function ServiceProviderProfile() {
         ...payload,
         Id: providerId,
         email_c: form.email_c.trim(),
-        identity_document_status_c: form.identity_document_status_c,
-        pan_status_c: form.pan_status_c,
-        bank_status_c: form.bank_status_c,
-        driving_licence_status_c: requiresVehicle ? form.driving_licence_status_c : 'Not applicable',
-        vehicle_documents_status_c: requiresVehicle ? form.vehicle_documents_status_c : 'Not applicable',
-        business_document_status_c: isBusiness ? form.business_document_status_c : 'Not applicable',
+        identity_document_status_c: (documents.identity ?? []).length ? 'Submitted' : 'Not submitted',
+        pan_status_c: (documents.pan ?? []).length ? 'Submitted' : 'Not submitted',
+        bank_status_c: (documents.bank ?? []).length ? 'Submitted' : 'Not submitted',
+        driving_licence_status_c: requiresDrivingDocs ? 'Submitted' : 'Not applicable',
+        vehicle_documents_status_c: requiresDrivingDocs ? 'Submitted' : 'Not applicable',
+        business_document_status_c: isBusiness ? ((documents.business ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
+        provider_documents_c: JSON.stringify(Object.fromEntries(Object.entries(documents).map(([key, files]) => [key, (files ?? []).map((file) => ({ Id: file.Id, Name: file.Name ?? file.name, Type: file.Type ?? file.type, Size: file.Size ?? file.size, url: file.url ?? file.Url ?? null }))]))),
         background_check_status_c: form.background_check_status_c,
         training_status_c: form.training_status_c,
         verification_status_c: 'Submitted',
@@ -449,7 +481,7 @@ export default function ServiceProviderProfile() {
     }
   }
 
-  const stepLabels = ['Basic profile', 'Services & experience', 'Review & submit'];
+  const stepLabels = ['Basic profile', 'Services & experience', 'Documents & payouts', 'Review & submit'];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -543,9 +575,22 @@ export default function ServiceProviderProfile() {
             )}
             {step === 2 && (
               <section className="space-y-5">
+                <div><h2 className="font-heading text-xl font-semibold">Documents & payout verification</h2><p className="mt-1 text-sm text-muted-foreground">Upload clear, readable files. Requirements depend on your selected services and provider type. Documents are submitted for Admin review; they do not automatically approve a provider.</p></div>
+                <Field label="Identity document type" id="identity-document-type" required><Select value={form.identity_document_type_c} onValueChange={(value) => update('identity_document_type_c', value)}><SelectTrigger id="identity-document-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Aadhaar">Aadhaar</SelectItem><SelectItem value="Voter ID">Voter ID</SelectItem><SelectItem value="Passport">Passport</SelectItem><SelectItem value="Driving Licence">Driving Licence</SelectItem><SelectItem value="Other accepted ID">Other accepted ID</SelectItem></SelectContent></Select></Field>
+                {documentPicker('Identity proof', 'identity', 'Upload an accepted identity document. Use only the information needed for verification.', true)}
+                {documentPicker('PAN card', 'pan', 'Upload if you have a PAN or if LOCAL requests it for your provider/business or tax setup.')}
+                {documentPicker('Bank-account proof for payouts', 'bank', 'Upload a cancelled cheque, bank passbook first page, or bank statement showing account holder and account details. You may mask unrelated transactions.', true)}
+                {requiresDrivingDocs && <>{documentPicker('Driving licence', 'licence', 'Required for selected driving, towing, or ambulance-related capabilities.', true)}{documentPicker('Vehicle documents', 'vehicle', 'Upload applicable RC, insurance, permit, or fitness documents for the vehicle used to deliver this service.', true, true)}</>}
+                {isBusiness && documentPicker('Business proof', 'business', 'Upload business registration, shop licence, or other applicable proof for a business/workshop.')}
+                {documentPicker('Service certificates or qualifications', 'certificates', 'Upload relevant certificates, training proof, or licences where your selected service requires them.', false, true)}
+                <p className="text-xs text-muted-foreground">Accepted formats: PDF, JPG, JPEG and PNG. Keep files clear and readable. PAN is not universally mandatory; driving and vehicle documents appear only for relevant services.</p>
+              </section>
+            )}
+            {step === 3 && (
+              <section className="space-y-5">
                 <div>
                   <h2 className="font-heading text-xl font-semibold">Review and submit</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Check your details and selected services before sending your application to LOCAL Admin.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Check your details, selected services, and uploaded documents before sending your application to LOCAL Admin.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
@@ -567,7 +612,7 @@ export default function ServiceProviderProfile() {
                     <ApperIcon name="ShieldCheck" size={21} className="mt-0.5 shrink-0 text-primary" />
                     <div>
                       <h3 className="font-semibold">Verification is handled by LOCAL</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">You do not need to upload identity or bank documents in this demo. After review, LOCAL will tell you if any secure verification or service-specific documents are required. Your profile and each selected service are reviewed separately.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Your uploaded identity and payout documents will be reviewed by LOCAL Admin. PAN and service-specific documents are conditional; approval of each service remains separate.</p>
                     </div>
                   </div>
                 </div>
@@ -585,7 +630,7 @@ export default function ServiceProviderProfile() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
               <Button type="button" variant="outline" disabled={step === 0 || saving} onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</Button>
               <div className="flex gap-2">
-                {step < 2 ? <Button type="submit">Continue <ApperIcon name="ArrowRight" size={16} /></Button> : <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Send" size={16} /> Submit for Admin Review</>}</Button>}
+                {step < 3 ? <Button type="submit">Continue <ApperIcon name="ArrowRight" size={16} /></Button> : <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Send" size={16} /> Submit for Admin Review</>}</Button>}
               </div>
             </div>
           </form>
