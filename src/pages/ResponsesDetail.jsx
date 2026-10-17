@@ -91,72 +91,75 @@ export default function ResponsesDetail() {
   const carWashMenuTotal = carWashItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   async function createJob() {
-    const jobsRes = await sdk.table('jobs_c').select(['Id']).where(eq('request_c', request.Id)).page(1, 1).fetch();
-    if (!jobsRes.success) throw new Error(jobsRes.message);
-    if (jobsRes.data?.length) {
-      toast.error('A job already exists for this request.');
-      return false;
+    const providerId = response.technician_c?.Id ?? response.technician_c;
+    const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
+    if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('Enter or agree a valid service price before creating the job.');
+
+    const existingRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 10).fetch();
+    if (!existingRes.success) throw new Error(existingRes.message ?? 'Could not check existing jobs.');
+    let job = (existingRes.data ?? [])[0] ?? null;
+    if (job) {
+      const assignedProviderId = job.technician_c?.Id ?? job.technician_c;
+      if (String(assignedProviderId ?? '') !== String(providerId)) throw new Error('This request already has a job assigned to a different Service Provider. Contact LOCAL support before changing the assignment.');
+    } else {
+      const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
+      if (!completedJobsRes.success) throw new Error(completedJobsRes.message ?? 'Could not load Service Provider job history.');
+      const completedJobsCount = (completedJobsRes.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c) === String(providerId) && item.status_c === 'Completed').length;
+      const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
+      const isAcBooking = /AC Technician/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? ''));
+      const calculatedBilling = getBillingBreakdown(finalPrice, request.service_mode_c ?? 'Normal', completedJobsCount, 0, 0);
+      const billing = isCarWashBooking || isAcBooking
+        ? { ...calculatedBilling, servicePrice: finalPrice, bookingCommitment: 0, remainingServiceAmount: finalPrice, customerPayableNow: 0, localServiceFee: 0 }
+        : calculatedBilling;
+      const jobRes = await sdk.table('jobs_c').create({
+        Name: request.Name + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
+        request_c: request.Id,
+        response_c: response.Id,
+        customer_c: request.customer_c?.Id ?? request.customer_c,
+        technician_c: providerId,
+        agreed_price_c: billing.servicePrice,
+        original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
+        booking_commitment_amount_c: billing.bookingCommitment,
+        remaining_amount_c: billing.remainingServiceAmount,
+        local_service_fee_amount_c: billing.localServiceFee,
+        customer_discount_amount_c: billing.discount,
+        customer_tax_amount_c: billing.applicableTax,
+        customer_payable_now_c: billing.customerPayableNow,
+        provider_completed_jobs_count_c: completedJobsCount,
+        provider_commission_rate_c: billing.providerCommissionRate,
+        provider_commission_amount_c: billing.providerCommission,
+        provider_settlement_amount_c: billing.providerSettlement,
+        billing_status_c: 'Ready for Confirmation',
+        scheduled_at_c: request.scheduled_at_c || new Date(Date.now() + 3600000).toISOString(),
+        status_c: 'Assigned',
+        payment_status_c: 'Unpaid',
+        payment_method_c: null,
+        payment_reference_c: null,
+      });
+      job = jobRes.data?.[0] ?? null;
+      if (!job) {
+        const retryRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 10).fetch();
+        if (retryRes.success) job = (retryRes.data ?? [])[0] ?? null;
+        if (!job) throw new Error(jobRes.messages?.filter(Boolean).join(' | ') || jobRes.message || 'Job creation failed. No offer/request status was changed. Refresh and retry.');
+      }
     }
 
-    const providerId = response.technician_c?.Id ?? response.technician_c;
-    const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
-    if (!completedJobsRes.success) throw new Error(completedJobsRes.message);
-    const completedJobsCount = (completedJobsRes.data ?? []).filter((job) => String(job.technician_c?.Id ?? job.technician_c) === String(providerId) && job.status_c === 'Completed').length;
-    const finalPriceForBooking = Number(response.final_agreed_price_c ?? response.proposed_price_c);
-    const calculatedBilling = getBillingBreakdown(
-      finalPriceForBooking,
-      request.service_mode_c ?? 'Normal',
-      completedJobsCount,
-      0,
-      0,
-    );
-    // Match RequestDetail: Car Wash is paid after service return, with no booking
-    // commitment or LOCAL service fee collected in advance.
-    const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
-    const billing = isCarWashBooking
-      ? { ...calculatedBilling, servicePrice: finalPriceForBooking, bookingCommitment: 0, remainingServiceAmount: finalPriceForBooking, customerPayableNow: 0, localServiceFee: 0 }
-      : calculatedBilling;
-
-    const jobRes = await sdk.table('jobs_c').create({
-      Name: request.Name + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
-      request_c: request.Id,
-      response_c: response.Id,
-      customer_c: request.customer_c?.Id ?? request.customer_c,
-      technician_c: response.technician_c?.Id ?? response.technician_c,
-      agreed_price_c: billing.servicePrice,
-      original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
-      booking_commitment_amount_c: billing.bookingCommitment,
-      remaining_amount_c: billing.remainingServiceAmount,
-      local_service_fee_amount_c: billing.localServiceFee,
-      customer_discount_amount_c: billing.discount,
-      customer_tax_amount_c: billing.applicableTax,
-      customer_payable_now_c: billing.customerPayableNow,
-      provider_completed_jobs_count_c: completedJobsCount,
-      provider_commission_rate_c: billing.providerCommissionRate,
-      provider_commission_amount_c: billing.providerCommission,
-      provider_settlement_amount_c: billing.providerSettlement,
-      billing_status_c: 'Ready for Confirmation',
-      scheduled_at_c: new Date(Date.now() + 3600000).toISOString(),
-      status_c: 'Assigned',
-      payment_status_c: 'Unpaid',
-      payment_method_c: null,
-      payment_reference_c: null,
-    });
-    if (!jobRes.data?.length) throw new Error(jobRes.messages?.[0] ?? 'Job could not be created.');
-
-    const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
     const history = String(response.negotiation_history_c ?? '').trim();
-    const agreedHistory = (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Final agreed price locked at ₹' + finalPrice.toLocaleString('en-IN');
-    await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
-    await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
-    const otherResponses = await sdk.table('technician_responses_c').select(['Id', 'status_c', 'technician_c']).where(eq('request_c', request.Id)).page(1, 100).fetch();
-    const otherPendingIds = (otherResponses.data ?? []).filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
-    if (otherPendingIds.length) await sdk.table('technician_responses_c').update(otherPendingIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
-    toast.success('Offer accepted and job created.');
-    navigate('/jobs/' + jobRes.data[0].Id);
+    const alreadyRecorded = /Customer selected Service Provider|Final agreed price locked/i.test(history);
+    const agreedHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Final agreed price locked at ₹' + finalPrice.toLocaleString('en-IN');
+    const responseUpdate = await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
+    if (!responseUpdate.data?.length) throw new Error('Job exists, but offer status could not be synchronized: ' + (responseUpdate.messages?.filter(Boolean).join(' | ') || responseUpdate.message || 'update not confirmed') + '. Retry to finish synchronization.');
+    const requestUpdate = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+    if (!requestUpdate.data?.length) throw new Error('Job exists, but request status could not be synchronized: ' + (requestUpdate.messages?.filter(Boolean).join(' | ') || requestUpdate.message || 'update not confirmed') + '. Retry to finish synchronization.');
+    const otherResponses = await sdk.table('technician_responses_c').select(['Id', 'status_c']).where(eq('request_c', request.Id)).page(1, 100).fetch();
+    if (otherResponses.success) {
+      const otherPendingIds = (otherResponses.data ?? []).filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
+      if (otherPendingIds.length) await sdk.table('technician_responses_c').update(otherPendingIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
+    }
+    toast.success(job.status_c === 'Assigned' ? 'Service Provider confirmed. Job is now Assigned.' : 'Existing booking found and statuses synchronized.');
+    navigate('/jobs/' + job.Id);
     return true;
   }
-
   async function acceptCustomerOffer() {
     setWorking(true);
     try {
