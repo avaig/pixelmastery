@@ -206,24 +206,16 @@ export default function RequestDetail() {
     if (working || !request?.Id || !response?.Id) return;
     setWorking(true);
     try {
-      // technician_c is a Lookup to technician_profiles_c. Its Id is already the
-      // authoritative profile foreign key; do not re-query that owner-restricted
-      // table from the customer's session, because RLS correctly hides other
-      // providers' profiles from customers.
-      const responseProviderId = response.technician_c?.Id ?? response.technician_c;
+      // technician_c is a database Lookup to technician_profiles_c. Use the
+      // foreign key already attached to this offer. Customer-side profile reads
+      // are restricted by row-level security, so querying the full provider table
+      // here falsely treated valid providers as missing. Never resolve by name:
+      // multiple providers can share a name.
+      const providerId = response.technician_c?.Id ?? response.technician_c;
       const providerName = String(response.technician_c?.Name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
-      // Legacy demo offers can retain an ID from a deleted/recreated provider profile.
-      // Resolve the current profile before writing the job lookup, which must receive a scalar record ID.
-      const providerProfilesRes = await sdk.table('technician_profiles_c').select(['Id', 'Name']).page(1, 1000).fetch();
-      if (!providerProfilesRes.success) throw new Error(providerProfilesRes.message ?? 'Could not verify the Service Provider profile.');
-      const providerProfiles = providerProfilesRes.data ?? [];
-      const normalizedProviderName = providerName.toLowerCase().replace(/\s+/g, ' ').trim();
-      const validProvider = providerProfiles.find((item) => String(item.Id) === String(responseProviderId ?? ''))
-        ?? providerProfiles.find((item) => String(item.Name ?? '').toLowerCase().replace(/\s+/g, ' ').trim() === normalizedProviderName);
-      if (!validProvider?.Id) {
-        throw new Error('The offer for ' + providerName + ' points to a Service Provider profile that is missing or not accessible. The booking was not created. Ask the provider to reopen Provider onboarding and resubmit, then create a fresh offer.');
+      if (providerId == null || String(providerId).trim() === '') {
+        throw new Error('This offer has no linked Service Provider record. The booking was not created; the provider must submit a fresh offer.');
       }
-      const providerId = validProvider.Id;
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
 
