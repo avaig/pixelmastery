@@ -120,13 +120,13 @@ export default function ProviderOnboardingReview() {
       }
 
       if (capabilityRows.length) {
-        const removedCapabilities = await sdk.table('service_provider_capabilities_c').remove(capabilityRows.map((row) => ({ Id: row.Id })));
+        const removedCapabilities = await sdk.table('service_provider_capabilities_c').remove(capabilityRows.map((row) => row.Id));
         if (removedCapabilities.data?.length !== capabilityRows.length) {
           throw new Error(removedCapabilities.messages?.[0] || 'Not all capability assignments could be removed. Provider profiles were not deleted.');
         }
       }
       if (providerRows.length) {
-        const removedProviders = await sdk.table('technician_profiles_c').remove(providerRows.map((row) => ({ Id: row.Id })));
+        const removedProviders = await sdk.table('technician_profiles_c').remove(providerRows.map((row) => row.Id));
         if (removedProviders.data?.length !== providerRows.length) {
           throw new Error(removedProviders.messages?.[0] || 'Some provider profiles could not be removed. Check the Admin onboarding list before retrying.');
         }
