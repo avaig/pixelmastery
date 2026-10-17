@@ -59,6 +59,20 @@ function formatCell(value, field) {
   return String(value);
 }
 
+function cleanProviderExperience(value) {
+  if (!value) return '';
+  const raw = String(value).replace(/\\s+/g, ' ').trim();
+  const generalMatch = raw.match(/General experience:\\s*(.*?)(?=\\s*Capability-specific experience:|$)/i);
+  const capabilityMatch = raw.match(/Capability-specific experience:\\s*(.*?)(?=\\s*Capability-specific experience:|$)/i);
+  const general = generalMatch?.[1]?.replace(/^General experience:\\s*/i, '').trim();
+  const capability = capabilityMatch?.[1]?.trim();
+  const parts = [];
+  if (general && !/^General experience:?$/i.test(general)) parts.push('General: ' + general);
+  if (capability && !/^Car Battery Assistance:?$/i.test(capability)) parts.push(capability);
+  if (parts.length) return [...new Set(parts)].join(' · ');
+  return raw.replace(/(General experience:\\s*){2,}/gi, 'General experience: ').replace(/(Capability-specific experience:\\s*){2,}/gi, 'Capability-specific experience: ').trim();
+}
+
 function getFields(config) {
   return config.fields.map((field) => field.key);
 }
