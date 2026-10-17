@@ -104,7 +104,26 @@ export default function ResponsesDetail() {
   const carWashMenuTotal = carWashItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   async function createJob() {
-    const providerId = response.technician_c?.Id ?? response.technician_c;
+    const linkedProvider = response.technician_c;
+    const linkedProviderId = linkedProvider?.Id ?? linkedProvider;
+    const linkedProviderName = String(linkedProvider?.Name ?? providerProfile?.Name ?? response.Name ?? '').split(' • ')[0].trim();
+    const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c', 'latitude_c', 'longitude_c']).page(1, 1000).fetch();
+    if (!providersRes.success) throw new Error(providersRes.message ?? 'Could not verify the Service Provider profile.');
+    const providerRows = providersRes.data ?? [];
+    let validProvider = providerRows.find((item) => String(item.Id) === String(linkedProviderId ?? '')) ?? null;
+    if (!validProvider && linkedProviderName) {
+      const normalizedName = linkedProviderName.toLowerCase().replace(/\\s+/g, ' ');
+      validProvider = providerRows.find((item) => String(item.Name ?? '').trim().toLowerCase().replace(/\\s+/g, ' ') === normalizedName) ?? null;
+    }
+    if (!validProvider?.Id) {
+      throw new Error('The accepted offer points to a Service Provider record that no longer exists, and no matching active profile was found. The booking has not been changed. Open Provider onboarding for this provider and restore the profile, or ask LOCAL Admin to repair the provider record.');
+    }
+    const providerId = validProvider.Id;
+    if (String(linkedProviderId ?? '') !== String(providerId)) {
+      const relink = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: providerId });
+      if (!relink.data?.length) throw new Error(relink.messages?.filter(Boolean).join(' | ') || relink.message || 'The provider profile was found, but the accepted offer could not be linked to it.');
+      response.technician_c = validProvider;
+    }
     const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
     if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('Enter or agree a valid service price before creating the job.');
 
