@@ -281,18 +281,45 @@ export default function RequestDetail() {
     }
   }
 
+  const canDeleteRequest = isCustomer && !responses.length && !relatedJob && ['Open', 'Quoted', 'Negotiating'].includes(String(request?.status_c ?? ''));
+
   async function removeRequest() {
+    if (!request?.Id || !isCustomer) return;
     setWorking(true);
     try {
-      const offerRes = await sdk.table('technician_responses_c').select(['Id']).where(eq('request_c', request.Id)).page(1, 100).fetch();
-      if (offerRes.success && offerRes.data?.length) await sdk.table('technician_responses_c').remove(offerRes.data.map((item) => ({ Id: item.Id })));
-      const res = await sdk.table('service_requests_c').remove({ Id: request.Id });
+      if (!canDeleteRequest) {
+        const cancelled = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled' });
+        if (!cancelled.data?.length) {
+          toast.error(cancelled.messages?.[0] ?? 'The request could not be cancelled. It has not been deleted.');
+          return;
+        }
+        toast.success('Request cancelled. Provider offers and booking history have been preserved.');
+        setDeleteOpen(false);
+        navigate('/requests');
+        return;
+      }
+
+      const offerRes = await sdk.table('technician_responses_c')
+        .select(['Id'])
+        .where(eq('request_c', request.Id))
+        .page(1, 100)
+        .fetch();
+      if (!offerRes.success) throw new Error(offerRes.message || 'Could not check provider offers. The request was not deleted.');
+      if (offerRes.data?.length) {
+        const removedOffers = await sdk.table('technician_responses_c').remove(offerRes.data.map((item) => item.Id));
+        if (removedOffers.data?.length !== offerRes.data.length) {
+          throw new Error(removedOffers.messages?.[0] || 'Could not remove all offers. The request was not deleted.');
+        }
+      }
+      const res = await sdk.table('service_requests_c').remove([request.Id]);
       if (!res.data?.length) {
-        toast.error(res.messages?.[0] ?? 'Request was not deleted.');
+        toast.error(res.messages?.[0] ?? 'Request was not deleted. Please refresh and try again.');
         return;
       }
       toast.success('Service request deleted.');
       navigate('/requests');
+    } catch (err) {
+      toast.error(err.message || 'Could not remove service request.');
     } finally {
       setWorking(false);
       setDeleteOpen(false);
