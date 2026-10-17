@@ -190,7 +190,18 @@ export default function RequestDetail() {
   async function confirmTechnician(response) {
     setWorking(true);
     try {
-      const providerId = response.technician_c?.Id ?? response.technician_c;
+      const responseProviderId = response.technician_c?.Id ?? response.technician_c;
+      const responseProviderName = String(response.technician_c?.Name ?? response.Name ?? '').trim();
+      const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
+      if (!providersRes.success) throw new Error(providersRes.message ?? 'Could not verify the selected Service Provider.');
+      const providers = providersRes.data ?? [];
+      let provider = providers.find((item) => String(item.Id) === String(responseProviderId));
+      if (!provider && responseProviderName) {
+        const nameMatches = providers.filter((item) => String(item.Name ?? '').trim().toLowerCase() === responseProviderName.toLowerCase());
+        if (nameMatches.length === 1) provider = nameMatches[0];
+      }
+      if (!provider?.Id) throw new Error('This offer is linked to a Service Provider profile that no longer exists. Ask the provider to refresh their profile and submit a new offer.');
+      const providerId = provider.Id;
       const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
       if (!completedJobsRes.success) throw new Error(completedJobsRes.message);
       const completedJobsCount = (completedJobsRes.data ?? []).filter((job) => String(job.technician_c?.Id ?? job.technician_c) === String(providerId) && job.status_c === 'Completed').length;
@@ -211,15 +222,15 @@ export default function RequestDetail() {
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       const history = String(response.negotiation_history_c ?? '').trim();
       const agreedHistory = (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
-      await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
+      await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: providerId, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
       const otherIds = responses.filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
       if (otherIds.length) await sdk.table('technician_responses_c').update(otherIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
       const jobRes = await sdk.table('jobs_c').create({
-        Name: request.Name + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
+        Name: request.Name + ' • ' + provider.Name,
         request_c: request.Id,
         response_c: response.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c,
-        technician_c: response.technician_c?.Id ?? response.technician_c,
+        technician_c: providerId,
         agreed_price_c: billing.servicePrice,
         original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
         booking_commitment_amount_c: billing.bookingCommitment,
