@@ -188,10 +188,11 @@ export default function RequestDetail() {
   }
 
   async function confirmTechnician(response) {
+    if (working || !request?.Id || !response?.Id) return;
     setWorking(true);
     try {
       const responseProviderId = response.technician_c?.Id ?? response.technician_c;
-      const responseProviderName = String(response.technician_c?.Name ?? response.Name ?? '').trim();
+      const responseProviderName = String(response.technician_c?.Name ?? '').trim();
       const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
       if (!providersRes.success) throw new Error(providersRes.message ?? 'Could not verify the selected Service Provider.');
       const providers = providersRes.data ?? [];
@@ -200,64 +201,85 @@ export default function RequestDetail() {
         const nameMatches = providers.filter((item) => String(item.Name ?? '').trim().toLowerCase() === responseProviderName.toLowerCase());
         if (nameMatches.length === 1) provider = nameMatches[0];
       }
-      if (!provider?.Id) throw new Error('This offer is linked to a Service Provider profile that no longer exists. Ask the provider to refresh their profile and submit a new offer.');
+      if (!provider?.Id) throw new Error('The Service Provider profile linked to this offer could not be found. Please ask the provider to refresh their profile and submit a new offer.');
       const providerId = provider.Id;
-      const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
-      if (!completedJobsRes.success) throw new Error(completedJobsRes.message);
-      const completedJobsCount = (completedJobsRes.data ?? []).filter((job) => String(job.technician_c?.Id ?? job.technician_c) === String(providerId) && job.status_c === 'Completed').length;
-      const finalPriceForBooking = Number(response.final_agreed_price_c ?? response.proposed_price_c);
-      const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
-      const isAcBooking = isAcTechnicianRequest(request);
-      const calculatedBilling = getBillingBreakdown(finalPriceForBooking, request.service_mode_c ?? 'Normal', completedJobsCount, 0, 0);
-      const billing = isCarWashBooking || isAcBooking
-        ? { ...calculatedBilling, servicePrice: finalPriceForBooking, bookingCommitment: 0, remainingServiceAmount: finalPriceForBooking, customerPayableNow: 0, localServiceFee: 0 }
-        : calculatedBilling;
-
-      const jobsRes = await sdk.table('jobs_c').select(['Id']).where(eq('request_c', request.Id)).page(1, 1).fetch();
-      if (!jobsRes.success) throw new Error(jobsRes.message);
-      if (jobsRes.data?.length) {
-        toast.error('A job already exists for this request.');
-        return;
-      }
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
+      if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
+
+      const existingJobsRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 10).fetch();
+      if (!existingJobsRes.success) throw new Error(existingJobsRes.message ?? 'Could not check whether this request already has a job.');
+      let job = (existingJobsRes.data ?? [])[0] ?? null;
+      if (job) {
+        const existingProviderId = job.technician_c?.Id ?? job.technician_c;
+        if (String(existingProviderId ?? '') !== String(providerId)) {
+          throw new Error('This request already has a job assigned to a different Service Provider. Please contact LOCAL support before changing the assignment.');
+        }
+      } else {
+        const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
+        if (!completedJobsRes.success) throw new Error(completedJobsRes.message ?? 'Could not load Service Provider job history.');
+        const completedJobsCount = (completedJobsRes.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c) === String(providerId) && item.status_c === 'Completed').length;
+        const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
+        const isAcBooking = isAcTechnicianRequest(request);
+        const calculatedBilling = getBillingBreakdown(finalPrice, request.service_mode_c ?? 'Normal', completedJobsCount, 0, 0);
+        const billing = isCarWashBooking || isAcBooking
+          ? { ...calculatedBilling, servicePrice: finalPrice, bookingCommitment: 0, remainingServiceAmount: finalPrice, customerPayableNow: 0, localServiceFee: 0 }
+          : calculatedBilling;
+        const jobRes = await sdk.table('jobs_c').create({
+          Name: request.Name + ' • ' + provider.Name,
+          request_c: request.Id,
+          response_c: response.Id,
+          customer_c: request.customer_c?.Id ?? request.customer_c,
+          technician_c: providerId,
+          agreed_price_c: billing.servicePrice,
+          original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
+          booking_commitment_amount_c: billing.bookingCommitment,
+          remaining_amount_c: billing.remainingServiceAmount,
+          local_service_fee_amount_c: billing.localServiceFee,
+          customer_discount_amount_c: billing.discount,
+          customer_tax_amount_c: billing.applicableTax,
+          customer_payable_now_c: billing.customerPayableNow,
+          provider_completed_jobs_count_c: completedJobsCount,
+          provider_commission_rate_c: billing.providerCommissionRate,
+          provider_commission_amount_c: billing.providerCommission,
+          provider_settlement_amount_c: billing.providerSettlement,
+          billing_status_c: 'Ready for Confirmation',
+          payment_status_c: 'Unpaid',
+          payout_status_c: 'Not Eligible',
+          dispute_status_c: 'None',
+          scheduled_at_c: request.scheduled_at_c || new Date(Date.now() + 3600000).toISOString(),
+          status_c: 'Assigned',
+        });
+        job = jobRes.data?.[0] ?? null;
+        if (!job) {
+          // A retry/read protects against a successful server insert whose response was lost.
+          const retryRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 10).fetch();
+          if (retryRes.success) job = (retryRes.data ?? [])[0] ?? null;
+          if (!job) throw new Error(jobRes.messages?.filter(Boolean).join(' | ') || jobRes.message || 'The Service Provider was selected, but LOCAL could not create the job. No request/offer status was changed; retry after refreshing.');
+        }
+      }
+
       const history = String(response.negotiation_history_c ?? '').trim();
-      const agreedHistory = (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
-      await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: providerId, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
+      const alreadyRecorded = /Customer selected Service Provider|Final agreed price locked/i.test(history);
+      const agreedHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
+      const responseUpdate = await sdk.table('technician_responses_c').update({
+        Id: response.Id,
+        technician_c: providerId,
+        status_c: 'Selected',
+        final_agreed_price_c: finalPrice,
+        negotiation_status_c: 'Agreed',
+        negotiation_history_c: agreedHistory,
+      });
+      if (!responseUpdate.data?.length) throw new Error('Job ' + job.Id + ' exists, but the offer status could not be synchronized: ' + (responseUpdate.messages?.filter(Boolean).join(' | ') || responseUpdate.message || 'update not confirmed') + '. Retry confirmation to finish syncing statuses.');
+
+      const requestUpdate = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+      if (!requestUpdate.data?.length) throw new Error('Job ' + job.Id + ' exists and the offer is selected, but the request status could not be synchronized: ' + (requestUpdate.messages?.filter(Boolean).join(' | ') || requestUpdate.message || 'update not confirmed') + '. Retry confirmation to finish syncing statuses.');
+
       const otherIds = responses.filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
       if (otherIds.length) await sdk.table('technician_responses_c').update(otherIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
-      const jobRes = await sdk.table('jobs_c').create({
-        Name: request.Name + ' • ' + provider.Name,
-        request_c: request.Id,
-        response_c: response.Id,
-        customer_c: request.customer_c?.Id ?? request.customer_c,
-        technician_c: providerId,
-        agreed_price_c: billing.servicePrice,
-        original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
-        booking_commitment_amount_c: billing.bookingCommitment,
-        remaining_amount_c: billing.remainingServiceAmount,
-        local_service_fee_amount_c: billing.localServiceFee,
-        customer_discount_amount_c: billing.discount,
-        customer_tax_amount_c: billing.applicableTax,
-        customer_payable_now_c: billing.customerPayableNow,
-        provider_completed_jobs_count_c: completedJobsCount,
-        provider_commission_rate_c: billing.providerCommissionRate,
-        provider_commission_amount_c: billing.providerCommission,
-        provider_settlement_amount_c: billing.providerSettlement,
-        billing_status_c: 'Ready for Confirmation',
-        payment_status_c: 'Unpaid',
-        payout_status_c: 'Not Eligible',
-        dispute_status_c: 'None',
-        scheduled_at_c: request.scheduled_at_c || new Date(Date.now() + 3600000).toISOString(),
-        status_c: 'Assigned',
-      });
-      if (!jobRes.data?.length) {
-        toast.error(jobRes.messages?.[0] ?? 'Service Provider was selected, but the job was not created.');
-        return;
-      }
-      const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
-      if (!requestRes.data?.length) toast.warning('Job created, but request status could not be updated.');
-      toast.success(isCarWashBooking ? 'Service Provider confirmed. No advance is due for Car Wash.' : isAcBooking ? 'AC Service Provider confirmed. Payment is due after service completion.' : 'Service Provider confirmed and job created. Opening payment options…');
-      navigate('/jobs/' + jobRes.data[0].Id);
+      const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
+      const isAcBooking = isAcTechnicianRequest(request);
+      toast.success(job.status_c === 'Assigned' ? 'Service Provider confirmed. Job is now Assigned.' : 'This booking already exists; its statuses are synchronized.');
+      navigate('/jobs/' + job.Id);
     } catch (err) {
       toast.error(err.message ?? 'Could not confirm Service Provider.');
     } finally {
@@ -364,7 +386,7 @@ export default function RequestDetail() {
               <div key={response.Id} className="border-l-4 border-primary bg-muted/30 p-4">
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                   <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><div className="font-medium">{response.technician_c?.Name ?? 'Service Provider'}</div><StatusBadge value={response.status_c} /></div><div className="mt-1 text-sm text-muted-foreground">{response.availability_c}{isCustomer && response.provider_distance_label_c ? ' • ' + response.provider_distance_label_c + ' from your location' : ''}</div><p className="mt-2 text-sm">{isFixedRateDriverRequest ? 'Available for this driver request.' : (response.message_c || 'No additional message.')}</p></div>
-                  <div className="shrink-0 text-left md:text-right">{isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && <div className="mt-3 flex flex-wrap gap-2 md:justify-end">{!isFixedRateDriverRequest && <Button size="sm" variant="outline" onClick={() => { setNegotiatingId(response.Id); setCounterPrice(String(response.proposed_price_c ?? '')); }}>{tr('Negotiate', language)}</Button>}<Button size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}{isTechnician && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
+                  <div className="shrink-0 text-left md:text-right">{isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && !relatedJob && <div className="mt-3 flex flex-wrap gap-2 md:justify-end">{!isFixedRateDriverRequest && <Button size="sm" variant="outline" disabled={working} onClick={() => { setNegotiatingId(response.Id); setCounterPrice(String(response.proposed_price_c ?? '')); }}>{tr('Negotiate', language)}</Button>}<Button size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}{isCustomer && response.status_c === 'Selected' && !relatedJob && <div className="mt-3 flex flex-wrap items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">Offer selected; finish setting up the booking.</span><Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>{working ? 'Finishing booking…' : 'Complete booking setup'}</Button></div>}{isTechnician && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
                 </div>
                 {!isFixedRateDriverRequest && response.negotiation_history_c && <div className="mt-3 rounded-md border border-border bg-background p-3"><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{tr('Negotiation history', language)}</div><pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-5 text-muted-foreground">{response.negotiation_history_c}</pre></div>}
                 {negotiatingId === response.Id && isCustomer && (
