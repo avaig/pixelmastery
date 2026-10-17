@@ -167,7 +167,23 @@ export default function ResponsesDetail() {
         toast.error('This is a service provider offer. The customer must confirm it.');
         return;
       }
-      await createJob();
+      // Provider acceptance agrees to the customer's counter-offer; it must not
+      // create the job. The customer creates the job by confirming the booking.
+      const price = Number(response.proposed_price_c);
+      if (!Number.isFinite(price) || price <= 0) throw new Error('The customer offer does not contain a valid price.');
+      const history = String(response.negotiation_history_c ?? '').trim();
+      const acceptedAlready = /Service Provider accepted customer offer/i.test(history);
+      const nextHistory = acceptedAlready ? history : (history ? history + '\\n' : '') + new Date().toLocaleString('en-IN') + ' — Service Provider accepted customer offer at ₹' + price.toLocaleString('en-IN');
+      const update = await sdk.table('technician_responses_c').update({
+        Id: response.Id,
+        final_agreed_price_c: price,
+        negotiation_status_c: 'Agreed',
+        negotiation_history_c: nextHistory,
+        message_c: 'Service Provider accepted customer offer: ₹' + price.toLocaleString('en-IN'),
+      });
+      if (!update.data?.length) throw new Error(update.messages?.filter(Boolean).join(' | ') || update.message || 'Could not save your acceptance. Please refresh and try again.');
+      toast.success('Offer accepted. The customer can now confirm the booking.');
+      await run();
     } catch (err) {
       toast.error(err.message ?? 'Could not accept the customer offer.');
     } finally {
@@ -322,7 +338,10 @@ export default function ResponsesDetail() {
                 </div>
               )}
 
-              {isProvider && (isCounterOffer || isCarWashOffer) && (
+              {isProvider && response.negotiation_status_c === 'Agreed' && (
+                <div className="rounded-lg border border-success-border bg-success-muted p-4 text-sm text-success">You accepted the customer's price of ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Waiting for the customer to confirm the booking.</div>
+              )}
+              {isProvider && response.negotiation_status_c !== 'Agreed' && (isCounterOffer || isCarWashOffer) && (
                 <div className="space-y-3">
                   <Button className="w-full sm:w-auto" onClick={acceptCustomerOffer} disabled={working}><ApperIcon name="Check" size={16} /> {working ? 'Accepting…' : 'Accept ₹' + Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</Button>
                   <details className="rounded-lg border border-border p-3">
@@ -332,7 +351,7 @@ export default function ResponsesDetail() {
                 </div>
               )}
 
-              {isProvider && !isCounterOffer && !isCarWashOffer && (
+              {isProvider && response.negotiation_status_c !== 'Agreed' && !isCounterOffer && !isCarWashOffer && (
                 <div className="space-y-3">
                   <div className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
                     Your offer is waiting for the customer. You can counter or leave the current quote unchanged.
