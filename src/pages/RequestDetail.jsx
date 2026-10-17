@@ -80,7 +80,6 @@ export default function RequestDetail() {
   const [negotiatingId, setNegotiatingId] = useState(null);
   const [counterPrice, setCounterPrice] = useState('');
   const [confirmingResponse, setConfirmingResponse] = useState(null);
-  const [recoveryAttemptedId, setRecoveryAttemptedId] = useState(null);
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -206,37 +205,15 @@ export default function RequestDetail() {
     if (working || !request?.Id || !response?.Id) return;
     setWorking(true);
     try {
-      // technician_c is a database Lookup to technician_profiles_c. Use the
-      // foreign key already attached to this offer. Customer-side profile reads
-      // are restricted by row-level security, so querying the full provider table
-      // here falsely treated valid providers as missing. Never resolve by name:
-      // multiple providers can share a name.
-      let providerId = response.technician_c?.Id ?? response.technician_c?.id ?? response.technician_c?.recordId ?? response.technician_c;
+      // The offer's technician_c lookup is the authoritative provider reference.
+      // Customer-side RLS can hide provider profiles from list queries, so never
+      // infer that a provider is missing by scanning technician_profiles_c here.
+      // Use the lookup ID and let the jobs_c reference validation decide whether it
+      // is valid; if it is stale, return a specific error without creating a job.
+      const providerId = response.technician_c?.Id ?? response.technician_c?.id ?? response.technician_c?.recordId ?? response.technician_c;
       const providerName = String(response.technician_c?.Name ?? response.technician_c?.name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
-      if (providerId == null || String(providerId).trim() === '') {
-        throw new Error('This offer has no linked Service Provider record. The booking was not created. Ask LOCAL Admin to repair the offer link.');
-      }
-      // A provider profile may have been recreated after this offer was submitted.
-      // Negotiation still works because the offer row exists, but jobs_c rejects a
-      // lookup to the deleted profile. Verify the reference and safely repair it
-      // only when the provider name resolves to exactly one current profile.
-      const providerProfilesRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
-      if (!providerProfilesRes.success) throw new Error(providerProfilesRes.message || 'Could not validate the Service Provider record.');
-      const providerProfiles = providerProfilesRes.data ?? [];
-      let currentProvider = providerProfiles.find((item) => String(item.Id) === String(providerId)) ?? null;
-      if (!currentProvider) {
-        const normalizedName = providerName.trim().toLowerCase();
-        const matches = providerProfiles.filter((item) => String(item.Name ?? '').trim().toLowerCase() === normalizedName);
-        if (matches.length !== 1) {
-          throw new Error(matches.length > 1
-            ? 'This offer points to an old Service Provider record, and more than one current profile has the same name. LOCAL Admin must repair this offer link before booking.'
-            : 'This offer points to a Service Provider profile that no longer exists. No booking was created. LOCAL Admin must restore or relink the provider record before confirmation.');
-        }
-        currentProvider = matches[0];
-        const relink = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: currentProvider.Id });
-        if (!relink.data?.length) throw new Error(relink.messages?.[0] || 'The offer exists, but its Service Provider link could not be repaired. LOCAL Admin must repair it before booking.');
-        providerId = currentProvider.Id;
-        response.technician_c = currentProvider;
+      if (providerId == null || String(providerId).trim() === '' || typeof providerId === 'object') {
+        throw new Error('This offer has no valid linked Service Provider record. No booking was created. Please ask the provider to submit a fresh offer from their current account.');
       }
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
@@ -328,16 +305,9 @@ export default function RequestDetail() {
     }
   }
 
-  useEffect(() => {
-    if (loading || !isCustomer || !request?.Id || relatedJob || recoveryAttemptedId === request.Id) return;
-    if (!['Negotiating', 'Quoted', 'Open'].includes(String(request.status_c ?? ''))) return;
-    const selectedOffer = responses.find((item) => item.status_c === 'Selected');
-    if (!selectedOffer) return;
-    // Recover older/partial selections where the offer was marked Selected but
-    // the job insert or request-status update never completed.
-    setRecoveryAttemptedId(request.Id);
-    confirmTechnician(selectedOffer);
-  }, [loading, isCustomer, request?.Id, request?.status_c, relatedJob, responses, recoveryAttemptedId]);
+  // Booking creation is deliberately user-triggered. A previously Selected offer
+  // must not silently create a job on page load; the customer uses the explicit
+  // Complete booking setup action to review and confirm it.
 
   async function negotiate(response) {
     const price = Number(counterPrice);
@@ -442,7 +412,7 @@ export default function RequestDetail() {
                 <div className="flex flex-col gap-4">
                   <div className="min-w-0 w-full"><div className="flex flex-wrap items-center gap-2"><div className="font-medium">{response.technician_c?.Name ?? 'Service Provider'}</div><StatusBadge value={vendorAccepted ? 'Vendor Accepted' : response.status_c} /></div><div className="mt-1 text-sm text-muted-foreground">{response.availability_c}{isCustomer && response.provider_distance_label_c ? ' • ' + response.provider_distance_label_c + ' from your location' : ''}</div><p className="mt-2 break-words text-sm">{isFixedRateDriverRequest ? 'Available for this driver request.' : (response.message_c || 'No additional message.')}</p></div>
                   <div className="w-full min-w-0">{isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && !vendorAccepted && !relatedJob && <div className="mt-3 flex flex-wrap gap-2 md:justify-end">{!isFixedRateDriverRequest && <Button size="sm" variant="outline" disabled={working} onClick={() => { setNegotiatingId(response.Id); setCounterPrice(String(response.proposed_price_c ?? '')); }}>{tr('Negotiate', language)}</Button>}<Button size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}
-                {isCustomer && vendorAccepted && !relatedJob && <div className="mt-3 flex w-full min-w-0 flex-col items-start gap-3 rounded-lg border border-success-border bg-success-muted p-3"><p className="break-words text-sm text-success"><strong>Vendor Accepted.</strong> The Service Provider accepted ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Waiting for you to confirm the booking.</p><Button className="max-w-full whitespace-normal" size="sm" disabled={working} onClick={() => confirmTechnician(response)}>{working ? 'Confirming…' : 'Confirm Booking & Create Job'}</Button></div>}{isCustomer && response.status_c === 'Selected' && !relatedJob && <div className="mt-3 flex flex-wrap items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">Offer selected; finish setting up the booking.</span><Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>{working ? 'Finishing booking…' : 'Complete booking setup'}</Button></div>}{isTechnician && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
+                {isCustomer && vendorAccepted && !relatedJob && <div className="mt-3 flex w-full min-w-0 flex-col items-start gap-3 rounded-lg border border-success-border bg-success-muted p-3"><p className="break-words text-sm text-success"><strong>Provider accepted.</strong> Final agreed price: ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Review the booking before confirming.</p><Button className="max-w-full whitespace-normal" size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>Select This Provider</Button></div>}{isCustomer && response.status_c === 'Selected' && !relatedJob && <div className="mt-3 flex flex-wrap items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">Provider selected; review and finish booking confirmation.</span><Button size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>Confirm Booking</Button></div>}{isTechnician && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
                 </div>
                 {!isFixedRateDriverRequest && response.negotiation_history_c && <div className="mt-3 rounded-md border border-border bg-background p-3"><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{tr('Negotiation history', language)}</div><pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-5 text-muted-foreground">{response.negotiation_history_c}</pre></div>}
                 {negotiatingId === response.Id && isCustomer && (
@@ -460,7 +430,7 @@ export default function RequestDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>{tr('Confirm Booking', language)}</AlertDialogTitle>
             <AlertDialogDescription>
-              {tr('Review the final amount before confirming this booking.', language)}
+              {tr('You selected this Service Provider. Check the final agreed price below, then confirm to create your job.', language)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {confirmingResponse && (() => {
@@ -484,7 +454,7 @@ export default function RequestDetail() {
           })()}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={working}>{tr('Cancel', language)}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const selected = confirmingResponse; setConfirmingResponse(null); confirmTechnician(selected); }} disabled={working}>{tr('Continue to payment', language)}</AlertDialogAction>
+            <AlertDialogAction onClick={() => { const selected = confirmingResponse; confirmTechnician(selected); }} disabled={working}>{working ? 'Creating booking…' : 'Confirm Booking & Create Job'}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
