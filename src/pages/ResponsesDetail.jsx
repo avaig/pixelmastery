@@ -74,6 +74,9 @@ export default function ResponsesDetail() {
   const isCustomer = user?.profile === 'Customer_c';
   const isProvider = user?.profile === 'ServiceProvider_c';
   const isAdmin = user?.profile === 'Admin_c';
+  const responseHistory = String(response?.negotiation_history_c ?? '');
+  // Backward-compatible detection for offers accepted before the Vendor Accepted status was introduced.
+  const isVendorAccepted = response?.status_c === 'Vendor Accepted' || (response?.status_c === 'Pending' && response?.negotiation_status_c === 'Agreed' && /Service Provider accepted customer offer/i.test(responseHistory));
   const message = response?.message_c ?? '';
   const isCounterOffer = message.startsWith('Customer counter-offer:');
   const isCarWashOffer = String(request?.Name ?? '').toLowerCase().includes('car wash');
@@ -201,7 +204,7 @@ export default function ResponsesDetail() {
   async function confirmProvider() {
     setWorking(true);
     try {
-      if (isCustomer && response.status_c !== 'Vendor Accepted') {
+      if (isCustomer && !isVendorAccepted) {
         const price = Number(response.final_agreed_price_c ?? response.proposed_price_c);
         if (!Number.isFinite(price) || price <= 0) throw new Error('The offer does not contain a valid price.');
         const history = String(response.negotiation_history_c ?? '').trim();
@@ -318,7 +321,7 @@ export default function ResponsesDetail() {
             <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Customer</div><div className="mt-1 font-medium">{request.customer_c?.Name ?? 'Customer'}</div></div>
             <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Customer location</div><div className="mt-1 font-medium">{request.location_c || 'Address not available'}</div></div>
             {isCarWashOffer && <div className="rounded-md bg-muted/40 p-3"><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Distance & arrival estimate</div>{providerDistanceLabel ? <div className="mt-1 font-semibold">{providerDistanceLabel} away{providerEtaMinutes !== null ? ' · approx. ' + providerEtaMinutes + ' min' : ''}</div> : <div className="mt-1 text-sm text-muted-foreground">Distance unavailable — provider or customer coordinates are missing.</div>}<div className="mt-1 text-xs text-muted-foreground">Straight-line distance; ETA is approximate and does not include live traffic.</div></div>}
-            <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Booking status</div><div className="mt-1"><StatusBadge value={response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed' ? 'Job Accepted' : response.status_c} /></div>{response.status_c === 'Price Accepted' && <p className="mt-2 text-sm text-muted-foreground">Price accepted by customer. Sent for Service Provider acceptance.</p>}{response.status_c === 'Vendor Accepted' && <p className="mt-2 text-sm text-muted-foreground">Vendor accepted the price. Waiting for customer to confirm booking.</p>}</div>
+            <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Booking status</div><div className="mt-1"><StatusBadge value={response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed' ? 'Job Accepted' : response.status_c} /></div>{response.status_c === 'Price Accepted' && <p className="mt-2 text-sm text-muted-foreground">Price accepted by customer. Sent for Service Provider acceptance.</p>}{isVendorAccepted && <p className="mt-2 text-sm text-muted-foreground">Vendor accepted the price. Waiting for customer to confirm booking.</p>}</div>
           </div>
         </Card>
 
@@ -346,7 +349,7 @@ export default function ResponsesDetail() {
           </div>
           <p className="mt-5 border-t border-border pt-5 text-sm leading-7">{response.message_c || 'No additional message.'}</p>
 
-          {(response.status_c === 'Pending' || response.status_c === 'Price Accepted' || response.status_c === 'Vendor Accepted') && (
+          {(response.status_c === 'Pending' || response.status_c === 'Price Accepted' || isVendorAccepted) && (
             <div className="mt-6 border-t border-border pt-5">
               {isCustomer && response.status_c === 'Pending' && (
                 <div className="flex flex-wrap gap-2">
@@ -358,7 +361,7 @@ export default function ResponsesDetail() {
                   <Button onClick={confirmProvider} disabled={working}>Confirm Service Provider</Button>
                 </div>
               )}
-              {isCustomer && response.status_c === 'Vendor Accepted' && (
+              {isCustomer && isVendorAccepted && (
                 <div className="space-y-3 rounded-lg border border-success-border bg-success-muted p-4">
                   <p className="text-sm text-success"><strong>Vendor Accepted.</strong> The Service Provider accepted ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Confirm the booking to create your job.</p>
                   <Button onClick={confirmProvider} disabled={working}>{working ? 'Confirming…' : 'Confirm Booking & Create Job'}</Button>
@@ -371,7 +374,7 @@ export default function ResponsesDetail() {
                   <Button onClick={confirmProvider} disabled={working}>{working ? 'Accepting…' : 'Accept Job & Confirm Booking'}</Button>
                 </div>
               )}
-              {isProvider && (response.status_c === 'Vendor Accepted' || (response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed')) && (
+              {isProvider && (isVendorAccepted || (response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed')) && (
                 <div className="rounded-lg border border-success-border bg-success-muted p-4 text-sm text-success">You accepted the customer's price of ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Waiting for the customer to confirm the booking.</div>
               )}
               {isProvider && response.status_c === 'Pending' && response.negotiation_status_c !== 'Agreed' && (isCounterOffer || isCarWashOffer) && (
@@ -417,7 +420,7 @@ export default function ResponsesDetail() {
               <strong>Price Accepted</strong><p className="mt-1">Your accepted price has been sent to the Service Provider. The job will be created after the Service Provider accepts.</p>
             </div>
           )}
-          {response.status_c === 'Vendor Accepted' && isCustomer && (
+          {isVendorAccepted && isCustomer && (
             <div className="mt-6 rounded-md border border-success-border bg-success-muted p-4 text-sm text-success">
               <strong>Vendor Accepted</strong><p className="mt-1">The Service Provider accepted the negotiated price. Confirm the booking above to create the job and assign it to this provider.</p>
             </div>
