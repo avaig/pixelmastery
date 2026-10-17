@@ -61,19 +61,24 @@ function formatCell(value, field) {
 
 function cleanProviderExperience(value) {
   if (!value) return '';
-  let raw = String(value).replace(/\s+/g, ' ').trim();
-  // Older onboarding saved the labels repeatedly; strip duplicate labels before formatting.
-  raw = raw.replace(/(?:General experience:\s*)+/gi, 'General experience: ');
-  raw = raw.replace(/(?:Capability-specific experience:\s*)+/gi, 'Capability-specific experience: ');
+  const raw = String(value).replace(/\s+/g, ' ').trim();
   const generalMatch = raw.match(/General experience:\s*(.*?)(?=\s*Capability-specific experience:|$)/i);
-  const capabilityMatch = raw.match(/Capability-specific experience:\s*(.*)$/i);
-  const general = generalMatch?.[1]?.trim();
-  let capability = capabilityMatch?.[1]?.trim();
-  capability = capability?.replace(/^(?:Car Battery Assistance:\s*)+/i, 'Car Battery Assistance: ');
+  const general = generalMatch?.[1]?.replace(/(?:General experience:\s*)+/gi, '').trim();
+  // Split at every capability label. Legacy records may contain the same label many times;
+  // keep only the first segment that contains actual experience details.
+  const segments = raw.split(/Capability-specific experience:\s*/i).slice(1);
+  let capability = '';
+  for (const segment of segments) {
+    const cleaned = segment.replace(/^(?:Car Battery Assistance:\s*)+/i, '').trim();
+    if (cleaned && !/^Car Battery Assistance:?$/i.test(cleaned)) {
+      capability = 'Car Battery Assistance: ' + cleaned;
+      break;
+    }
+  }
   const parts = [];
   if (general && !/^General experience:?$/i.test(general)) parts.push('General: ' + general);
-  if (capability && !/^Car Battery Assistance:?$/i.test(capability)) parts.push(capability);
-  return [...new Set(parts)].join(' · ') || raw;
+  if (capability) parts.push(capability);
+  return parts.join(' · ') || raw;
 }
 
 function getFields(config) {
