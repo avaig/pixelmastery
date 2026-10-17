@@ -60,7 +60,7 @@ export default function ResponseNew() {
   useEffect(() => {
     if (request?.preferred_time_c === 'Scheduled') setForm((current) => ({ ...current, availability_c: 'Available at requested time' }));
     if (technician?.Id && !form.technician_c) setForm((current) => ({ ...current, technician_c: technician.Id }));
-    if (request?.Name && !form.Name) setForm((current) => ({ ...current, Name: technician?.Name ? technician.Name + ' • ' + request.Name + ' offer' : request.Name + ' offer' }));
+    // Response names are generated from the provider and request when saved; no user-entered offer title is needed.
   }, [technician, request]);
 
   function setValue(key, value) {
@@ -69,7 +69,7 @@ export default function ResponseNew() {
 
   async function submit(event) {
     event.preventDefault();
-    if (request?.preferred_time_c === 'Scheduled' && form.availability_c !== 'Available at requested time') {
+    if (isEmergencyRequest) {\n      toast.error('This is an urgent request. Return to the request details and use the direct-accept action; do not send a quote.');\n      navigate('/requests/' + encodeURIComponent(request.Id));\n      return;\n    }\n    if (request?.preferred_time_c === 'Scheduled' && form.availability_c !== 'Available at requested time') {
       toast.error('You must confirm availability at the requested time before sending an offer.');
       return;
     }
@@ -95,7 +95,7 @@ export default function ResponseNew() {
       const washOfferBreakdown = [];
       const responseMessage = isCarWashRequest ? (Number(finalOfferPrice) === Number(washOfferTotal) ? 'Customer offer accepted: ₹' : 'Service Provider counter-offer: ₹') + finalOfferPrice.toLocaleString('en-IN') + (form.message_c ? '\\n' + form.message_c : '') : (form.message_c || null);
       const res = await sdk.table('technician_responses_c').create({
-        Name: form.Name || 'Service Provider offer',
+        Name: (technician?.Name ? technician.Name + ' • ' : '') + String(request?.Name ?? 'Service request') + (isCarWashRequest ? ' booking response' : ' quote'),
         request_c: form.request_c,
         technician_c: form.technician_c,
         proposed_price_c: finalOfferPrice,
