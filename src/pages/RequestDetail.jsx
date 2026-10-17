@@ -230,7 +230,8 @@ export default function RequestDetail() {
           request_c: request.Id,
           response_c: response.Id,
           customer_c: request.customer_c?.Id ?? request.customer_c,
-          technician_c: providerId,
+          // jobs_c.technician_c is a Lookup to technician_profiles_c; pass a record reference object so Apper resolves the relation rather than treating the ID as a missing reference.
+          technician_c: { Id: providerId },
           agreed_price_c: billing.servicePrice,
           original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
           booking_commitment_amount_c: billing.bookingCommitment,
@@ -264,7 +265,7 @@ export default function RequestDetail() {
       const agreedHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
       const responseUpdate = await sdk.table('technician_responses_c').update({
         Id: response.Id,
-        technician_c: providerId,
+        technician_c: { Id: providerId },
         status_c: 'Selected',
         final_agreed_price_c: finalPrice,
         negotiation_status_c: 'Agreed',
