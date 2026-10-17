@@ -67,8 +67,6 @@ const initialForm = {
   profile_photo_c: '',
 };
 
-const documentOptions = ['Not submitted', 'Submitted for review', 'Verified', 'Not applicable'];
-
 function Field({ label, id, required, children, hint }) {
   return (
     <div className="space-y-2">
