@@ -112,8 +112,8 @@ export default function ResponsesDetail() {
     const providerRows = providersRes.data ?? [];
     let validProvider = providerRows.find((item) => String(item.Id) === String(linkedProviderId ?? '')) ?? null;
     if (!validProvider && linkedProviderName) {
-      const normalizedName = linkedProviderName.toLowerCase().replace(/\\s+/g, ' ');
-      validProvider = providerRows.find((item) => String(item.Name ?? '').trim().toLowerCase().replace(/\\s+/g, ' ') === normalizedName) ?? null;
+      const normalizedName = linkedProviderName.trim().toLowerCase().split(' ').filter(Boolean).join(' ');
+      validProvider = providerRows.find((item) => String(item.Name ?? '').trim().toLowerCase().split(' ').filter(Boolean).join(' ') === normalizedName) ?? null;
     }
     if (!validProvider?.Id) {
       throw new Error('The accepted offer points to a Service Provider record that no longer exists, and no matching active profile was found. The booking has not been changed. Open Provider onboarding for this provider and restore the profile, or ask LOCAL Admin to repair the provider record.');
