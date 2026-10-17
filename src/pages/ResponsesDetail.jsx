@@ -297,7 +297,7 @@ export default function ResponsesDetail() {
             <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Customer</div><div className="mt-1 font-medium">{request.customer_c?.Name ?? 'Customer'}</div></div>
             <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Customer location</div><div className="mt-1 font-medium">{request.location_c || 'Address not available'}</div></div>
             {isCarWashOffer && <div className="rounded-md bg-muted/40 p-3"><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Distance & arrival estimate</div>{providerDistanceLabel ? <div className="mt-1 font-semibold">{providerDistanceLabel} away{providerEtaMinutes !== null ? ' · approx. ' + providerEtaMinutes + ' min' : ''}</div> : <div className="mt-1 text-sm text-muted-foreground">Distance unavailable — provider or customer coordinates are missing.</div>}<div className="mt-1 text-xs text-muted-foreground">Straight-line distance; ETA is approximate and does not include live traffic.</div></div>}
-            <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Booking status</div><div className="mt-1"><StatusBadge value={response.status_c} /></div></div>
+            <div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Booking status</div><div className="mt-1"><StatusBadge value={response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed' ? 'Job Accepted' : response.status_c} /></div></div>
           </div>
         </Card>
 
