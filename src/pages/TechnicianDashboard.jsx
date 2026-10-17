@@ -140,7 +140,7 @@ export default function ServiceProviderDashboard() {
             <div><h2 className="font-heading text-xl font-semibold">Your availability</h2><p className="mt-1 text-sm text-muted-foreground">Choose whether you can take a new job. Change this whenever you move or stop working.</p></div>
             {technician && <StatusBadge value={availability} />}
           </div>
-          {!technician && <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Your provider profile could not be found for this login, so availability cannot be saved yet. Open Provider onboarding and complete/submit your profile, then return here. <Link className="ml-1 font-semibold underline" to="/technician-profile">Open Provider onboarding</Link></div>}
+          {!technician && <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">No saved provider profile is linked to this login yet. Complete and submit Provider onboarding first; once your profile is saved, you can manage availability and travel distance here. <Link className="ml-1 font-semibold underline" to="/service-provider/profile">Open Provider onboarding</Link></div>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {AVAILABILITY_OPTIONS.map((option) => (
               <button key={option.value} type="button" disabled={updatingAvailability || !technician} onClick={() => changeAvailability(option.value)} className={'rounded-xl border p-4 text-left transition ' + (availability.toLowerCase() === option.value.toLowerCase() ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:bg-accent')}>
