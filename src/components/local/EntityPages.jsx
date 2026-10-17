@@ -112,6 +112,8 @@ export function EntityListPage({ entity }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deletingSelected, setDeletingSelected] = useState(false);
   const isProviderList = entity === 'technicians';
+  const isCustomerList = entity === 'customers';
+  const hasBulkDelete = isProviderList || isCustomerList;
   const fields = useMemo(() => isProviderList ? [...new Set([...getFields(config), 'email_c'])] : getFields(config), [config, isProviderList]);
   const { data: providerAssignments = [] } = useFetch(
     () => isProviderList ? sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c', 'capability_c', 'status_c']).page(1, 1000).fetch().then((res) => {
@@ -245,6 +247,55 @@ export function EntityListPage({ entity }) {
     }
   }
 
+  async function deleteSelectedCustomers() {
+    if (!isCustomerList || !selectedIds.length || deletingSelected) return;
+    const confirmation = window.confirm(`Permanently delete ${selectedIds.length} selected customer profile(s)? This removes only LOCAL customer profile records, not login credentials. Customers with existing requests or jobs cannot be deleted so their service history is preserved.`);
+    if (!confirmation) return;
+    setDeletingSelected(true);
+    try {
+      const [customerResult, requestResult, jobResult] = await Promise.all([
+        sdk.table('customer_profiles_c').select(['Id', 'Name']).page(1, 1000).fetch(),
+        sdk.table('service_requests_c').select(['Id', 'customer_c']).page(1, 1000).fetch(),
+        sdk.table('jobs_c').select(['Id', 'customer_c']).page(1, 1000).fetch(),
+      ]);
+      if (!customerResult.success || !requestResult.success || !jobResult.success) {
+        throw new Error('Could not verify customer records and service history. Nothing was deleted.');
+      }
+      const customers = customerResult.data ?? [];
+      const requests = requestResult.data ?? [];
+      const jobs = jobResult.data ?? [];
+      if (customers.length < Number(customerResult.total ?? customers.length)
+        || requests.length < Number(requestResult.total ?? requests.length)
+        || jobs.length < Number(jobResult.total ?? jobs.length)) {
+        throw new Error('Deletion stopped because a related table has more than 1,000 records. Nothing was deleted.');
+      }
+      const customerById = new Map(customers.map((row) => [String(row.Id), row]));
+      const targets = selectedIds.map(String);
+      if (targets.some((id) => !customerById.has(id))) {
+        throw new Error('Some selected customer records are no longer available. Refresh the list and try again.');
+      }
+      const targetSet = new Set(targets);
+      const relatedRequests = requests.filter((row) => targetSet.has(String(row.customer_c?.Id ?? row.customer_c_id ?? row.customer_c ?? '')));
+      const relatedJobs = jobs.filter((row) => targetSet.has(String(row.customer_c?.Id ?? row.customer_c_id ?? row.customer_c ?? '')));
+      if (relatedRequests.length || relatedJobs.length) {
+        const affectedNames = targets.map((id) => customerById.get(id)?.Name || id).join(', ');
+        throw new Error(`Cannot delete ${affectedNames} because their profile is linked to ${relatedRequests.length} service request(s) and ${relatedJobs.length} job(s). This safeguard preserves booking history. Block the customer instead, or resolve the linked records first.`);
+      }
+      const removed = await sdk.table('customer_profiles_c').remove(targets.map((id) => customerById.get(id).Id));
+      if (!removed.data || removed.data.length !== targets.length) {
+        throw new Error(removed.messages?.[0] || 'Some customer profiles could not be deleted. Refresh and inspect the remaining records.');
+      }
+      setSelectedIds([]);
+      await run();
+      toast.success(`Deleted ${targets.length} customer profile(s). Login credentials and unrelated marketplace data were not targeted.`);
+    } catch (error) {
+      toast.error(error.message || 'Could not delete the selected customers.');
+      await run();
+    } finally {
+      setDeletingSelected(false);
+    }
+  }
+
   useEffect(() => {
     const visibleIds = new Set((data?.rows ?? []).map((row) => String(row.Id)));
     setSelectedIds((current) => current.filter((id) => visibleIds.has(String(id))));
@@ -292,15 +343,15 @@ export function EntityListPage({ entity }) {
         </Card>
       ) : (
         <div aria-busy={loading || deletingSelected} className={loading ? 'pointer-events-none opacity-60' : ''}>
-          {isProviderList && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+          {hasBulkDelete && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={rows.length > 0 && rows.every((row) => selectedIds.includes(String(row.Id)))} onCheckedChange={(checked) => setSelectedIds(checked ? rows.map((row) => String(row.Id)) : [])} /> Select all on this page <span className="text-muted-foreground">({selectedIds.length} selected)</span></label>
-            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={deleteSelectedProviders}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Deleting…' : `Delete selected (${selectedIds.length})`}</Button>
+            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={isProviderList ? deleteSelectedProviders : deleteSelectedCustomers}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Deleting…' : `Delete selected (${selectedIds.length})`}</Button>
           </div>}
           <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-muted/40">
                 <tr>
-                  {isProviderList && <th className="w-12 px-3 py-3 text-left font-medium text-muted-foreground">Select</th>}
+                  {hasBulkDelete && <th className="w-12 px-3 py-3 text-left font-medium text-muted-foreground">Select</th>
                   {config.columns.map((column) => <th key={column} className="px-4 py-3 text-left font-medium text-muted-foreground">{columnLabel(config, column)}</th>)}
                   {isProviderList && <th className="px-4 py-3 text-left font-medium text-muted-foreground">Service capabilities</th>}
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">Open</th>
@@ -309,7 +360,7 @@ export function EntityListPage({ entity }) {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.Id} className="border-l-4 border-primary border-b border-border last:border-b-0 hover:bg-accent">
-                    {isProviderList && <td className="px-3 py-3 align-top"><Checkbox aria-label={`Select ${row.Name || 'service provider'}`} checked={selectedIds.includes(String(row.Id))} onCheckedChange={(checked) => setSelectedIds((current) => checked ? [...new Set([...current, String(row.Id)])] : current.filter((id) => id !== String(row.Id)))} /></td>}
+                    {hasBulkDelete && <td className="px-3 py-3 align-top"><Checkbox aria-label={`Select ${row.Name || (isCustomerList ? 'customer' : 'service provider')}`} checked={selectedIds.includes(String(row.Id))} onCheckedChange={(checked) => setSelectedIds((current) => checked ? [...new Set([...current, String(row.Id)])] : current.filter((id) => id !== String(row.Id)))} /></td>}
                     {config.columns.map((column) => {
                       const field = config.fields.find((item) => item.key === column);
                       return <td key={column} className="max-w-xs px-4 py-3 align-top">{column === config.statusField ? <StatusBadge value={row[column]} /> : <span className={column === 'Name' ? 'font-medium' : 'text-muted-foreground'}>{formatCell(row[column], field)}</span>}</td>;
