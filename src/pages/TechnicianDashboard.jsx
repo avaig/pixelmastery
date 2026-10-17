@@ -135,7 +135,7 @@ export default function ServiceProviderDashboard() {
     <div>
       <PageHeader eyebrow={tr('Service Provider workspace', language)} title={tr('Welcome,', language) + ' ' + (technician?.Name?.split(' ')[0] ?? tr('Service Provider', language))} description={tr('Find nearby service requests, quote your price, and keep your accepted jobs moving.', language)} action={<Button asChild><Link to="/responses/new"><ApperIcon name="BadgeIndianRupee" size={17} /> {tr('Send an offer', language)}</Link></Button>} />
       {loading && !data ? <div className="h-40 animate-pulse rounded-lg border border-border bg-muted" /> : error ? <Card className="border-l-4 border-destructive p-6"><div className="font-medium">{tr('Could not load service provider activity.', language)}</div><p className="mt-1 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>{tr('Retry', language)}</Button></Card> : (
-        <Card className="mb-6 border-primary/30 p-5 md:p-6">
+        <Card className="hidden">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><h2 className="font-heading text-xl font-semibold">Your availability</h2><p className="mt-1 text-sm text-muted-foreground">Choose whether you can take a new job. Change this whenever you move or stop working.</p></div>
             {technician && <StatusBadge value={availability} />}
