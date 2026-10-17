@@ -128,7 +128,7 @@ export function EntityListPage({ entity }) {
       const parsed = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
       if (Array.isArray(parsed)) savedApplications = parsed;
     } catch { /* Ignore invalid optional demo cache. */ }
-    for (const row of rows) {
+    for (const row of (data?.rows ?? [])) {
       const rowId = String(row.Id ?? '');
       const email = String(row.email_c ?? '').trim().toLowerCase();
       const phone = String(row.phone_c ?? '').replace(/\\D/g, '');
@@ -148,7 +148,7 @@ export function EntityListPage({ entity }) {
       }
     }
     return grouped;
-  }, [providerAssignments, serviceNameById, rows]);
+  }, [providerAssignments, serviceNameById, data]);
 
   useEffect(() => {
     setPage(1);
