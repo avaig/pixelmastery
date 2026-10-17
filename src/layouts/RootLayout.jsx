@@ -8,7 +8,6 @@ import { APP_CONFIG, AUTH_PROFILES, GENERIC_AUTH } from '@/config/app.config';
 import AppLoader from '@/components/AppLoader';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import CustomerLocationGate from '@/components/local/CustomerLocationGate';
-import ServiceProviderLocationGate from '@/components/local/ServiceProviderLocationGate';
 
 const AuthContext = createContext(null);
 
@@ -117,7 +116,6 @@ export default function RootLayout() {
   return (
     <AuthContext.Provider value={{ logout: handleLogout, user, isAuthenticated }}>
       <CustomerLocationGate required={requiresCustomerLocation} />
-      {requiresProviderLocation && <ServiceProviderLocationGate />}
       <ErrorBoundary fullPage>
         <Outlet />
       </ErrorBoundary>
