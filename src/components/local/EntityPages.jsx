@@ -296,6 +296,35 @@ export function EntityListPage({ entity }) {
     }
   }
 
+  async function blockSelectedCustomers() {
+    if (!isCustomerList || !selectedIds.length || deletingSelected) return;
+    const confirmation = window.confirm(`Block ${selectedIds.length} selected customer account profile(s)? Blocked customers should not be able to make new LOCAL requests, while their existing service history remains preserved.`);
+    if (!confirmation) return;
+    setDeletingSelected(true);
+    try {
+      const customerResult = await sdk.table('customer_profiles_c').select(['Id', 'Name', 'status_c']).page(1, 1000).fetch();
+      if (!customerResult.success) throw new Error('Could not verify selected customer profiles. Nothing was changed.');
+      const customerRows = customerResult.data ?? [];
+      if (customerRows.length < Number(customerResult.total ?? customerRows.length)) throw new Error('Could not safely verify all customer records. Nothing was changed.');
+      const byId = new Map(customerRows.map((row) => [String(row.Id), row]));
+      if (selectedIds.some((id) => !byId.has(String(id)))) throw new Error('Some selected customers are no longer available. Refresh and try again.');
+      for (const id of selectedIds) {
+        const row = byId.get(String(id));
+        if (row.status_c === 'Blocked') continue;
+        const updated = await sdk.table('customer_profiles_c').update({ Id: row.Id, status_c: 'Blocked' });
+        if (!updated.data?.length) throw new Error(updated.messages?.[0] || `Could not block ${row.Name || 'a selected customer'}. Refresh the list and review the remaining profiles.`);
+      }
+      setSelectedIds([]);
+      await run();
+      toast.success(`Blocked ${selectedIds.length} customer profile(s). Existing service requests and history were preserved.`);
+    } catch (error) {
+      toast.error(error.message || 'Could not block the selected customers.');
+      await run();
+    } finally {
+      setDeletingSelected(false);
+    }
+  }
+
   useEffect(() => {
     const visibleIds = new Set((data?.rows ?? []).map((row) => String(row.Id)));
     setSelectedIds((current) => current.filter((id) => visibleIds.has(String(id))));
@@ -345,7 +374,8 @@ export function EntityListPage({ entity }) {
         <div aria-busy={loading || deletingSelected} className={loading ? 'pointer-events-none opacity-60' : ''}>
           {hasBulkDelete && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={rows.length > 0 && rows.every((row) => selectedIds.includes(String(row.Id)))} onCheckedChange={(checked) => setSelectedIds(checked ? rows.map((row) => String(row.Id)) : [])} /> Select all on this page <span className="text-muted-foreground">({selectedIds.length} selected)</span></label>
-            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={isProviderList ? deleteSelectedProviders : deleteSelectedCustomers}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Deleting…' : `Delete selected (${selectedIds.length})`}</Button>
+            {isCustomerList && <Button variant="outline" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={blockSelectedCustomers}><ApperIcon name="ShieldAlert" size={16} /> Block selected</Button>}
+            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={isProviderList ? deleteSelectedProviders : deleteSelectedCustomers}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Processing…' : `Delete selected (${selectedIds.length})`}</Button>
           </div>}
           <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <table className="min-w-full text-sm">
