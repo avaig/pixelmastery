@@ -86,11 +86,67 @@ export function EntityListPage({ entity }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [deletingSelected, setDeletingSelected] = useState(false);
+  const isProviderList = entity === 'technicians';
   const fields = useMemo(() => getFields(config), [config]);
 
   useEffect(() => {
     setPage(1);
+    setSelectedIds([]);
   }, [search, status]);
+
+  useEffect(() => {
+    const visibleIds = new Set((data?.rows ?? []).map((row) => String(row.Id)));
+    setSelectedIds((current) => current.filter((id) => visibleIds.has(String(id))));
+  }, [data]);
+
+  async function deleteSelectedProviders() {
+    if (!isProviderList || !selectedIds.length || deletingSelected) return;
+    const confirmation = window.confirm(`Permanently delete ${selectedIds.length} selected service provider profile(s) and their provider-to-service assignments? Customer accounts, jobs, requests and bookings will not be intentionally deleted.`);
+    if (!confirmation) return;
+    setDeletingSelected(true);
+    try {
+      const [providerResult, assignmentResult] = await Promise.all([
+        sdk.table('technician_profiles_c').select(['Id']).page(1, 1000).fetch(),
+        sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c']).page(1, 1000).fetch(),
+      ]);
+      if (!providerResult.success || !assignmentResult.success) throw new Error('Could not verify provider records and assignments. Nothing was deleted.');
+      const providerRows = providerResult.data ?? [];
+      const assignmentRows = assignmentResult.data ?? [];
+      if (providerRows.length < Number(providerResult.total ?? providerRows.length) || assignmentRows.length < Number(assignmentResult.total ?? assignmentRows.length)) {
+        throw new Error('Deletion stopped because a provider table has more than 1,000 records. Nothing was deleted.');
+      }
+      const existingIds = new Set(providerRows.map((row) => String(row.Id)));
+      const targets = selectedIds.map(String).filter((id) => existingIds.has(id));
+      if (targets.length !== selectedIds.length) throw new Error('Some selected provider records are no longer available. Refresh the list and try again.');
+      const targetSet = new Set(targets);
+      const assignmentIds = assignmentRows.filter((row) => targetSet.has(String(row.technician_c?.Id ?? row.technician_c_id ?? row.technician_c ?? ''))).map((row) => row.Id);
+      if (assignmentIds.length) {
+        const removedAssignments = await sdk.table('service_provider_capabilities_c').remove(assignmentIds);
+        if (!removedAssignments.data || removedAssignments.data.length !== assignmentIds.length) throw new Error(removedAssignments.messages?.[0] || 'Could not remove all service assignments. Provider profiles were not deleted; review assignment records before retrying.');
+      }
+      const removedProviders = await sdk.table('technician_profiles_c').remove(targets.map((id) => {
+        const row = providerRows.find((item) => String(item.Id) === id);
+        return row.Id;
+      }));
+      if (!removedProviders.data || removedProviders.data.length !== targets.length) throw new Error(removedProviders.messages?.[0] || 'Some provider profiles could not be deleted. Refresh the list and inspect the remaining records.');
+      for (const key of ['local_demo_provider_onboarding_applications_v1', 'local_demo_provider_capabilities_v1', 'local_demo_provider_profile_v1']) {
+        try {
+          const saved = JSON.parse(window.localStorage.getItem(key) || 'null');
+          if (Array.isArray(saved)) window.localStorage.setItem(key, JSON.stringify(saved.filter((item) => !targetSet.has(String(item.Id)))));
+        } catch { /* Ignore malformed optional demo cache; database deletion already succeeded. */ }
+      }
+      setSelectedIds([]);
+      await run();
+      toast.success(`Deleted ${targets.length} provider profile(s) and ${assignmentIds.length} service assignment(s). Customer and marketplace history was not targeted.`);
+    } catch (error) {
+      toast.error(error.message || 'Could not delete the selected providers.');
+      await run();
+    } finally {
+      setDeletingSelected(false);
+    }
+  }
 
   const { data, loading, error, run } = useFetch(() => {
     let query = sdk.table(config.table).select(fields);
