@@ -85,6 +85,21 @@ export default function OwnerLayout() {
             <img src="/local-logo.svg" alt="LOCAL — Happy to Help" className="h-10 w-auto" />
           </Link>
           <div className="ml-auto flex items-center gap-3">
+            {user?.profile === 'ServiceProvider_c' && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="header-provider-availability" className="hidden text-xs font-medium text-muted-foreground sm:block">Availability</label>
+                <select
+                  id="header-provider-availability"
+                  value={providerAvailability}
+                  onChange={(event) => changeProviderAvailability(event.target.value)}
+                  disabled={availabilitySaving}
+                  title={providerRecordId ? 'Change your service availability' : 'Complete provider onboarding to activate availability'}
+                  className="h-9 max-w-[150px] rounded-full border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm outline-none focus:ring-2 focus:ring-ring sm:max-w-[180px]"
+                >
+                  {PROVIDER_AVAILABILITY.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
+            )}
             <div className="flex items-center rounded-full border border-border bg-muted/30 p-1 text-xs font-bold">
               <button
                 type="button"
