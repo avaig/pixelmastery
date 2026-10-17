@@ -106,6 +106,27 @@ export function EntityListPage({ entity }) {
     [isProviderList],
   );
   const serviceNameById = useMemo(() => Object.fromEntries(serviceCatalog.map((item) => [String(item.Id), String(item.Name ?? '').trim()]).filter(([, name]) => name)), [serviceCatalog]);
+  const { data, loading, error, run } = useFetch(() => {
+    let query = sdk.table(config.table).select(fields);
+    const filters = [];
+    if (search) filters.push(contains(config.searchField ?? 'Name', search));
+    if (status !== 'all' && config.statusField) filters.push(eq(config.statusField, status));
+    if (filters.length) query = query.where(and(...filters));
+
+    const pageSize = entity === 'service_categories' ? 1000 : 12;
+    return query.orderByDesc('CreatedOn').page(1, pageSize).fetch().then((res) => {
+      if (!res.success) throw new Error(res.message);
+      const sourceRows = res.data ?? [];
+      const filteredRows = entity === 'service_categories'
+        ? sourceRows.filter(isApprovedServiceCategory)
+        : sourceRows;
+      return {
+        rows: entity === 'service_categories' ? filteredRows.slice(0, 12) : filteredRows,
+        total: entity === 'service_categories' ? filteredRows.length : res.total,
+        hasMore: entity === 'service_categories' ? false : res.hasMore,
+      };
+    });
+  }, [entity, search, status, page]);
   const providerServices = useMemo(() => {
     const grouped = {};
     const addService = (providerId, serviceName, status = 'Pending') => {
@@ -201,28 +222,6 @@ export function EntityListPage({ entity }) {
       setDeletingSelected(false);
     }
   }
-
-  const { data, loading, error, run } = useFetch(() => {
-    let query = sdk.table(config.table).select(fields);
-    const filters = [];
-    if (search) filters.push(contains(config.searchField ?? 'Name', search));
-    if (status !== 'all' && config.statusField) filters.push(eq(config.statusField, status));
-    if (filters.length) query = query.where(and(...filters));
-
-    const pageSize = entity === 'service_categories' ? 1000 : 12;
-    return query.orderByDesc('CreatedOn').page(1, pageSize).fetch().then((res) => {
-      if (!res.success) throw new Error(res.message);
-      const sourceRows = res.data ?? [];
-      const filteredRows = entity === 'service_categories'
-        ? sourceRows.filter(isApprovedServiceCategory)
-        : sourceRows;
-      return {
-        rows: entity === 'service_categories' ? filteredRows.slice(0, 12) : filteredRows,
-        total: entity === 'service_categories' ? filteredRows.length : res.total,
-        hasMore: entity === 'service_categories' ? false : res.hasMore,
-      };
-    });
-  }, [entity, search, status, page]);
 
   useEffect(() => {
     const visibleIds = new Set((data?.rows ?? []).map((row) => String(row.Id)));
