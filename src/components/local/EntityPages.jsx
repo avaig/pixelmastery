@@ -205,7 +205,11 @@ export function EntityListPage({ entity }) {
           <Button className="mt-4" variant="outline" onClick={run}>Retry</Button>
         </Card>
       ) : (
-        <div aria-busy={loading} className={loading ? 'pointer-events-none opacity-60' : ''}>
+        <div aria-busy={loading || deletingSelected} className={loading ? 'pointer-events-none opacity-60' : ''}>
+          {isProviderList && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={rows.length > 0 && rows.every((row) => selectedIds.includes(String(row.Id)))} onCheckedChange={(checked) => setSelectedIds(checked ? rows.map((row) => String(row.Id)) : [])} /> Select all on this page <span className="text-muted-foreground">({selectedIds.length} selected)</span></label>
+            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={deleteSelectedProviders}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Deleting…' : `Delete selected (${selectedIds.length})`}</Button>
+          </div>}
           <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-muted/40">
@@ -217,6 +221,7 @@ export function EntityListPage({ entity }) {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.Id} className="border-l-4 border-primary border-b border-border last:border-b-0 hover:bg-accent">
+                    {isProviderList && <td className="px-3 py-3 align-top"><Checkbox aria-label={`Select ${row.Name || 'service provider'}`} checked={selectedIds.includes(String(row.Id))} onCheckedChange={(checked) => setSelectedIds((current) => checked ? [...new Set([...current, String(row.Id)])] : current.filter((id) => id !== String(row.Id)))} /></td>}
                     {config.columns.map((column) => {
                       const field = config.fields.find((item) => item.key === column);
                       return <td key={column} className="max-w-xs px-4 py-3 align-top">{column === config.statusField ? <StatusBadge value={row[column]} /> : <span className={column === 'Name' ? 'font-medium' : 'text-muted-foreground'}>{formatCell(row[column], field)}</span>}</td>;
