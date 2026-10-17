@@ -386,12 +386,8 @@ export default function ServiceProviderProfile() {
         longitude_c: Number.isFinite(Number(form.longitude_c)) && form.longitude_c !== null && form.longitude_c !== '' ? Number(form.longitude_c) : null,
         service_radius_km_c: Math.max(1, Math.min(100, Number(form.service_radius_km_c) || 10)),
         identity_document_type_c: form.identity_document_type_c,
-        identity_document_status_c: (documents.identity ?? []).length ? 'Submitted for review' : 'Not submitted',
-        pan_status_c: (documents.pan ?? []).length ? 'Submitted for review' : 'Not submitted',
-        bank_status_c: (documents.bank ?? []).length ? 'Submitted for review' : 'Not submitted',
-        driving_licence_status_c: requiresDrivingDocs ? ((documents.licence ?? []).length ? 'Submitted for review' : 'Not submitted') : 'Not applicable',
-        vehicle_documents_status_c: requiresDrivingDocs ? ((documents.vehicle ?? []).length ? 'Submitted for review' : 'Not submitted') : 'Not applicable',
-        business_document_status_c: isBusiness ? ((documents.business ?? []).length ? 'Submitted for review' : 'Not submitted') : 'Not applicable',
+        // Verification/status fields are Admin-controlled and intentionally omitted from provider writes.
+        // Document filenames and storage references are saved in provider_documents_c for Admin review.
         pricing_method_c: form.pricing_method_c,
         terms_accepted_c: Boolean(form.terms_accepted_c),
         profile_photo_c: JSON.stringify(profilePhotoFiles.map((file) => ({
