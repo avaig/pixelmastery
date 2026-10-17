@@ -286,6 +286,11 @@ export default function RequestDetail() {
 
   async function removeRequest() {
     if (!request?.Id || !canCancelRequest) return;
+    if (['Confirmed', 'In progress'].includes(String(request.status_c ?? ''))) {
+      setDeleteOpen(false);
+      toast.info('This booking already has an active job. Please contact LOCAL support to request cancellation so provider and payment records stay consistent.');
+      return;
+    }
     setWorking(true);
     try {
       // Keep request and offer records for auditability. Deleting the request and its
@@ -314,7 +319,7 @@ export default function RequestDetail() {
         eyebrow={tr('Service request', language)}
         title={isCarWashRequest ? 'CAR • Car Wash (' + requestLineItems.length + ' items)' : request.Name}
         description={request.location_c + ' • ' + (request.preferred_time_c === 'Scheduled' && request.scheduled_at_c ? 'Scheduled for ' + new Date(request.scheduled_at_c).toLocaleString('en-IN') : request.preferred_time_c === 'ASAP' ? 'Book Now — need help now' : request.preferred_time_c)}
-        action={<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/requests"><ApperIcon name="ArrowLeft" size={16} /> Back</Link></Button>{isCustomer && request.status_c === 'Confirmed' && relatedJob && <Button asChild><Link to={'/jobs/' + relatedJob.Id}><ApperIcon name="CreditCard" size={16} /> {['Booking Commitment & LOCAL Fee Paid', 'Final Payment Paid'].includes(relatedJob.payment_status_c) ? 'View payment & job' : 'Proceed to payment'}</Link></Button>}{(isCustomer && canEditRequest || user?.profile === 'Admin_c') && <Button asChild variant="outline"><Link to={'/requests/' + request.Id + '/edit'}><ApperIcon name="Pencil" size={16} /> Edit booking</Link></Button>}{isTechnician && (isFixedRateDriverRequest ? <Button onClick={acceptDriverRequest} disabled={working}><ApperIcon name="CheckCircle" size={16} /> {working ? 'Accepting…' : 'I’m Available — Accept Request'}</Button> : <Button asChild><Link to={'/responses/new?requestId=' + request.Id}><ApperIcon name="BadgeIndianRupee" size={16} /> Send offer</Link></Button>)}</div>}
+        action={<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/requests"><ApperIcon name="ArrowLeft" size={16} /> Back</Link></Button>{isCustomer && request.status_c === 'Confirmed' && relatedJob && <Button asChild><Link to={'/jobs/' + relatedJob.Id}><ApperIcon name="CreditCard" size={16} /> {['Booking Commitment & LOCAL Fee Paid', 'Final Payment Paid'].includes(relatedJob.payment_status_c) ? 'View payment & job' : 'Proceed to payment'}</Link></Button>}{(isCustomer && canEditRequest || user?.profile === 'Admin_c') && <Button asChild variant="outline"><Link to={'/requests/' + request.Id + '/edit'}><ApperIcon name="Pencil" size={16} /> Edit booking</Link></Button>}{isTechnician && ['Open', 'Quoted', 'Negotiating'].includes(String(request.status_c ?? '')) && (isFixedRateDriverRequest ? <Button onClick={acceptDriverRequest} disabled={working}><ApperIcon name="CheckCircle" size={16} /> {working ? 'Accepting…' : 'I’m Available — Accept Request'}</Button> : <Button asChild><Link to={'/responses/new?requestId=' + request.Id}><ApperIcon name="BadgeIndianRupee" size={16} /> Send offer</Link></Button>)}</div>}
       />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <Card className="border-l-4 border-primary p-4 md:p-5">
@@ -406,7 +411,7 @@ export default function RequestDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={working}>Keep request</AlertDialogCancel>
             <AlertDialogAction onClick={removeRequest} disabled={working}>
-              {working ? (canDeleteRequest ? 'Deleting…' : 'Cancelling…') : (canDeleteRequest ? 'Delete request' : 'Cancel request')}
+              {working ? 'Cancelling…' : 'Confirm cancellation'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
