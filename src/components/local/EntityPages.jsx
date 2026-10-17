@@ -96,11 +96,6 @@ export function EntityListPage({ entity }) {
     setSelectedIds([]);
   }, [search, status]);
 
-  useEffect(() => {
-    const visibleIds = new Set((data?.rows ?? []).map((row) => String(row.Id)));
-    setSelectedIds((current) => current.filter((id) => visibleIds.has(String(id))));
-  }, [data]);
-
   async function deleteSelectedProviders() {
     if (!isProviderList || !selectedIds.length || deletingSelected) return;
     const confirmation = window.confirm(`Permanently delete ${selectedIds.length} selected service provider profile(s) and their provider-to-service assignments? Customer accounts, jobs, requests and bookings will not be intentionally deleted.`);
@@ -169,6 +164,11 @@ export function EntityListPage({ entity }) {
       };
     });
   }, [entity, search, status, page]);
+
+  useEffect(() => {
+    const visibleIds = new Set((data?.rows ?? []).map((row) => String(row.Id)));
+    setSelectedIds((current) => current.filter((id) => visibleIds.has(String(id))));
+  }, [data]);
 
   const rows = data?.rows ?? [];
   const firstLoad = loading && data === undefined;
