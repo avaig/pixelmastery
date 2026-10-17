@@ -413,7 +413,9 @@ export default function ServiceProviderProfile() {
         toast.error(res.messages?.[0] ?? 'Your onboarding details could not be saved.');
         return;
       }
-      const providerId = technician?.Id ?? res.data[0].Id;
+      // If this login's previously loaded profile was only a browser/demo snapshot,
+      // it may carry a stale ID. The newly created database row is authoritative.
+      const providerId = hasPersistedRecord ? technician.Id : res.data[0].Id;
       // Save selected capabilities as pending assignments; Admin approval is still required before matching.
       const linksResult = await sdk.table('service_provider_capabilities_c')
         .select(['Id', 'technician_c', 'capability_c', 'status_c'])
