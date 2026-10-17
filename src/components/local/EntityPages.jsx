@@ -551,16 +551,57 @@ export function EntityDetailPage({ entity }) {
           </div>
         }
       />
-      <Card className="border-l-4 border-primary p-5 md:p-7">
-        <div className="grid gap-6 md:grid-cols-2">
-          {config.fields.map((field) => (
-            <div key={field.key} className={field.type === 'LongText' ? 'md:col-span-2' : ''}>
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{field.label}</div>
-              <div className="mt-2 text-sm leading-6">{field.key === config.statusField ? <StatusBadge value={record[field.key]} /> : formatCell(record[field.key], field)}</div>
+      {entity === 'technicians' ? (() => {
+        let demoApplication = null;
+        try {
+          const saved = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
+          if (Array.isArray(saved)) {
+            const email = String(record.email_c ?? '').trim().toLowerCase();
+            const phone = String(record.phone_c ?? '').replace(/\\D/g, '');
+            demoApplication = saved.find((item) => String(item.Id ?? '') === String(record.Id))
+              || saved.find((item) => email && String(item.email_c ?? '').trim().toLowerCase() === email)
+              || saved.find((item) => phone && String(item.phone_c ?? '').replace(/\\D/g, '') === phone)
+              || saved.find((item) => String(item.Name ?? '').trim().toLowerCase() === String(record.Name ?? '').trim().toLowerCase())
+              || null;
+          }
+        } catch { /* Ignore optional demo cache. */ }
+        const byId = Object.fromEntries(detailCatalog.map((item) => [String(item.Id), item]));
+        const assigned = detailAssignments.map((link) => {
+          const serviceId = String(link.capability_c?.Id ?? link.capability_c_id ?? link.capability_c ?? '');
+          const catalog = byId[serviceId];
+          return { id: serviceId, name: catalog?.Name ?? link.capability_c?.Name ?? 'Service', type: catalog?.vehicle_type_c, description: catalog?.description_c, status: link.status_c || 'Pending' };
+        });
+        const selectedIds = Array.isArray(demoApplication?._demoCapabilityIds) ? demoApplication._demoCapabilityIds.map(String) : [];
+        const services = assigned.length ? assigned : selectedIds.map((serviceId) => ({ id: serviceId, name: byId[serviceId]?.Name ?? 'Selected service', type: byId[serviceId]?.vehicle_type_c, description: byId[serviceId]?.description_c, status: demoApplication?._demoServiceStatuses?.[serviceId] || 'Selected · assignment missing' }));
+        const info = [
+          ['Email', record.email_c], ['Phone', record.phone_c], ['Provider type', record.provider_type_c],
+          ['Availability', record.availability_c], ['Profile status', record.status_c], ['Verification', record.verification_status_c],
+          ['Experience', record.experience_c], ['Preferred language', record.preferred_language_c],
+          ['Service area', record.service_area_c], ['Maximum travel distance', record.service_radius_km_c != null ? record.service_radius_km_c + ' km' : '—'],
+          ['Current address', record.current_address_c], ['Business name', record.business_name_c],
+          ['Business address', record.business_address_c], ['Emergency contact', record.emergency_contact_c],
+          ['Primary service', lookupName(record.primary_service_c)], ['Secondary service', lookupName(record.secondary_service_c)],
+          ['Identity proof', record.identity_document_status_c], ['PAN', record.pan_status_c],
+          ['Bank / UPI payout', record.bank_status_c], ['Driving licence', record.driving_licence_status_c],
+          ['Vehicle documents', record.vehicle_documents_status_c], ['Business proof', record.business_document_status_c],
+          ['Background check', record.background_check_status_c], ['Safety / service training', record.training_status_c],
+          ['Terms accepted', record.terms_accepted_c === true ? 'Accepted' : record.terms_accepted_c === false ? 'Not accepted' : '—'],
+          ['GPS coordinates', record.latitude_c != null && record.longitude_c != null ? Number(record.latitude_c).toFixed(5) + ', ' + Number(record.longitude_c).toFixed(5) : 'Not captured'],
+          ['Admin review note', record.review_notes_c],
+        ];
+        return <div className="space-y-5">
+          <Card className="border-l-4 border-primary p-5 md:p-7">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              {record.profile_photo_c ? <img src={record.profile_photo_c} alt="Provider profile" className="h-20 w-20 rounded-xl border object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-muted"><ApperIcon name="UserRound" size={32} /></div>}
+              <div className="min-w-0 flex-1"><h2 className="text-xl font-semibold">{record.Name}</h2><p className="mt-1 text-sm text-muted-foreground">{record.provider_type_c || 'Service provider'}{record.experience_c ? ' · ' + record.experience_c + ' experience' : ''}</p><div className="mt-3 flex flex-wrap gap-2"><StatusBadge value={record.status_c} /><StatusBadge value={record.verification_status_c || 'Not reviewed'} /><StatusBadge value={record.availability_c || 'Availability not set'} /></div></div>
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
+          <Card className="p-5 md:p-7"><h2 className="mb-4 text-lg font-semibold">Service capabilities</h2><p className="mb-4 text-sm text-muted-foreground">Services assigned to this provider and their individual approval status.</p>
+            {services.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{services.map((service) => <div key={service.id} className="rounded-lg border border-border p-4"><div className="font-medium">{service.name}</div><div className="mt-1 text-sm text-muted-foreground">{[service.type, service.description].filter(Boolean).join(' · ') || 'Service capability'}</div><div className="mt-3"><StatusBadge value={service.status === 'Active' ? 'Approved · Active' : service.status === 'Approved' ? 'Approved · awaiting activation' : service.status} /></div></div>)}</div> : <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No service capabilities are assigned to this provider yet.</p>}
+          </Card>
+          <Card className="p-5 md:p-7"><h2 className="mb-4 text-lg font-semibold">Provider information & verification</h2><div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">{info.map(([label, value]) => <div key={label} className={label === 'Current address' || label === 'Business address' || label === 'Admin review note' ? 'sm:col-span-2' : ''}><div className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</div><div className="mt-1 break-words text-sm leading-6">{value === true ? 'Yes' : value === false ? 'No' : value || '—'}</div></div>)}</div></Card>
+        </div>;
+      })() : <Card className="border-l-4 border-primary p-5 md:p-7"><div className="grid gap-6 md:grid-cols-2">{config.fields.map((field) => <div key={field.key} className={field.type === 'LongText' ? 'md:col-span-2' : ''}><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{field.label}</div><div className="mt-2 text-sm leading-6">{field.key === config.statusField ? <StatusBadge value={record[field.key]} /> : formatCell(record[field.key], field)}</div></div>)}</div></Card>}
       <div className="mt-6 flex justify-end">
         <Button variant="destructive" onClick={() => setDeleteOpen(true)}><ApperIcon name="Trash2" size={16} /> Delete {config.singular}</Button>
       </div>
