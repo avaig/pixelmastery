@@ -281,48 +281,27 @@ export default function RequestDetail() {
     }
   }
 
-  const canDeleteRequest = isCustomer && !responses.length && !relatedJob && ['Open', 'Quoted', 'Negotiating'].includes(String(request?.status_c ?? ''));
+  const canEditRequest = isCustomer && !responses.length && !relatedJob && String(request?.status_c ?? '') === 'Open';
+  const canCancelRequest = isCustomer && ['Open', 'Quoted', 'Negotiating', 'Confirmed', 'In progress'].includes(String(request?.status_c ?? ''));
 
   async function removeRequest() {
-    if (!request?.Id || !isCustomer) return;
+    if (!request?.Id || !canCancelRequest) return;
     setWorking(true);
     try {
-      if (!canDeleteRequest) {
-        const cancelled = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled' });
-        if (!cancelled.data?.length) {
-          toast.error(cancelled.messages?.[0] ?? 'The request could not be cancelled. It has not been deleted.');
-          return;
-        }
-        toast.success('Request cancelled. Provider offers and booking history have been preserved.');
-        setDeleteOpen(false);
-        navigate('/requests');
+      // Keep request and offer records for auditability. Deleting the request and its
+      // dependent offers caused record-not-found failures in the connected marketplace.
+      const result = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled' });
+      if (!result.data?.length) {
+        toast.error(result.messages?.[0] ?? 'This request could not be cancelled. Refresh the page and try again.');
         return;
       }
-
-      const offerRes = await sdk.table('technician_responses_c')
-        .select(['Id'])
-        .where(eq('request_c', request.Id))
-        .page(1, 100)
-        .fetch();
-      if (!offerRes.success) throw new Error(offerRes.message || 'Could not check provider offers. The request was not deleted.');
-      if (offerRes.data?.length) {
-        const removedOffers = await sdk.table('technician_responses_c').remove(offerRes.data.map((item) => item.Id));
-        if (removedOffers.data?.length !== offerRes.data.length) {
-          throw new Error(removedOffers.messages?.[0] || 'Could not remove all offers. The request was not deleted.');
-        }
-      }
-      const res = await sdk.table('service_requests_c').remove([request.Id]);
-      if (!res.data?.length) {
-        toast.error(res.messages?.[0] ?? 'Request was not deleted. Please refresh and try again.');
-        return;
-      }
-      toast.success('Service request deleted.');
+      toast.success('Request cancelled. Its offers and history have been preserved.');
+      setDeleteOpen(false);
       navigate('/requests');
     } catch (err) {
-      toast.error(err.message || 'Could not remove service request.');
+      toast.error(err.message || 'This request could not be cancelled. No records were deleted.');
     } finally {
       setWorking(false);
-      setDeleteOpen(false);
     }
   }
 
@@ -333,9 +312,9 @@ export default function RequestDetail() {
     <div>
       <PageHeader
         eyebrow={tr('Service request', language)}
-        title={request.Name}
+        title={isCarWashRequest ? 'CAR • Car Wash (' + requestLineItems.length + ' items)' : request.Name}
         description={request.location_c + ' • ' + (request.preferred_time_c === 'Scheduled' && request.scheduled_at_c ? 'Scheduled for ' + new Date(request.scheduled_at_c).toLocaleString('en-IN') : request.preferred_time_c === 'ASAP' ? 'Book Now — need help now' : request.preferred_time_c)}
-        action={<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/requests"><ApperIcon name="ArrowLeft" size={16} /> Back</Link></Button>{isCustomer && request.status_c === 'Confirmed' && relatedJob && <Button asChild><Link to={'/jobs/' + relatedJob.Id}><ApperIcon name="CreditCard" size={16} /> {['Booking Commitment & LOCAL Fee Paid', 'Final Payment Paid'].includes(relatedJob.payment_status_c) ? 'View payment & job' : 'Proceed to payment'}</Link></Button>}{(user?.profile === 'Customer_c' || user?.profile === 'Admin_c') && <Button asChild variant="outline"><Link to={'/requests/' + request.Id + '/edit'}><ApperIcon name="Pencil" size={16} /> Edit</Link></Button>}{isTechnician && (isFixedRateDriverRequest ? <Button onClick={acceptDriverRequest} disabled={working}><ApperIcon name="CheckCircle" size={16} /> {working ? 'Accepting…' : 'I’m Available — Accept Request'}</Button> : <Button asChild><Link to={'/responses/new?requestId=' + request.Id}><ApperIcon name="BadgeIndianRupee" size={16} /> Send offer</Link></Button>)}</div>}
+        action={<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/requests"><ApperIcon name="ArrowLeft" size={16} /> Back</Link></Button>{isCustomer && request.status_c === 'Confirmed' && relatedJob && <Button asChild><Link to={'/jobs/' + relatedJob.Id}><ApperIcon name="CreditCard" size={16} /> {['Booking Commitment & LOCAL Fee Paid', 'Final Payment Paid'].includes(relatedJob.payment_status_c) ? 'View payment & job' : 'Proceed to payment'}</Link></Button>}{(isCustomer && canEditRequest || user?.profile === 'Admin_c') && <Button asChild variant="outline"><Link to={'/requests/' + request.Id + '/edit'}><ApperIcon name="Pencil" size={16} /> Edit booking</Link></Button>}{isTechnician && (isFixedRateDriverRequest ? <Button onClick={acceptDriverRequest} disabled={working}><ApperIcon name="CheckCircle" size={16} /> {working ? 'Accepting…' : 'I’m Available — Accept Request'}</Button> : <Button asChild><Link to={'/responses/new?requestId=' + request.Id}><ApperIcon name="BadgeIndianRupee" size={16} /> Send offer</Link></Button>)}</div>}
       />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <Card className="border-l-4 border-primary p-4 md:p-5">
@@ -352,13 +331,13 @@ export default function RequestDetail() {
             <div className="flex items-center justify-between"><div className="text-xs text-muted-foreground">{tr('Status', language)}</div><StatusBadge value={request.status_c} /></div>
             {isCustomer && request.status_c === 'Confirmed' && relatedJob && <div className="rounded-lg border border-highlight/40 bg-highlight/5 p-4"><div className="font-semibold">Booking confirmed</div><p className="mt-1 text-sm text-muted-foreground">Your Service Provider is selected. Continue to the job page to review the booking commitment, LOCAL Service Fee, and available demo payment methods.</p><Button className="mt-3 w-full" onClick={() => navigate('/jobs/' + relatedJob.Id)}><ApperIcon name="CreditCard" size={16} /> {['Booking Commitment & LOCAL Fee Paid', 'Final Payment Paid'].includes(relatedJob.payment_status_c) ? 'View job & payment status' : 'Proceed to payment'}</Button></div>}
           </div>
-          {isCustomer && ['Open', 'Quoted', 'Negotiating', 'Confirmed', 'In progress'].includes(String(request.status_c ?? '')) && (
+          {canCancelRequest && (
             <div className="mt-7 border-t border-border pt-5">
               <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
-                <ApperIcon name={canDeleteRequest ? 'Trash2' : 'XCircle'} size={15} />
-                {canDeleteRequest ? 'Delete request' : 'Cancel request'}
+                <ApperIcon name="XCircle" size={15} />
+                {request.status_c === 'Confirmed' || request.status_c === 'In progress' ? 'Request cancellation' : 'Cancel request'}
               </Button>
-              {!canDeleteRequest && <p className="mt-2 text-xs text-muted-foreground">Offers or booking history exist, so LOCAL will preserve the record and cancel it instead of deleting it.</p>}
+              <p className="mt-2 text-xs text-muted-foreground">LOCAL preserves booking and offer history. Confirmed or in-progress cancellations may need support follow-up.</p>
             </div>
           )}
         </Card>
@@ -417,11 +396,11 @@ export default function RequestDetail() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{canDeleteRequest ? 'Delete this service request?' : 'Cancel this service request?'}</AlertDialogTitle>
+            <AlertDialogTitle>{request.status_c === 'Confirmed' || request.status_c === 'In progress' ? 'Request booking cancellation?' : 'Cancel this service request?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              {canDeleteRequest
-                ? 'Delete “' + request.Name + '”? This request has no provider offers or job history.'
-                : 'Cancel “' + request.Name + '”? LOCAL will preserve provider offers and booking history for records and audit purposes.'}
+              {request.status_c === 'Confirmed' || request.status_c === 'In progress'
+                ? 'Request cancellation for “' + request.Name + '”. The booking record and payment history will be preserved; support may need to review the cancellation.'
+                : 'Cancel “' + request.Name + '”? Provider offers and request history will be preserved. This cannot be undone from this screen.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
