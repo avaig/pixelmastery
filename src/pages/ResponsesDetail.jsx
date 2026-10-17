@@ -161,7 +161,7 @@ export default function ResponsesDetail() {
         request_c: request.Id,
         response_c: response.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c,
-        technician_c: providerId,
+        technician_c: { Id: providerId, Name: validProvider.Name },
         agreed_price_c: billing.servicePrice,
         original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
         booking_commitment_amount_c: billing.bookingCommitment,
