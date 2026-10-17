@@ -80,6 +80,7 @@ export default function RequestDetail() {
   const [negotiatingId, setNegotiatingId] = useState(null);
   const [counterPrice, setCounterPrice] = useState('');
   const [confirmingResponse, setConfirmingResponse] = useState(null);
+  const [recoveryAttemptedId, setRecoveryAttemptedId] = useState(null);
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -286,6 +287,17 @@ export default function RequestDetail() {
       setWorking(false);
     }
   }
+
+  useEffect(() => {
+    if (loading || !isCustomer || !request?.Id || relatedJob || recoveryAttemptedId === request.Id) return;
+    if (!['Negotiating', 'Quoted', 'Open'].includes(String(request.status_c ?? ''))) return;
+    const selectedOffer = responses.find((item) => item.status_c === 'Selected');
+    if (!selectedOffer) return;
+    // Recover older/partial selections where the offer was marked Selected but
+    // the job insert or request-status update never completed.
+    setRecoveryAttemptedId(request.Id);
+    confirmTechnician(selectedOffer);
+  }, [loading, isCustomer, request?.Id, request?.status_c, relatedJob, responses, recoveryAttemptedId]);
 
   async function negotiate(response) {
     const price = Number(counterPrice);
