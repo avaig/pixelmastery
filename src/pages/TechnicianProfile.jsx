@@ -109,7 +109,7 @@ export default function ServiceProviderProfile() {
   const cameraStreamRef = useRef(null);
   const { data: technician, loading, run: reloadTechnician } = useFetch(
     () => sdk.table('technician_profiles_c')
-      .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'status_c'])
+      .select(['Id', 'Name', 'email_c', 'phone_c', 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'primary_service_c', 'secondary_service_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'pricing_method_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c', 'provider_documents_c', 'status_c'])
       .where(eq('email_c', user?.emailAddress ?? user?.email ?? ''))
       .page(1, 1)
       .fetch()
@@ -158,6 +158,14 @@ export default function ServiceProviderProfile() {
         setProfilePhotoFiles(Array.isArray(savedPhoto) ? savedPhoto : []);
       } catch {
         setProfilePhotoFiles([]);
+      }
+      try {
+        const savedDocuments = JSON.parse(technician.provider_documents_c || '{}');
+        if (savedDocuments && typeof savedDocuments === 'object') {
+          setDocuments((current) => Object.fromEntries(Object.keys(current).map((key) => [key, Array.isArray(savedDocuments[key]) ? savedDocuments[key] : current[key]])));
+        }
+      } catch {
+        // Preserve current document selections if older records have no document metadata.
       }
       return next;
     });
@@ -378,12 +386,12 @@ export default function ServiceProviderProfile() {
         longitude_c: Number.isFinite(Number(form.longitude_c)) && form.longitude_c !== null && form.longitude_c !== '' ? Number(form.longitude_c) : null,
         service_radius_km_c: Math.max(1, Math.min(100, Number(form.service_radius_km_c) || 10)),
         identity_document_type_c: form.identity_document_type_c,
-        identity_document_status_c: (documents.identity ?? []).length ? 'Submitted' : 'Not submitted',
-        pan_status_c: (documents.pan ?? []).length ? 'Submitted' : 'Not submitted',
-        bank_status_c: (documents.bank ?? []).length ? 'Submitted' : 'Not submitted',
-        driving_licence_status_c: requiresDrivingDocs ? ((documents.licence ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
-        vehicle_documents_status_c: requiresDrivingDocs ? ((documents.vehicle ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
-        business_document_status_c: isBusiness ? ((documents.business ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
+        identity_document_status_c: (documents.identity ?? []).length ? 'Submitted for review' : 'Not submitted',
+        pan_status_c: (documents.pan ?? []).length ? 'Submitted for review' : 'Not submitted',
+        bank_status_c: (documents.bank ?? []).length ? 'Submitted for review' : 'Not submitted',
+        driving_licence_status_c: requiresDrivingDocs ? ((documents.licence ?? []).length ? 'Submitted for review' : 'Not submitted') : 'Not applicable',
+        vehicle_documents_status_c: requiresDrivingDocs ? ((documents.vehicle ?? []).length ? 'Submitted for review' : 'Not submitted') : 'Not applicable',
+        business_document_status_c: isBusiness ? ((documents.business ?? []).length ? 'Submitted for review' : 'Not submitted') : 'Not applicable',
         pricing_method_c: form.pricing_method_c,
         terms_accepted_c: Boolean(form.terms_accepted_c),
         profile_photo_c: JSON.stringify(profilePhotoFiles.map((file) => ({
@@ -392,10 +400,14 @@ export default function ServiceProviderProfile() {
           Type: file.Type ?? file.type ?? 'image/jpeg',
           Size: file.Size ?? file.size ?? 0,
           url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
-          previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
         }))),
-        // Uploaded file metadata is also kept in the browser-local demo application below.
-        // The uploaded files themselves are sent through FilePicker to LOCAL storage.
+        provider_documents_c: JSON.stringify(Object.fromEntries(Object.entries(documents).map(([key, files]) => [key, (files ?? []).map((file) => ({
+          Id: file.Id,
+          Name: file.Name ?? file.name ?? 'Uploaded document',
+          Type: file.Type ?? file.type ?? 'application/octet-stream',
+          Size: file.Size ?? file.size ?? 0,
+          url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
+        }))]))),
       };
       // A browser-local demo application is not proof that a database row exists.
       // Updating its stale Id produces "record not found"; create the database row instead.
@@ -436,13 +448,7 @@ export default function ServiceProviderProfile() {
         ...payload,
         Id: providerId,
         email_c: form.email_c.trim(),
-        identity_document_status_c: (documents.identity ?? []).length ? 'Submitted' : 'Not submitted',
-        pan_status_c: (documents.pan ?? []).length ? 'Submitted' : 'Not submitted',
-        bank_status_c: (documents.bank ?? []).length ? 'Submitted' : 'Not submitted',
-        driving_licence_status_c: requiresDrivingDocs ? 'Submitted' : 'Not applicable',
-        vehicle_documents_status_c: requiresDrivingDocs ? 'Submitted' : 'Not applicable',
-        business_document_status_c: isBusiness ? ((documents.business ?? []).length ? 'Submitted' : 'Not submitted') : 'Not applicable',
-        provider_documents_c: JSON.stringify(Object.fromEntries(Object.entries(documents).map(([key, files]) => [key, (files ?? []).map((file) => ({ Id: file.Id, Name: file.Name ?? file.name, Type: file.Type ?? file.type, Size: file.Size ?? file.size, url: file.url ?? file.Url ?? null }))]))),
+        provider_documents_c: payload.provider_documents_c,
         background_check_status_c: form.background_check_status_c,
         training_status_c: form.training_status_c,
         verification_status_c: 'Submitted',
@@ -566,7 +572,7 @@ export default function ServiceProviderProfile() {
             {step === 2 && (
               <section className="space-y-5">
                 <div><h2 className="font-heading text-xl font-semibold">Documents & payout verification</h2><p className="mt-1 text-sm text-muted-foreground">Upload clear, readable files. Requirements depend on your selected services and provider type. Documents are submitted for Admin review; they do not automatically approve a provider.</p></div>
-                <Field label="Identity document type" id="identity-document-type" required><Select value={form.identity_document_type_c} onValueChange={(value) => update('identity_document_type_c', value)}><SelectTrigger id="identity-document-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Aadhaar">Aadhaar</SelectItem><SelectItem value="Voter ID">Voter ID</SelectItem><SelectItem value="Passport">Passport</SelectItem><SelectItem value="Driving Licence">Driving Licence</SelectItem><SelectItem value="Other accepted ID">Other accepted ID</SelectItem></SelectContent></Select></Field>
+                <Field label="Identity document type" id="identity-document-type" required><Select value={form.identity_document_type_c} onValueChange={(value) => update('identity_document_type_c', value)}><SelectTrigger id="identity-document-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Aadhaar verified securely">Aadhaar (secure verification)</SelectItem><SelectItem value="Voter ID">Voter ID</SelectItem><SelectItem value="Passport">Passport</SelectItem><SelectItem value="Driving licence">Driving Licence</SelectItem><SelectItem value="Other accepted ID">Other accepted ID</SelectItem></SelectContent></Select></Field>
                 {documentPicker('Identity proof', 'identity', 'Upload an accepted identity document. Use only the information needed for verification.', true)}
                 {documentPicker('PAN card', 'pan', 'Upload if you have a PAN or if LOCAL requests it for your provider/business or tax setup.')}
                 {documentPicker('Bank-account proof for payouts', 'bank', 'You can complete onboarding first. Add a cancelled cheque, passbook first page or bank statement before your first payout.')}
