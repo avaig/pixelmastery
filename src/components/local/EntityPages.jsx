@@ -498,7 +498,19 @@ export function EntityDetailPage({ entity }) {
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { data: record, loading, error } = useFetch(() => sdk.table(config.table).select(getFields(config)).get(id).then((res) => res.data), [id]);
+  const detailFields = entity === 'technicians'
+    ? [...new Set([...getFields(config), 'provider_type_c', 'preferred_language_c', 'current_address_c', 'emergency_contact_c', 'business_name_c', 'business_address_c', 'experience_c', 'latitude_c', 'longitude_c', 'service_radius_km_c', 'primary_service_c', 'secondary_service_c', 'identity_document_type_c', 'identity_document_status_c', 'pan_status_c', 'bank_status_c', 'driving_licence_status_c', 'vehicle_documents_status_c', 'business_document_status_c', 'background_check_status_c', 'training_status_c', 'terms_accepted_c', 'verification_status_c', 'review_notes_c', 'profile_photo_c'])]
+    : getFields(config);
+  const { data: record, loading, error } = useFetch(() => sdk.table(config.table).select(detailFields).get(id).then((res) => res.data), [id, entity]);
+  const { data: detailAssignments = [] } = useFetch(() => entity === 'technicians'
+    ? sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c', 'capability_c', 'status_c']).page(1, 1000).fetch().then((res) => {
+      if (!res.success) throw new Error(res.message || 'Could not load provider capabilities.');
+      return (res.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c_id ?? item.technician_c ?? '') === String(id));
+    })
+    : Promise.resolve([]), [entity, id]);
+  const { data: detailCatalog = [] } = useFetch(() => entity === 'technicians'
+    ? sdk.table('service_capabilities_c').select(['Id', 'Name', 'vehicle_type_c', 'description_c']).page(1, 200).fetch().then((res) => res.data ?? [])
+    : Promise.resolve([]), [entity]);
 
   if (loading) return <DetailSkeleton />;
   if (error || !record) return <Card className="border-l-4 border-destructive p-6">This {config.singular.toLowerCase()} could not be found.</Card>;
