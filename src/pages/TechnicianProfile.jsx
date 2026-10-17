@@ -431,9 +431,10 @@ export default function ServiceProviderProfile() {
         if (!alreadyLinked) {
           const assigned = await sdk.table('service_provider_capabilities_c').create({
             Name: 'Provider capability',
-            // Lookup fields require record references, not bare IDs.
-            technician_c: { Id: providerId },
-            capability_c: { Id: capabilityId },
+            // Apper lookup columns accept the referenced record ID (integer/UUID),
+            // not an embedded { Id } object. Normalize numeric table IDs explicitly.
+            technician_c: Number.isFinite(Number(providerId)) ? Number(providerId) : providerId,
+            capability_c: Number.isFinite(Number(capabilityId)) ? Number(capabilityId) : capabilityId,
             status_c: 'Pending',
           });
           if (!assigned.success || !assigned.data?.length) {
