@@ -111,6 +111,18 @@ export default function RequestDetail() {
       visibleResponses = visibleResponses.filter((item) => String(item.technician_c?.Id ?? item.technician_c) === String(provider.Id));
     }
 
+    // Legacy data may contain multiple response rows for the same provider/request.
+    // The query is newest-first, so keep the latest row per provider and show one card.
+    // This is a presentation safeguard; it does not delete negotiation history or records.
+    const seenProviderIds = new Set();
+    visibleResponses = visibleResponses.filter((item) => {
+      const providerId = item.technician_c?.Id ?? item.technician_c;
+      const key = providerId == null ? 'response:' + String(item.Id) : 'provider:' + String(providerId);
+      if (seenProviderIds.has(key)) return false;
+      seenProviderIds.add(key);
+      return true;
+    });
+
     const jobsRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'status_c', 'payment_status_c']).where(eq('request_c', id)).page(1, 1).fetch();
     if (!jobsRes.success) throw new Error(jobsRes.message);
 
