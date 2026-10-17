@@ -56,6 +56,7 @@ export default function ProviderOnboardingReview() {
   const [serviceNames, setServiceNames] = useState({});
   const [serviceCatalogError, setServiceCatalogError] = useState('');
   const [serviceStatusOverrides, setServiceStatusOverrides] = useState({});
+  const [resettingProviders, setResettingProviders] = useState(false);
   const { data: capabilityAssignments, run: reloadAssignments } = useFetch(
     () => sdk.table('service_provider_capabilities_c')
       .select(['Id', 'technician_c', 'capability_c', 'status_c'])
@@ -98,6 +99,54 @@ export default function ProviderOnboardingReview() {
     return true;
   });
   const active = providers.find((provider) => String(provider.Id) === String(activeId)) ?? filtered[0] ?? null;
+
+  async function resetProviderRegistrations() {
+    const confirmation = window.prompt('This permanently removes all provider profiles and capability assignments, but preserves customer accounts and all requests, offers, jobs and bookings. Type RESET PROVIDERS to continue.');
+    if (confirmation !== 'RESET PROVIDERS') return;
+
+    setResettingProviders(true);
+    try {
+      const [providerResult, capabilityResult] = await Promise.all([
+        sdk.table('technician_profiles_c').select(['Id']).page(1, 1000).fetch(),
+        sdk.table('service_provider_capabilities_c').select(['Id']).page(1, 1000).fetch(),
+      ]);
+      if (!providerResult.success || !capabilityResult.success) {
+        throw new Error('Could not safely read both provider tables. No records were deleted.');
+      }
+      const providerRows = providerResult.data ?? [];
+      const capabilityRows = capabilityResult.data ?? [];
+      if (providerRows.length < Number(providerResult.total ?? providerRows.length) || capabilityRows.length < Number(capabilityResult.total ?? capabilityRows.length)) {
+        throw new Error('The reset was stopped because a table has more than 1,000 rows. No records were deleted.');
+      }
+
+      if (capabilityRows.length) {
+        const removedCapabilities = await sdk.table('service_provider_capabilities_c').remove(capabilityRows.map((row) => ({ Id: row.Id })));
+        if (removedCapabilities.data?.length !== capabilityRows.length) {
+          throw new Error(removedCapabilities.messages?.[0] || 'Not all capability assignments could be removed. Provider profiles were not deleted.');
+        }
+      }
+      if (providerRows.length) {
+        const removedProviders = await sdk.table('technician_profiles_c').remove(providerRows.map((row) => ({ Id: row.Id })));
+        if (removedProviders.data?.length !== providerRows.length) {
+          throw new Error(removedProviders.messages?.[0] || 'Some provider profiles could not be removed. Check the Admin onboarding list before retrying.');
+        }
+      }
+
+      for (const key of ['local_demo_provider_onboarding_applications_v1', 'local_demo_provider_capabilities_v1', 'local_demo_provider_profile_v1']) {
+        window.localStorage.removeItem(key);
+      }
+      setActiveId('');
+      setNote('');
+      setServiceStatusOverrides({});
+      await Promise.all([run(), reloadAssignments()]);
+      toast.success(`Provider reset complete: ${providerRows.length} profiles and ${capabilityRows.length} capability assignments removed. Customer records and marketplace history were not targeted.`);
+    } catch (err) {
+      toast.error(err.message || 'Provider reset failed. Review the lists before retrying.');
+      await Promise.all([run(), reloadAssignments()]);
+    } finally {
+      setResettingProviders(false);
+    }
+  }
 
   async function setServiceStatus(capabilityId, status) {
     if (!active) return;
@@ -233,6 +282,19 @@ export default function ProviderOnboardingReview() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Admin · Provider operations" title="Service provider onboarding" description="Review applications, verify the documents relevant to each provider, and record activation decisions." />
+      <Card className="border-destructive/40 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="font-medium">Start provider registration fresh</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Permanently removes provider profiles and service-capability assignments. Customer accounts, catalogue, requests, offers, bookings, jobs and login accounts are preserved.</p>
+            <p className="mt-1 text-xs text-muted-foreground">A confirmation phrase is required. This also clears demo onboarding records saved in this browser only.</p>
+          </div>
+          <Button variant="destructive" disabled={resettingProviders} onClick={resetProviderRegistrations}>
+            <ApperIcon name="Trash2" size={16} />
+            {resettingProviders ? 'Resetting providers…' : 'Reset provider registrations'}
+          </Button>
+        </div>
+      </Card>
       {error && (
         <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           Provider applications could not be loaded from the database: {error.message || String(error)}
