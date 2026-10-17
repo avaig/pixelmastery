@@ -214,6 +214,7 @@ export function EntityListPage({ entity }) {
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-muted/40">
                 <tr>
+                  {isProviderList && <th className="w-12 px-3 py-3 text-left font-medium text-muted-foreground">Select</th>}
                   {config.columns.map((column) => <th key={column} className="px-4 py-3 text-left font-medium text-muted-foreground">{columnLabel(config, column)}</th>)}
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">Open</th>
                 </tr>
