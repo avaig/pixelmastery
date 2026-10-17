@@ -196,6 +196,7 @@ export default function CustomerRequestStart() {
     return null;
   });
   const [locationLoading, setLocationLoading] = useState(false);
+  const [manualServiceAddress, setManualServiceAddress] = useState('');
   const [problemDetails, setProblemDetails] = useState('');
   const [insuranceFiles, setInsuranceFiles] = useState([]);
   const isInsuranceClaim = vehicle === 'car' && requestedService === 'Insurance Claim Assistance';
@@ -364,7 +365,7 @@ export default function CustomerRequestStart() {
 
   function useCurrentLocation() {
     if (!navigator.geolocation) {
-      toast.error(tr('Browser location is not available.', language));
+      toast.error(tr('Browser location is not available. Enter the service address manually.', language));
       return;
     }
     setLocationLoading(true);
@@ -374,14 +375,59 @@ export default function CustomerRequestStart() {
           text: 'Current location',
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          source: 'device GPS',
         });
+        setManualServiceAddress('');
         setLocationLoading(false);
       },
       () => {
         setLocationLoading(false);
-        toast.error(tr('Location permission was not granted.', language));
+        toast.error(tr('Location permission was not granted. You can enter the service address manually.', language));
       },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
     );
+  }
+
+  async function useManualServiceAddress(event) {
+    event.preventDefault();
+    const query = manualServiceAddress.trim();
+    if (query.length < 3) {
+      toast.error('Enter a complete locality or address to continue.');
+      return;
+    }
+    setLocationLoading(true);
+    try {
+      const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=' + encodeURIComponent(query));
+      if (!response.ok) throw new Error('Address lookup unavailable');
+      const results = await response.json();
+      if (!results.length) {
+        toast.error('We could not find that address. Try a nearby landmark or include the city.');
+        return;
+      }
+      const result = results[0];
+      const latitude = Number(result.lat);
+      const longitude = Number(result.lon);
+      const toRadians = (value) => value * Math.PI / 180;
+      const dLat = toRadians(latitude - 25.382);
+      const dLon = toRadians(longitude - 81.875);
+      const lat1 = toRadians(25.382);
+      const lat2 = toRadians(latitude);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+      const distance = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const confirmed = {
+        text: result.display_name.split(',').slice(0, 4).join(', '),
+        latitude,
+        longitude,
+        serviceable: distance <= 25,
+        source: 'manual address',
+      };
+      setLocation(confirmed);
+      toast.success(confirmed.serviceable ? 'Service address confirmed for this booking.' : 'Address found, but it appears outside the current Naini/Prayagraj launch area.');
+    } catch {
+      toast.error('Address lookup is temporarily unavailable. Please try again or use current location.');
+    } finally {
+      setLocationLoading(false);
+    }
   }
 
   async function createRequest() {
@@ -682,32 +728,33 @@ export default function CustomerRequestStart() {
             <Button type="button" variant={serviceTiming === 'Scheduled' ? 'default' : 'outline'} onClick={() => setServiceTiming('Scheduled')}><ApperIcon name="CalendarClock" size={16} /> Schedule for Later</Button>
           </div>
           {serviceTiming === 'Scheduled' && <div className="mt-3"><label htmlFor="requested-service-time" className="text-sm font-medium">Choose date and time</label><Input id="requested-service-time" type="datetime-local" min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Your selected time is a request, not a confirmed appointment. A Service Provider must accept it.</p></div>}
-          <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">{tr('Your location', language)}</div>
-          <div className="mt-2 text-sm text-muted-foreground">{tr('We need your location to find nearby help.', language)}</div>
-          {location ? (
-            <div className="mt-5 rounded-xl border border-success-border bg-success-muted p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-success">
-                <ApperIcon name="MapPinCheck" size={18} />
-                {tr('Location confirmed', language)}
-              </div>
+          <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">Where do you need the service?</div>
+          <div className="mt-2 text-sm text-muted-foreground">Choose the location for this booking. It can be different from your saved home or office address. GPS is optional.</div>
+          {location && (
+            <div className="mt-4 rounded-xl border border-success-border bg-success-muted p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-success"><ApperIcon name="MapPinCheck" size={18} /> Service location selected</div>
               <div className="mt-1 text-sm text-success">{location.text}</div>
-              <div className="mt-1 text-xs text-success/80">
-                {Number(location.latitude).toFixed(3)}, {Number(location.longitude).toFixed(3)}
-              </div>
-              {location.serviceable === false && <p className="mt-2 text-sm font-semibold text-amber-700">This location is outside LOCAL's current service area. Bookings are not available here yet.</p>}
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-3">
-              <Button onClick={useCurrentLocation} disabled={locationLoading}>
-                <ApperIcon name="LocateFixed" size={17} />
-                {locationLoading ? tr('Getting location…', language) : tr('Use current location', language)}
-              </Button>
-              <Button variant="outline" onClick={useDemoLocation}>
-                <ApperIcon name="MapPin" size={17} />
-                {tr('Use confirmed location', language)}
-              </Button>
+              <div className="mt-1 text-xs text-success/80">{Number(location.latitude).toFixed(4)}, {Number(location.longitude).toFixed(4)}</div>
+              {location.serviceable === false && <p className="mt-2 text-sm font-semibold text-amber-700">This location is outside LOCAL's current Naini/Prayagraj launch area. Bookings are not available here yet.</p>}
+              <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setLocation(null)}>Change service location</Button>
             </div>
           )}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Button type="button" onClick={useCurrentLocation} disabled={locationLoading}>
+              <ApperIcon name="LocateFixed" size={17} />
+              {locationLoading ? 'Checking location…' : 'Use current location'}
+            </Button>
+            <Button type="button" variant="outline" onClick={useDemoLocation}>
+              <ApperIcon name="MapPin" size={17} /> Use previously confirmed location
+            </Button>
+          </div>
+          <form onSubmit={useManualServiceAddress} className="mt-4 space-y-2">
+            <label htmlFor="booking-service-address" className="text-sm font-medium">Or enter another address</label>
+            <Input id="booking-service-address" value={manualServiceAddress} onChange={(event) => setManualServiceAddress(event.target.value)} placeholder="Street, landmark, locality, city" autoComplete="street-address" />
+            <Button type="submit" variant="outline" className="w-full" disabled={locationLoading || manualServiceAddress.trim().length < 3}>
+              <ApperIcon name="Search" size={16} /> Confirm address for this booking
+            </Button>
+          </form>
           {location && (
             <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
               <ApperIcon name="Send" size={17} />
