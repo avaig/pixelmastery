@@ -118,7 +118,13 @@ export default function ServiceProviderProfile() {
         const row = res.data?.[0] ?? null;
         const saved = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
         const application = Array.isArray(saved) ? saved.find((item) => item.email_c === (user?.emailAddress ?? user?.email ?? '')) : null;
-        return row && application ? { ...row, ...application } : row ?? application ?? null;
+        return row && application
+          ? { ...application, ...row, _persistedRecord: true }
+          : row
+            ? { ...row, _persistedRecord: true }
+            : application
+              ? { ...application, _persistedRecord: false }
+              : null;
       }),
     [user?.emailAddress, user?.email],
   );
@@ -371,7 +377,10 @@ export default function ServiceProviderProfile() {
           previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
         }))),
       };
-      const res = technician
+      // A browser-local demo application is not proof that a database row exists.
+      // Updating its stale Id produces "record not found"; create the database row instead.
+      const hasPersistedRecord = technician?._persistedRecord === true;
+      const res = hasPersistedRecord
         ? await sdk.table('technician_profiles_c').update({ Id: technician.Id, ...payload })
         : await sdk.table('technician_profiles_c').create(payload);
       if (!res.data?.length) {
