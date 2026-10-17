@@ -311,18 +311,18 @@ export default function ServiceProviderProfile() {
       toast.error('Take your profile photograph using the live camera before continuing. Gallery uploads are not accepted.');
       return false;
     }
-    if (currentStep === 0 && selectedCapabilities.length === 0) {
+    if (currentStep === 1 && selectedCapabilities.length === 0) {
       toast.error('Select at least one service capability.');
       return false;
     }
-    if (currentStep === 0) {
+    if (currentStep === 1) {
       const missingExperience = selectedCapabilities.some((id) => (capabilityExperience[id] ?? '').trim().length < 5);
       if (missingExperience) {
         toast.error('Add your relevant experience for every selected capability (at least a short description).');
         return false;
       }
     }
-    if (currentStep === 1 && !form.terms_accepted_c) {
+    if (currentStep === 2 && !form.terms_accepted_c) {
       toast.error('Please accept the LOCAL terms and privacy notice to submit.');
       return false;
     }
@@ -332,7 +332,7 @@ export default function ServiceProviderProfile() {
   async function save(event) {
     event.preventDefault();
     if (!validateStep(step)) return;
-    if (step < 1) {
+    if (step < 2) {
       setStep((current) => current + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -442,7 +442,7 @@ export default function ServiceProviderProfile() {
     }
   }
 
-  const stepLabels = ['Profile details', 'Verification & consent'];
+  const stepLabels = ['Basic profile', 'Services & experience', 'Review & submit'];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -510,9 +510,9 @@ export default function ServiceProviderProfile() {
                 </div>
               </section>
             )}
-            {step === 0 && (
+            {step === 1 && (
               <section className="space-y-5">
-                <div><h2 className="font-heading text-xl font-semibold">Provider type and work details</h2><p className="mt-1 text-sm text-muted-foreground">Tell us whether you work independently or through a business, your experience and how you price jobs.</p></div>
+                <div><h2 className="font-heading text-xl font-semibold">Select your services</h2><p className="mt-1 text-sm text-muted-foreground">Tell us whether you work independently or through a business, your experience and how you price jobs.</p></div>
                 <Field label="Provider type" id="provider-type" required><Select value={form.provider_type_c} onValueChange={(value) => update('provider_type_c', value)}><SelectTrigger id="provider-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Individual">Individual</SelectItem><SelectItem value="Business">Business / workshop</SelectItem></SelectContent></Select></Field>
                 {isBusiness && <div className="grid gap-5 md:grid-cols-2"><Field label="Business / shop name" id="business-name" required><Input id="business-name" value={form.business_name_c} onChange={(event) => update('business_name_c', event.target.value)} required placeholder="Registered or trading name" /></Field><Field label="Business address" id="business-address"><Input id="business-address" value={form.business_address_c} onChange={(event) => update('business_address_c', event.target.value)} placeholder="Shop address" /></Field></div>}
                 <Field label="Experience and qualifications" id="provider-experience" hint="Mention years of experience, relevant certificates or specialties."><Textarea id="provider-experience" value={form.experience_c} onChange={(event) => update('experience_c', event.target.value)} placeholder="e.g. 6 years of car electrical and battery work" /></Field>
@@ -544,71 +544,52 @@ export default function ServiceProviderProfile() {
                 </div>
               </section>
             )}
-            {step === 1 && (
-              <>
+            {step === 2 && (
               <section className="space-y-5">
-                <div><h2 className="font-heading text-xl font-semibold">Documents and payout readiness</h2><p className="mt-1 text-sm text-muted-foreground">Submit the applicable documents for review. Providers cannot mark their own documents as verified; LOCAL Admin must verify them. Do not enter Aadhaar numbers, bank account numbers, UPI PINs or passwords into text fields.</p></div>
-                <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="Identity document type" id="identity-type" required><Select value={form.identity_document_type_c} onValueChange={(value) => update('identity_document_type_c', value)}><SelectTrigger id="identity-type"><SelectValue /></SelectTrigger><SelectContent>{['Aadhaar verified securely', 'Voter ID', 'Passport', 'Driving licence', 'Other accepted ID'].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></Field>
-                  <Field label="Identity document status" id="identity-status" hint="Set by LOCAL after review."><Input id="identity-status" value={form.identity_document_status_c || 'Not submitted'} readOnly className="bg-muted/30" /></Field>
-                  <Field label="PAN status" id="pan-status" hint="Conditional: LOCAL Admin records verification when required. Lack of PAN alone does not automatically block every worker."><Input id="pan-status" value={form.pan_status_c || 'Not applicable'} readOnly className="bg-muted/30" /></Field>
-                  <Field label="Bank / UPI payout status" id="bank-status" hint="Payout details must be verified before payouts are enabled."><Input id="bank-status" value={form.bank_status_c || 'Not submitted'} readOnly className="bg-muted/30" /></Field>
-                  {requiresVehicle && <><Field label="Driving licence status" id="licence-status" hint="Set by LOCAL after checking the applicable licence."><Input id="licence-status" value={form.driving_licence_status_c || 'Not submitted'} readOnly className="bg-muted/30" /></Field><Field label="Vehicle RC / insurance / permits status" id="vehicle-status" hint="Required only for capabilities where the provider's vehicle or activity requires it."><Input id="vehicle-status" value={form.vehicle_documents_status_c || 'Not applicable'} readOnly className="bg-muted/30" /></Field></>}
-                  {isBusiness && <Field label="Business licence / authorization status" id="business-doc-status" hint="Set by LOCAL after review, where applicable."><Input id="business-doc-status" value={form.business_document_status_c || 'Not applicable'} readOnly className="bg-muted/30" /></Field>}
-                  <Field label="Background verification" id="background-status" hint="Tracked by LOCAL where required."><Input id="background-status" value={form.background_check_status_c || 'Not started'} readOnly className="bg-muted/30" /></Field>
-                  <Field label="Safety / service training" id="training-status" hint="LOCAL records completion after checking evidence where required."><Input id="training-status" value={form.training_status_c || 'Not started'} readOnly className="bg-muted/30" /></Field>
+                <div>
+                  <h2 className="font-heading text-xl font-semibold">Review and submit</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Check your details and selected services before sending your application to LOCAL Admin.</p>
                 </div>
-                <div className="rounded-xl border border-border bg-muted/20 p-4 md:p-5">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['Provider', form.Name],
+                    ['Provider type', form.provider_type_c],
+                    ['Mobile', form.phone_c],
+                    ['Service area', form.service_area_c],
+                    ['Working radius', `${form.service_radius_km_c || 10} km`],
+                    ['Pricing method', form.pricing_method_c],
+                    ['Selected services', `${selectedCapabilities.length} service(s)`],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-lg border border-border p-3">
+                      <div className="text-xs text-muted-foreground">{label}</div>
+                      <div className="mt-1 font-medium">{value || 'Not provided'}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <ApperIcon name="Files" size={20} />
-                    </div>
+                    <ApperIcon name="ShieldCheck" size={21} className="mt-0.5 shrink-0 text-primary" />
                     <div>
-                      <h3 className="font-semibold">Upload supporting documents</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">Choose the relevant file below. Accepted formats: PDF, JPG or PNG.</p>
+                      <h3 className="font-semibold">Verification is handled by LOCAL</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">You do not need to upload identity or bank documents in this demo. After review, LOCAL will tell you if any secure verification or service-specific documents are required. Your profile and each selected service are reviewed separately.</p>
                     </div>
                   </div>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    {[['identity', 'Identity document'], ['pan', 'PAN Card (if applicable)'], ['payout', 'Bank / UPI proof'], ...(requiresVehicle ? [['licence', 'Driving licence'], ['vehicle', 'Vehicle documents']] : []), ...(isBusiness ? [['business', 'Business authorization']] : [])].map(([key, label]) => (
-                      <div key={key} className="rounded-xl border border-border bg-card p-4">
-                        <Label htmlFor={`doc-${key}`} className="text-sm font-semibold">{label}</Label>
-                        <p className="mt-1 text-xs text-muted-foreground">{key === 'identity' ? 'A clear image or scan of your selected ID.' : key === 'pan' ? 'Optional unless applicable to your legal, tax or payout situation. Do not enter the PAN number into a text field.' : key === 'payout' ? 'A document showing your bank or UPI payout details. Never upload passwords, PINs or UPI PINs.' : key === 'licence' ? 'For services that require a driving licence.' : key === 'vehicle' ? 'Relevant vehicle registration, insurance or permits.' : 'Relevant business registration or authorization.'}</p>
-                        <input id={`doc-${key}`} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="sr-only" onChange={(event) => chooseDocument(key, event.target.files?.[0])} />
-                        <label htmlFor={`doc-${key}`} className="mt-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-                          <ApperIcon name="UploadCloud" size={18} />
-                          {documents[key] ? 'Replace selected file' : `Upload ${label}`}
-                        </label>
-                        <div className="mt-3 flex items-start gap-2 rounded-md bg-muted/50 p-2.5">
-                          <ApperIcon name={documents[key] ? 'FileCheck' : 'File'} size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
-                          <p className="min-w-0 flex-1 break-words text-xs text-muted-foreground">{documents[key] || 'No file selected yet'}</p>
-                          {documents[key] && <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => { setDocuments((current) => { const next = { ...current }; delete next[key]; return next; }); const input = document.getElementById(`doc-${key}`); if (input) input.value = ''; }}>Remove</Button>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-                    <ApperIcon name="ShieldAlert" size={18} className="mt-0.5 shrink-0 text-amber-700" />
-                    <p className="text-muted-foreground"><span className="font-semibold text-foreground">Demo mode:</span> Selecting a file only displays its filename during this session. Files are not uploaded or stored by LOCAL yet. Do not submit sensitive identity or bank documents until secure document storage is enabled.</p>
+                </div>
+                <div className="space-y-3 rounded-lg bg-muted/30 p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox id="provider-consent" checked={Boolean(form.terms_accepted_c)} onCheckedChange={(checked) => update('terms_accepted_c', checked === true)} />
+                    <div>
+                      <Label htmlFor="provider-consent" className="cursor-pointer">I confirm that the information is accurate and agree to LOCAL’s provider terms, privacy notice, applicable verification checks, customer communication rules and cancellation policy. *</Label>
+                      <p className="mt-1 text-xs text-muted-foreground">Only submit information you can verify. Approval is required before receiving eligible bookings.</p>
+                    </div>
                   </div>
                 </div>
               </section>
-              <section className="space-y-5">
-                <div><h2 className="font-heading text-xl font-semibold">Review and consent</h2><p className="mt-1 text-sm text-muted-foreground">Confirm the profile is accurate. LOCAL will review the submitted details before activating the selected services.</p></div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {[['Provider', form.Name], ['Type', form.provider_type_c], ['Mobile', form.phone_c], ['Service area', form.service_area_c], ['Pricing method', form.pricing_method_c], ['Identity status', form.identity_document_status_c], ['Payout status', form.bank_status_c]].map(([label, value]) => <div key={label} className="rounded-md border border-border p-3"><div className="text-xs text-muted-foreground">{label}</div><div className="mt-1 font-medium">{value || 'Not provided'}</div></div>)}
-                </div>
-                <div className="flex items-start gap-3 rounded-lg bg-muted/30 p-4">
-                  <Checkbox id="provider-consent" checked={Boolean(form.terms_accepted_c)} onCheckedChange={(checked) => update('terms_accepted_c', checked === true)} />
-                  <div><Label htmlFor="provider-consent" className="cursor-pointer">I confirm that the information is accurate and agree to LOCAL’s provider terms, privacy notice, applicable verification checks, customer communication rules and cancellation policy. *</Label><p className="mt-1 text-xs text-muted-foreground">Sensitive documents should be reviewed through a secure process; consent and review decisions must be recorded.</p></div>
-                </div>
-                <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">Commission: 10% on completed eligible service amounts under the proposed launch policy. No zero-commission introductory jobs. The final commission base, payout timing and cancellation/refund rules must be shown in the provider agreement before activation.</div>
-              </section>
-              </>
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
               <Button type="button" variant="outline" disabled={step === 0 || saving} onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</Button>
               <div className="flex gap-2">
-                {step < 1 ? <Button type="submit">Continue <ApperIcon name="ArrowRight" size={16} /></Button> : <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Send" size={16} /> Submit for Admin Review</>}</Button>}
+                {step < 2 ? <Button type="submit">Continue <ApperIcon name="ArrowRight" size={16} /></Button> : <Button type="submit" disabled={saving}>{saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Saving…</> : <><ApperIcon name="Send" size={16} /> Submit for Admin Review</>}</Button>}
               </div>
             </div>
           </form>
