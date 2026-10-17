@@ -90,7 +90,7 @@ export function EntityListPage({ entity }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deletingSelected, setDeletingSelected] = useState(false);
   const isProviderList = entity === 'technicians';
-  const fields = useMemo(() => getFields(config), [config]);
+  const fields = useMemo(() => isProviderList ? [...new Set([...getFields(config), 'email_c'])] : getFields(config), [config, isProviderList]);
   const { data: providerAssignments = [] } = useFetch(
     () => isProviderList ? sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c', 'capability_c', 'status_c']).page(1, 1000).fetch().then((res) => {
       if (!res.success) throw new Error(res.message || 'Could not load provider service assignments.');
@@ -108,16 +108,47 @@ export function EntityListPage({ entity }) {
   const serviceNameById = useMemo(() => Object.fromEntries(serviceCatalog.map((item) => [String(item.Id), String(item.Name ?? '').trim()]).filter(([, name]) => name)), [serviceCatalog]);
   const providerServices = useMemo(() => {
     const grouped = {};
+    const addService = (providerId, serviceName, status = 'Pending') => {
+      if (!providerId || !serviceName) return;
+      const key = String(providerId);
+      if (!grouped[key]) grouped[key] = [];
+      if (!grouped[key].some((item) => item.name === serviceName)) grouped[key].push({ name: serviceName, status });
+    };
     for (const assignment of providerAssignments) {
       const providerId = assignment.technician_c?.Id ?? assignment.technician_c_id ?? assignment.technician_c;
       const serviceId = assignment.capability_c?.Id ?? assignment.capability_c_id ?? assignment.capability_c;
       const serviceName = serviceNameById[String(serviceId)] || (typeof assignment.capability_c === 'object' ? assignment.capability_c?.Name : '') || '';
-      if (!providerId || !serviceName) continue;
-      if (!grouped[String(providerId)]) grouped[String(providerId)] = [];
-      if (!grouped[String(providerId)].some((item) => item.name === serviceName)) grouped[String(providerId)].push({ name: serviceName, status: assignment.status_c || 'Pending' });
+      addService(providerId, serviceName, assignment.status_c || 'Pending');
+    }
+    // Demo onboarding can preserve selected capabilities in the same-origin application snapshot.
+    // Use this as a fallback only when linking records are missing, and match by provider ID first,
+    // then email/phone/name to tolerate legacy demo profiles created before lookup IDs were normalized.
+    let savedApplications = [];
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem('local_demo_provider_onboarding_applications_v1') || '[]');
+      if (Array.isArray(parsed)) savedApplications = parsed;
+    } catch { /* Ignore invalid optional demo cache. */ }
+    for (const row of rows) {
+      const rowId = String(row.Id ?? '');
+      const email = String(row.email_c ?? '').trim().toLowerCase();
+      const phone = String(row.phone_c ?? '').replace(/\\D/g, '');
+      const name = String(row.Name ?? '').trim().toLowerCase();
+      const application = savedApplications.find((item) => String(item.Id ?? '') === rowId)
+        || savedApplications.find((item) => email && String(item.email_c ?? '').trim().toLowerCase() === email)
+        || savedApplications.find((item) => phone && String(item.phone_c ?? '').replace(/\\D/g, '') === phone)
+        || savedApplications.find((item) => name && String(item.Name ?? '').trim().toLowerCase() === name);
+      if (!application) continue;
+      const hasDbAssignments = (grouped[rowId] ?? []).length > 0;
+      if (hasDbAssignments) continue;
+      const selectedIds = Array.isArray(application._demoCapabilityIds) ? application._demoCapabilityIds : [];
+      for (const id of selectedIds) addService(rowId, serviceNameById[String(id)], application._demoServiceStatuses?.[String(id)] || 'Pending');
+      for (const id of [application.primary_service_c, application.secondary_service_c]) {
+        const serviceId = id?.Id ?? id;
+        addService(rowId, serviceNameById[String(serviceId)], 'Pending');
+      }
     }
     return grouped;
-  }, [providerAssignments, serviceNameById]);
+  }, [providerAssignments, serviceNameById, rows]);
 
   useEffect(() => {
     setPage(1);
