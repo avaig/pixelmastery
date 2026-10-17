@@ -431,11 +431,14 @@ export default function ServiceProviderProfile() {
         if (!alreadyLinked) {
           const assigned = await sdk.table('service_provider_capabilities_c').create({
             Name: 'Provider capability',
-            technician_c: providerId,
-            capability_c: capabilityId,
+            // Lookup fields require record references, not bare IDs.
+            technician_c: { Id: providerId },
+            capability_c: { Id: capabilityId },
             status_c: 'Pending',
           });
-          if (!assigned.data?.length) throw new Error(assigned.messages?.[0] || 'Could not save selected service capabilities.');
+          if (!assigned.success || !assigned.data?.length) {
+            throw new Error(assigned.messages?.[0] || assigned.message || 'Could not save selected service capabilities.');
+          }
         }
       }
       // MemoryAdapter is re-seeded when the app reloads or a different demo account signs in.
