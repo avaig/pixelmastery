@@ -134,15 +134,16 @@ export default function ServiceProviderDashboard() {
   return (
     <div>
       <PageHeader eyebrow={tr('Service Provider workspace', language)} title={tr('Welcome,', language) + ' ' + (technician?.Name?.split(' ')[0] ?? tr('Service Provider', language))} description={tr('Find nearby service requests, quote your price, and keep your accepted jobs moving.', language)} action={<Button asChild><Link to="/responses/new"><ApperIcon name="BadgeIndianRupee" size={17} /> {tr('Send an offer', language)}</Link></Button>} />
-      {loading && !data ? <div className="h-40 animate-pulse rounded-lg border border-border bg-muted" /> : error ? <Card className="border-l-4 border-destructive p-6"><div className="font-medium">{tr('Could not load service provider activity.', language)}</div><p className="mt-1 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>{tr('Retry', language)}</Button></Card> : technician && (
+      {loading && !data ? <div className="h-40 animate-pulse rounded-lg border border-border bg-muted" /> : error ? <Card className="border-l-4 border-destructive p-6"><div className="font-medium">{tr('Could not load service provider activity.', language)}</div><p className="mt-1 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>{tr('Retry', language)}</Button></Card> : (
         <Card className="mb-6 border-primary/30 p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><h2 className="font-heading text-xl font-semibold">Your availability</h2><p className="mt-1 text-sm text-muted-foreground">Choose whether you can take a new job. Change this whenever you move or stop working.</p></div>
-            <StatusBadge value={availability} />
+            {technician && <StatusBadge value={availability} />}
           </div>
+          {!technician && <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Your provider profile could not be found for this login, so availability cannot be saved yet. Open Provider onboarding and complete/submit your profile, then return here. <Link className="ml-1 font-semibold underline" to="/technician-profile">Open Provider onboarding</Link></div>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {AVAILABILITY_OPTIONS.map((option) => (
-              <button key={option.value} type="button" disabled={updatingAvailability} onClick={() => changeAvailability(option.value)} className={'rounded-xl border p-4 text-left transition ' + (availability.toLowerCase() === option.value.toLowerCase() ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:bg-accent')}>
+              <button key={option.value} type="button" disabled={updatingAvailability || !technician} onClick={() => changeAvailability(option.value)} className={'rounded-xl border p-4 text-left transition ' + (availability.toLowerCase() === option.value.toLowerCase() ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:bg-accent')}>
                 <span className="flex items-center gap-2 font-semibold"><ApperIcon name={option.icon} size={18} />{option.label}</span>
                 <span className="mt-2 block text-sm text-muted-foreground">{option.description}</span>
                 {availability.toLowerCase() === option.value.toLowerCase() && <span className="mt-3 block text-xs font-semibold text-primary">Current selection</span>}
@@ -151,10 +152,10 @@ export default function ServiceProviderDashboard() {
           </div>
           <div className="mt-5 grid gap-4 border-t border-border pt-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
             <div><h3 className="font-medium">Your current working location</h3><p className="mt-1 text-sm text-muted-foreground">{technician.latitude_c != null && technician.longitude_c != null ? 'GPS coordinates saved. Update them whenever you move to a new area.' : 'No GPS location saved yet. Save your current location to enable accurate distance matching.'}</p><Button className="mt-3" variant="outline" onClick={updateCurrentLocation} disabled={updatingLocation || updatingAvailability || !technician}><ApperIcon name={updatingLocation ? 'LoaderCircle' : 'LocateFixed'} size={16} className={updatingLocation ? 'animate-spin' : ''} />{updatingLocation ? 'Saving…' : 'Update my current location'}</Button></div>
-            <div><label htmlFor="provider-travel-radius" className="text-sm font-medium">Maximum travel distance (km)</label><p className="mt-1 text-xs text-muted-foreground">Measured from your latest saved location, not a fixed base.</p><Input id="provider-travel-radius" type="number" min="1" max="100" value={radiusDraft || technician.service_radius_km_c || 10} onChange={(event) => setRadiusDraft(event.target.value)} className="mt-2" /></div>
-            <Button onClick={saveRadius} disabled={updatingLocation || updatingAvailability}>Save distance</Button>
+            <div><label htmlFor="provider-travel-radius" className="text-sm font-medium">Maximum travel distance (km)</label><p className="mt-1 text-xs text-muted-foreground">Measured from your latest saved location, not a fixed base.</p><Input id="provider-travel-radius" type="number" min="1" max="100" value={radiusDraft || technician?.service_radius_km_c || 10} onChange={(event) => setRadiusDraft(event.target.value)} className="mt-2" disabled={!technician} /></div>
+            <Button onClick={saveRadius} disabled={updatingLocation || updatingAvailability || !technician}>Save distance</Button>
           </div>
-          {availability.toLowerCase() === 'available now' && (technician.latitude_c == null || technician.longitude_c == null) && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">You can mark yourself available, but accurate nearby matching and distance display need a current location. Update your location when you can.</p>}
+          {technician && availability.toLowerCase() === 'available now' && (technician.latitude_c == null || technician.longitude_c == null) && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">You can mark yourself available, but accurate nearby matching and distance display need a current location. Update your location when you can.</p>}
         </Card>
       )}
       <div className="grid gap-4 md:grid-cols-3">
