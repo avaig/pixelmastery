@@ -32,7 +32,8 @@ const PROVIDER_FIELDS = ['Id', 'Name', 'email_c', 'phone_c', 'status_c', 'verifi
 
 export default function CentralDispatch() {
   const [search, setSearch] = useState('');
-  const [requestFilter, setRequestFilter] = useState('Open');
+  const [requestFilter, setRequestFilter] = useState('All');
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [providerChoice, setProviderChoice] = useState({});
   const [busyKey, setBusyKey] = useState('');
   const { data, loading, error, run } = useFetch(async () => {
@@ -234,56 +235,160 @@ export default function CentralDispatch() {
     }
   }
 
+  const selectedRequest = requests.find((request) => String(request.Id) === String(selectedRequestId));
+
+  function getRequestAssignments(request) {
+    return responses.filter((item) =>
+      String(item.request_c?.Id ?? item.request_c) === String(request.Id)
+      && /Central LOCAL assignment invitation/i.test(String(item.message_c ?? ''))
+      && !['Declined', 'Withdrawn'].includes(String(item.status_c ?? ''))
+    );
+  }
+
+  function renderRequestDetail(request) {
+    const activeAssignments = getRequestAssignments(request);
+    const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
+    const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
+    const nearbyCount = eligibleProviders.filter((provider) => {
+      const distance = providerDistance(request, provider);
+      return distance !== null && distance <= Number(provider.service_radius_km_c ?? 25);
+    }).length;
+    const customerName = request.customer_c?.Name ?? 'Customer';
+    const customerPhone = request.customer_c?.phone_c ?? request.customer_c?.Phone ?? '';
+
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => setSelectedRequestId(null)} className="-ml-3">
+          <ApperIcon name="ArrowLeft" size={16} /> Back to requests
+        </Button>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
+          <Card className="overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Request detail</p>
+                <h2 className="mt-1 font-heading text-xl font-semibold">{request.Name}</h2>
+              </div>
+              <StatusBadge value={request.status_c} />
+            </div>
+            <div className="space-y-5 p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-primary/10 p-3 text-primary"><ApperIcon name="CarFront" size={26} /></div>
+                <div>
+                  <div className="font-semibold">{request.service_category_c?.Name ?? 'Service'} · {request.required_capability_c?.Name ?? 'Capability not mapped'}</div>
+                  <p className="mt-1 text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Pre-decided price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspection / estimate required' : request.pricing_mode_c || 'Pricing not set'}</p>
+                </div>
+              </div>
+              <div className="grid gap-4 border-y py-4 sm:grid-cols-2">
+                <div><p className="text-xs text-muted-foreground">Customer</p><p className="mt-1 font-medium">{customerName}</p>{customerPhone && <p className="text-sm text-muted-foreground">{customerPhone}</p>}</div>
+                <div><p className="text-xs text-muted-foreground">Service location</p><p className="mt-1 font-medium">{request.location_c || 'Location missing'}</p>{request.latitude_c != null && request.longitude_c != null && <p className="text-xs text-muted-foreground">GPS location available</p>}</div>
+                <div><p className="text-xs text-muted-foreground">Requested time</p><p className="mt-1 font-medium">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Not specified'}</p>{request.scheduled_at_c && <p className="text-sm text-muted-foreground">{new Date(request.scheduled_at_c).toLocaleString('en-IN')}</p>}</div>
+                <div><p className="text-xs text-muted-foreground">Nearby eligible providers</p><p className="mt-1 font-medium">{nearbyCount} with recorded location</p></div>
+              </div>
+              <section>
+                <h3 className="font-semibold">Service details and customer notes</h3>
+                <p className="mt-2 whitespace-pre-wrap rounded-lg bg-muted/40 p-4 text-sm leading-6">{getCleanRequestNotes(request.problem_description_c) || 'No additional problem details were provided.'}</p>
+              </section>
+              <section className="rounded-lg border p-4">
+                <h3 className="font-semibold">Price review</h3>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Detected fixed service total' : 'Inspection / estimate amount'}</span>
+                  <span className="text-xl font-bold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : 'Review required'}</span>
+                </div>
+                {request.pricing_mode_c !== 'Fixed Price' && <p className="mt-2 text-xs text-amber-700">Do not confirm until the estimate is recorded and the customer has approved it.</p>}
+              </section>
+            </div>
+          </Card>
+          <div className="space-y-4">
+            <Card className="p-5">
+              <div className="flex items-center gap-2"><ApperIcon name="Settings2" size={19} /><h3 className="font-semibold">Assignment controls</h3></div>
+              <p className="mt-1 text-sm text-muted-foreground">Choose a verified provider or invite the nearest eligible provider. No bidding or counter-offers.</p>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">Manual assignment</label>
+                  <Select value={providerChoice[request.Id] ?? ''} onValueChange={(value) => setProviderChoice((current) => ({ ...current, [request.Id]: value }))}>
+                    <SelectTrigger><SelectValue placeholder="Select eligible provider" /></SelectTrigger>
+                    <SelectContent>{eligibleProviders.map((provider) => <SelectItem key={provider.Id} value={provider.Id}>{provider.Name}{providerDistance(request, provider) !== null ? ' · ' + formatDistance(providerDistance(request, provider)) : ''}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full" variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => manualAssign(request)}>
+                  <ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : 'Assign manually'}
+                </Button>
+                <Button className="w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => findNearby(request)}>
+                  <ApperIcon name="MapPinned" size={16} /> {busyKey === request.Id ? 'Checking nearby…' : 'Find Nearby & Invite'}
+                </Button>
+              </div>
+            </Card>
+            <Card className="p-5">
+              <h3 className="font-semibold">Provider status</h3>
+              {activeAssignments.length ? <div className="mt-3 space-y-3">{activeAssignments.map((item) => {
+                const provider = providers.find((entry) => String(entry.Id) === String(item.technician_c?.Id ?? item.technician_c));
+                const distance = provider ? providerDistance(request, provider) : null;
+                return <div key={item.Id} className="rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-2"><div className="font-medium">{item.technician_c?.Name ?? provider?.Name ?? 'Assigned provider'}</div><StatusBadge value={item.status_c === 'Selected' ? 'Accepted' : item.status_c === 'Pending' ? 'Awaiting response' : item.status_c} /></div>
+                  <p className="mt-1 text-sm text-muted-foreground">{distance !== null ? formatDistance(distance) + ' away' : 'Distance unavailable'}</p>
+                </div>;
+              })}</div> : <p className="mt-2 text-sm text-muted-foreground">No provider has been invited yet.</p>}
+              {acceptedAssignment && <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <div className="flex items-center gap-2 font-semibold text-emerald-700"><ApperIcon name="CheckCircle2" size={17} /> Provider accepted</div>
+                <p className="mt-1 text-sm text-muted-foreground">Verify the service and total before confirming this booking.</p>
+                <Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || fixedPrice === null || request.pricing_mode_c !== 'Fixed Price'} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>
+                {(request.pricing_mode_c !== 'Fixed Price' || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">A clear fixed total is required. Estimate-based jobs remain blocked until estimate approval is implemented.</p>}
+              </div>}
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <PageHeader eyebrow="Operations control" title="Central LOCAL Dispatch" description="Every customer request arrives here first. LOCAL staff control assignment; providers accept or decline. No bidding, bargaining, or automatic booking confirmation. Every assignment is sent by LOCAL staff and must be accepted or declined by the provider." />
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <Card className="border-l-4 border-primary p-4"><div className="text-sm text-muted-foreground">Requests in view</div><div className="mt-2 font-heading text-3xl font-semibold">{visibleRequests.length}</div></Card>
-        <Card className="border-l-4 border-highlight p-4"><div className="text-sm text-muted-foreground">Verified active providers</div><div className="mt-2 font-heading text-3xl font-semibold">{eligibleProviders.length}</div></Card>
-        <Card className="border-l-4 border-warning p-4"><div className="text-sm text-muted-foreground">Awaiting provider acceptance</div><div className="mt-2 font-heading text-3xl font-semibold">{responses.filter((item) => item.status_c === 'Pending' && /Central LOCAL assignment invitation/i.test(String(item.message_c ?? ''))).length}</div></Card>
-      </div>
-      <div className="mb-5 flex flex-col gap-3 md:flex-row">
-        <div className="relative min-w-0 flex-1"><ApperIcon name="Search" size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search request, service, or location" /></div>
-        <Select value={requestFilter} onValueChange={setRequestFilter}><SelectTrigger className="w-full md:w-56"><SelectValue /></SelectTrigger><SelectContent>{['Open', 'Quoted', 'Negotiating', 'Confirmed', 'Completed', 'Cancelled', 'All'].map((value) => <SelectItem key={value} value={value}>{value === 'All' ? 'All statuses' : value}</SelectItem>)}</SelectContent></Select>
-      </div>
-      {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : (
-        <div className="space-y-4" aria-busy={loading}>
-          {visibleRequests.map((request) => {
-            const activeAssignments = responses.filter((item) => String(item.request_c?.Id ?? item.request_c) === String(request.Id) && /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')) && !['Declined', 'Withdrawn'].includes(String(item.status_c ?? '')));
-            const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
-            const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
-            const matchedCount = eligibleProviders.filter((provider) => {
-              const distance = providerDistance(request, provider);
-              const radius = Number(provider.service_radius_km_c ?? 25);
-              return distance !== null && distance <= radius;
-            }).length;
-            return (
-              <Card key={request.Id} className="overflow-hidden">
-                <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)] lg:p-5">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><h2 className="font-heading text-lg font-semibold">{request.Name}</h2><StatusBadge value={request.status_c} /></div>
-                    <p className="mt-2 text-sm text-muted-foreground">{request.service_category_c?.Name ?? 'Service'} · {request.required_capability_c?.Name ?? 'Capability not mapped'}</p>
-                    <p className="mt-1 text-sm">{request.location_c || 'Location missing'}{request.preferred_time_c ? ' · ' + (request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c) : ''}</p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{getCleanRequestNotes(request.problem_description_c) || 'No additional problem details.'}</p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"><div className="rounded-md border bg-background p-3"><div className="text-xs text-muted-foreground">Pricing</div><div className="mt-1 text-sm font-medium">{request.pricing_mode_c === 'Fixed Price' ? 'Pre-decided price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspection / estimate' : request.pricing_mode_c || 'Not set'}</div></div><div className="rounded-md border bg-background p-3"><div className="text-xs text-muted-foreground">Service total</div><div className="mt-1 text-sm font-semibold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : 'Review required'}</div></div><div className="rounded-md border bg-background p-3"><div className="text-xs text-muted-foreground">Nearby providers</div><div className="mt-1 text-sm font-medium">{matchedCount} with location data</div></div></div>
-                    {activeAssignments.length > 0 && <div className="mt-3 rounded-md bg-muted/50 p-3 text-sm"><strong>Assignment status</strong><div className="mt-1 space-y-2">{activeAssignments.map((item) => <div key={item.Id} className="flex flex-wrap items-center justify-between gap-2"><span>{item.technician_c?.Name ?? 'Assigned provider'}</span><span className="rounded-full border px-2 py-0.5 text-xs">{item.status_c === 'Selected' ? 'Accepted' : item.status_c === 'Pending' ? 'Awaiting response' : item.status_c}</span></div>)}</div></div>}
-                  </div>
-                  <div className="min-w-0 rounded-lg border bg-muted/20 p-4">
-                    <div className="font-semibold">Assignment controls</div>
-                    <p className="mt-1 text-xs text-muted-foreground">Nearby counts are only a location-based shortlist. Eligibility is checked against saved capabilities before an invitation is sent.</p>
-                    <div className="mt-4 grid gap-3">
-                      <div><label className="mb-1.5 block text-sm font-medium">Manual provider assignment</label><Select value={providerChoice[request.Id] ?? ''} onValueChange={(value) => setProviderChoice((current) => ({ ...current, [request.Id]: value }))}><SelectTrigger><SelectValue placeholder="Select eligible provider" /></SelectTrigger><SelectContent>{eligibleProviders.map((provider) => <SelectItem key={provider.Id} value={provider.Id}>{provider.Name}{providerDistance(request, provider) !== null ? ' · ' + formatDistance(providerDistance(request, provider)) : ''}</SelectItem>)}</SelectContent></Select></div>
-                      <Button variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => manualAssign(request)}><ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : 'Assign Manually'}</Button>
-                      <Button disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => findNearby(request)}><ApperIcon name="MapPinned" size={16} /> {busyKey === request.Id ? 'Checking nearby…' : 'Find Nearby & Invite'}</Button>
-                      {acceptedAssignment && <div className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3"><div className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><ApperIcon name="CheckCircle2" size={17} /> Provider accepted</div><p className="mt-1 text-xs text-muted-foreground">{acceptedAssignment.technician_c?.Name ?? 'Selected provider'} accepted this assignment. Admin must verify the total and confirm the booking.</p><Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || fixedPrice === null || request.pricing_mode_c !== 'Fixed Price'} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>{(request.pricing_mode_c !== 'Fixed Price' || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">A verified fixed total is required before this action is enabled.</p>}</div>}
+      <PageHeader eyebrow="Operations control" title="Central Dispatch" description={selectedRequest ? 'Review the customer request, provider assignment and booking confirmation.' : 'Monitor customer requests, see assignment progress and open any request to take action.'} />
+      {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
+        <>
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Card className="border-primary/20 bg-primary/5 p-4"><div className="text-sm text-muted-foreground">Total requests</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.length}</div><div className="mt-1 text-xs text-muted-foreground">All records loaded</div></Card>
+            <Card className="border-emerald-500/20 bg-emerald-500/5 p-4"><div className="text-sm text-muted-foreground">Confirmed / assigned</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.filter((item) => ['Confirmed', 'Assigned', 'In Progress', 'Completed'].includes(String(item.status_c))).length}</div><div className="mt-1 text-xs text-muted-foreground">From live request statuses</div></Card>
+            <Card className="border-amber-500/20 bg-amber-500/5 p-4"><div className="text-sm text-muted-foreground">Pending review</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.filter((item) => ['Open', 'Quoted', 'Negotiating'].includes(String(item.status_c))).length}</div><div className="mt-1 text-xs text-muted-foreground">Needs dispatch attention</div></Card>
+            <Card className="border-violet-500/20 bg-violet-500/5 p-4"><div className="text-sm text-muted-foreground">Awaiting provider response</div><div className="mt-2 font-heading text-3xl font-semibold">{responses.filter((item) => item.status_c === 'Pending' && /Central LOCAL assignment invitation/i.test(String(item.message_c ?? ''))).length}</div><div className="mt-1 text-xs text-muted-foreground">Open invitations</div></Card>
+          </div>
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row">
+            <div className="relative min-w-0 flex-1"><ApperIcon name="Search" size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by request, service, customer or location…" /></div>
+            <Select value={requestFilter} onValueChange={setRequestFilter}><SelectTrigger className="w-full lg:w-48"><SelectValue /></SelectTrigger><SelectContent>{['All', 'Open', 'Quoted', 'Negotiating', 'Confirmed', 'Completed', 'Cancelled'].map((value) => <SelectItem key={value} value={value}>{value === 'All' ? 'All statuses' : value}</SelectItem>)}</SelectContent></Select>
+            <Button variant="outline" onClick={run} disabled={loading}><ApperIcon name="RefreshCw" size={16} /> Refresh</Button>
+          </div>
+          <div className="space-y-3" aria-busy={loading}>
+            {visibleRequests.map((request) => {
+              const activeAssignments = getRequestAssignments(request);
+              const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
+              const assignedProvider = acceptedAssignment ? providers.find((item) => String(item.Id) === String(acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c)) : null;
+              const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
+              const distance = assignedProvider ? providerDistance(request, assignedProvider) : null;
+              const statusLabel = acceptedAssignment ? 'Provider accepted' : activeAssignments.some((item) => item.status_c === 'Pending') ? 'Awaiting acceptance' : ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c)) ? request.status_c : 'Needs dispatch';
+              return <Card key={request.Id} className="p-4 transition-colors hover:border-primary/40 sm:p-5">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]">
+                  <div className="flex min-w-0 gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="CarFront" size={23} /></div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2"><h2 className="font-heading font-semibold">{request.Name}</h2><StatusBadge value={request.status_c} /></div>
+                      <p className="mt-1 text-sm text-muted-foreground">{request.service_category_c?.Name ?? 'Service'} · {request.required_capability_c?.Name ?? 'Capability not mapped'}</p>
+                      <p className="mt-2 text-sm">{request.location_c || 'Location missing'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Time not specified'}</p>
                     </div>
                   </div>
+                  <div className="grid content-start gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                    <div><p className="text-xs text-muted-foreground">Service total</p><p className="font-semibold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : request.pricing_mode_c === 'Fixed Price' ? 'Price review needed' : 'Inspection / estimate'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Assigned provider</p><p className="font-medium">{assignedProvider?.Name ?? activeAssignments[0]?.technician_c?.Name ?? 'Not assigned'}</p>{distance !== null && <p className="text-xs text-muted-foreground">{formatDistance(distance)} away</p>}</div>
+                    <div className="sm:col-span-2 xl:col-span-1"><p className="text-xs text-muted-foreground">Dispatch status</p><p className="mt-1 text-sm font-medium">{statusLabel}</p></div>
+                  </div>
+                  <div className="flex items-center xl:justify-end"><Button className="w-full sm:w-auto" variant="outline" onClick={() => setSelectedRequestId(request.Id)}>View details <ApperIcon name="ChevronRight" size={16} /></Button></div>
                 </div>
-              </Card>
-            );
-          })}
-          {!visibleRequests.length && <Card className="p-10 text-center"><p className="font-medium">No requests in this view.</p><p className="mt-1 text-sm text-muted-foreground">New customer requests will appear here after submission.</p></Card>}
-        </div>
+              </Card>;
+            })}
+            {!visibleRequests.length && <Card className="p-10 text-center"><p className="font-medium">No requests in this view.</p><p className="mt-1 text-sm text-muted-foreground">Try another status filter or refresh to check for new requests.</p></Card>}
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">Showing {visibleRequests.length} of {requests.length} loaded requests.</p>
+        </>
       )}
     </div>
   );
