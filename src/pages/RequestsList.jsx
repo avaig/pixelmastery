@@ -97,6 +97,34 @@ export default function RequestsList() {
   }, [user?.profile, user?.emailAddress, user?.email, search, status, page]);
 
   const rows = data?.rows ?? [];
+
+  async function permanentlyDeleteRequest() {
+    if (user?.profile !== 'Admin_c' || !deleteTarget?.Id || deleting) return;
+    setDeleting(true);
+    try {
+      const jobsRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'status_c']).where(eq('request_c', deleteTarget.Id)).page(1, 100).fetch();
+      if (!jobsRes.success) throw new Error(jobsRes.message || 'Could not check linked jobs.');
+      if ((jobsRes.data ?? []).length) throw new Error('This request has linked jobs. Permanent deletion is blocked to protect booking, payment and settlement history.');
+      const offersRes = await sdk.table('technician_responses_c').select(['Id', 'request_c']).where(eq('request_c', deleteTarget.Id)).page(1, 200).fetch();
+      if (!offersRes.success) throw new Error(offersRes.message || 'Could not check linked offers.');
+      const offerIds = (offersRes.data ?? []).map((offer) => offer.Id).filter(Boolean);
+      if (offerIds.length) {
+        const removeOffers = await sdk.table('technician_responses_c').remove(offerIds.map((Id) => ({ Id })));
+        if (removeOffers.data?.length !== offerIds.length) throw new Error(removeOffers.messages?.filter(Boolean).join(' | ') || 'Could not delete every linked offer. The request was kept.');
+      }
+      const removeRequest = await sdk.table('service_requests_c').remove([{ Id: deleteTarget.Id }]);
+      if (!removeRequest.data?.length) throw new Error(removeRequest.messages?.filter(Boolean).join(' | ') || removeRequest.message || 'The request could not be permanently deleted.');
+      toast.success('Service request and linked offers permanently deleted.');
+      setDeleteTarget(null);
+      if (rows.length === 1 && page > 1) setPage((value) => value - 1);
+      await run();
+    } catch (err) {
+      toast.error(err.message || 'Permanent deletion failed.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
