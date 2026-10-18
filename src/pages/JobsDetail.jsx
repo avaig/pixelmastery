@@ -110,29 +110,30 @@ export default function JobsDetail() {
     if (!file) return;
     setWorking(true);
     try {
-      const optimizedFile = await new Promise((resolve, reject) => {
+      const encoded = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onerror = () => reject(new Error('Could not read the selected photo.'));
         reader.onload = () => {
           const image = new Image();
           image.onerror = () => reject(new Error('The selected file is not a readable image.'));
           image.onload = () => {
-            const scale = Math.min(1, 1400 / Math.max(image.naturalWidth, image.naturalHeight));
+            // The current Apper storage adapter can return attachment metadata without a public URL.
+            // Keep a compact image preview as a fallback so the workflow does not depend on URL resolution.
+            const scale = Math.min(1, 420 / Math.max(image.naturalWidth, image.naturalHeight));
             const canvas = document.createElement('canvas');
             canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
             canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
             const context = canvas.getContext('2d');
             if (!context) { reject(new Error('Photo compression is not supported by this browser.')); return; }
             context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((blob) => {
-              if (!blob) { reject(new Error('Could not optimize this photo.')); return; }
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
-            }, 'image/jpeg', 0.72);
+            resolve(canvas.toDataURL('image/jpeg', 0.32));
           };
           image.src = String(reader.result);
         };
         reader.readAsDataURL(file);
       });
+      const optimizedBlob = await (await fetch(encoded)).blob();
+      const optimizedFile = new File([optimizedBlob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
       const uploaded = await sdk.storage.upload(optimizedFile);
       if (!uploaded) throw new Error('Photo upload did not return a saved file reference.');
       const photoFile = {
@@ -145,15 +146,16 @@ export default function JobsDetail() {
         try {
           const preview = await sdk.storage.preview(photoFile);
           imageUrl = preview?.url ?? '';
-        } catch { /* resolve using download below */ }
+        } catch { /* use compact embedded preview below */ }
       }
       if (!imageUrl) {
         try {
           const download = await sdk.storage.download(photoFile);
           imageUrl = download?.url ?? '';
-        } catch { /* show a clear upload error below */ }
+        } catch { /* use compact embedded preview below */ }
       }
-      if (!imageUrl) throw new Error('The photo was uploaded but its preview URL could not be resolved. Please try uploading it again.');
+      // A data URL is a reliable fallback for the memory/demo storage adapter.
+      if (!imageUrl) imageUrl = encoded;
       const photo = {
         view,
         name: photoFile.name,
