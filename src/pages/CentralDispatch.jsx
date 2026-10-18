@@ -186,11 +186,23 @@ export default function CentralDispatch() {
       .trim();
   }
 
+  function isFixedPriceRequest(request) {
+    if (String(request?.pricing_mode_c ?? '').toLowerCase() === 'fixed price') return true;
+    const notes = String(request?.problem_description_c ?? '');
+    return /listed package price\s*:/i.test(notes) || /menu total\s*:/i.test(notes) || /customer car wash total offer\s*:/i.test(notes);
+  }
+
   function getFixedPrice(request) {
-    const notes = String(request.problem_description_c ?? '');
-    const matches = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Actual Price of Service)\s*:?\s*₹?\s*([\d,]+(?:\.\d{1,2})?)/gi)];
+    const notes = String(request?.problem_description_c ?? '');
+    const patterns = [
+      /(?:Menu Total|Customer Car Wash total offer|Actual Price of Service|Listed package price|Package price|Fixed service total|Service total)\s*:?\s*₹?\s*([\d,]+(?:\.\d{1,2})?)/gi,
+    ];
+    const matches = patterns.flatMap((pattern) => [...notes.matchAll(pattern)]);
     if (!matches.length) return null;
-    const value = Number(matches[matches.length - 1][1].replace(/,/g, ''));
+    // When multiple amounts are listed, use the explicit total/package price, not an incidental item price.
+    const preferred = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Fixed service total|Listed package price|Package price|Service total)\s*:?\s*₹?\s*([\d,]+(?:\.\d{1,2})?)/gi)];
+    const selected = preferred.length ? preferred[preferred.length - 1] : matches[matches.length - 1];
+    const value = Number(selected[1].replace(/,/g, ''));
     return Number.isFinite(value) && value > 0 ? value : null;
   }
 
@@ -223,7 +235,7 @@ export default function CentralDispatch() {
         toast.error('A clear, positive fixed service total could not be read. Please review the price before confirming; no job was created.');
         return;
       }
-      if (request.pricing_mode_c !== 'Fixed Price') {
+      if (!isFixedPriceRequest(request)) {
         toast.error('This request needs a confirmed inspection/estimate amount before booking can be finalized.');
         return;
       }
@@ -370,8 +382,8 @@ export default function CentralDispatch() {
               {acceptedAssignment && <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
                 <div className="flex items-center gap-2 font-semibold text-emerald-700"><ApperIcon name="CheckCircle2" size={17} /> Provider accepted</div>
                 <p className="mt-1 text-sm text-muted-foreground">Verify the service and total before confirming this booking.</p>
-                <Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || fixedPrice === null || request.pricing_mode_c !== 'Fixed Price'} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>
-                {(request.pricing_mode_c !== 'Fixed Price' || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">A clear fixed total is required. Estimate-based jobs remain blocked until estimate approval is implemented.</p>}
+                <Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || fixedPrice === null || !isFixedPriceRequest(request)} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>
+                {(!isFixedPriceRequest(request) || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">{isFixedPriceRequest(request) ? 'The listed fixed price could not be read. Review the request price before confirming.' : 'Estimate-based jobs remain blocked until an estimate is recorded and customer approval is implemented.'}</p>}
               </div>}
             </Card>
           </div>
