@@ -157,7 +157,7 @@ export default function CentralDispatch() {
 
   return (
     <div>
-      <PageHeader eyebrow="Operations control" title="Central LOCAL Dispatch" description="Every customer request arrives here first. LOCAL staff control assignment; providers accept or decline. No bidding, bargaining, or automatic booking confirmation. Every assignment is sent by LOCAL staff and must be accepted by the provider." />
+      <PageHeader eyebrow="Operations control" title="Central LOCAL Dispatch" description="Every customer request arrives here first. LOCAL staff control assignment; providers accept or decline. No bidding, bargaining, or automatic booking confirmation. Every assignment is sent by LOCAL staff and must be accepted or declined by the provider." />
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <Card className="border-l-4 border-primary p-4"><div className="text-sm text-muted-foreground">Requests in view</div><div className="mt-2 font-heading text-3xl font-semibold">{visibleRequests.length}</div></Card>
         <Card className="border-l-4 border-highlight p-4"><div className="text-sm text-muted-foreground">Verified active providers</div><div className="mt-2 font-heading text-3xl font-semibold">{eligibleProviders.length}</div></Card>
