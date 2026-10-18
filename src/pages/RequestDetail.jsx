@@ -140,11 +140,6 @@ export default function RequestDetail() {
   const isFixedRateDriverRequest = /hourly driver|full-day driver|full day driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
   const carWashMenuTotal = requestLineItems.reduce((sum, item) => sum + (Number(item.price ?? 0)), 0);
 
-  useEffect(() => {
-    // Service Providers remain on the request page to accept or decline a Central LOCAL assignment.
-    // Legacy quote pages are restricted and are no longer part of the customer booking flow.
-  }, []);
-
   async function acceptDriverRequest() {
     if (!request?.Id || !isFixedRateDriverRequest || !isTechnician) return;
     setWorking(true);
