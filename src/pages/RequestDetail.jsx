@@ -248,15 +248,12 @@ export default function RequestDetail() {
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       const history = String(response.negotiation_history_c ?? '').trim();
       const agreedHistory = (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
-      await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
-      const otherIds = responses.filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
-      if (otherIds.length) await sdk.table('technician_responses_c').update(otherIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
       const jobRes = await sdk.table('jobs_c').create({
         Name: request.Name + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
         request_c: request.Id,
         response_c: response.Id,
-        customer_c: request.customer_c?.Id ?? request.customer_c,
-        technician_c: response.technician_c?.Id ?? response.technician_c,
+        customer_c: validCustomerId,
+        technician_c: validProviderId,
         agreed_price_c: billing.servicePrice,
         original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
         booking_commitment_amount_c: billing.bookingCommitment,
@@ -280,6 +277,10 @@ export default function RequestDetail() {
         toast.error(jobRes.messages?.[0] ?? 'Service Provider was selected, but the job was not created.');
         return;
       }
+      const selectedRes = await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
+      if (!selectedRes.data?.length) toast.warning('Booking created, but the accepted offer status could not be updated.');
+      const otherIds = responses.filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
+      if (otherIds.length) await sdk.table('technician_responses_c').update(otherIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
       const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
       if (!requestRes.data?.length) toast.warning('Job created, but request status could not be updated.');
       toast.success(isCarWashBooking ? 'Service Provider confirmed. No advance is due for Car Wash.' : isAcBooking ? 'AC Service Provider confirmed. Payment is due after service completion.' : 'Service Provider confirmed and job created. Opening payment options…');
