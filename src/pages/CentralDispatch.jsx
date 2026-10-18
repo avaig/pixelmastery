@@ -290,6 +290,21 @@ export default function CentralDispatch() {
                 <div><p className="text-xs text-muted-foreground">Requested time</p><p className="mt-1 font-medium">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Not specified'}</p>{request.scheduled_at_c && <p className="text-sm text-muted-foreground">{new Date(request.scheduled_at_c).toLocaleString('en-IN')}</p>}</div>
                 <div><p className="text-xs text-muted-foreground">Nearby eligible providers</p><p className="mt-1 font-medium">{nearbyCount} with recorded location</p></div>
               </div>
+              {linkedJob && <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <h3 className="font-semibold">Job completion and payment</h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div><p className="text-xs text-muted-foreground">Job status</p><div className="mt-1"><StatusBadge value={linkedJob.status_c || 'Unknown'} /></div></div>
+                  <div><p className="text-xs text-muted-foreground">Payment status</p><div className="mt-1"><StatusBadge value={linkedJob.payment_status_c || 'Not recorded'} /></div></div>
+                  <div><p className="text-xs text-muted-foreground">Billing status</p><p className="mt-1 font-medium">{linkedJob.billing_status_c || 'Not recorded'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Final agreed amount</p><p className="mt-1 font-semibold">₹{Number(linkedJob.agreed_price_c ?? 0).toLocaleString('en-IN')}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Payment method / reference</p><p className="mt-1 font-medium">{linkedJob.payment_method_c || 'Not recorded'}{linkedJob.payment_reference_c ? ' · ' + linkedJob.payment_reference_c : ''}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Provider payout</p><p className="mt-1 font-medium">{linkedJob.payout_status_c || 'Not recorded'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Car returned</p><p className="mt-1 font-medium">{linkedJob.returned_at_c ? new Date(linkedJob.returned_at_c).toLocaleString('en-IN') : 'Not recorded'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Customer completion confirmation</p><p className="mt-1 font-medium">{linkedJob.customer_completion_confirmed_at_c ? new Date(linkedJob.customer_completion_confirmed_at_c).toLocaleString('en-IN') : 'Not recorded'}</p></div>
+                  {linkedJob.dispute_status_c && linkedJob.dispute_status_c !== 'None' && <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Dispute status</p><p className="mt-1 font-medium">{linkedJob.dispute_status_c}</p></div>}
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">Request status and job status are tracked separately. This panel reads the job linked to this service request.</p>
+              </section>}
               <section>
                 <h3 className="font-semibold">Service details and customer notes</h3>
                 <p className="mt-2 whitespace-pre-wrap rounded-lg bg-muted/40 p-4 text-sm leading-6">{getCleanRequestNotes(request.problem_description_c) || 'No additional problem details were provided.'}</p>
@@ -352,9 +367,11 @@ export default function CentralDispatch() {
       <PageHeader eyebrow="Operations control" title="Central Dispatch" description={selectedRequest ? 'Review the customer request, provider assignment and booking confirmation.' : 'Monitor customer requests, see assignment progress and open any request to take action.'} />
       {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
         <>
-          <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <Card className="border-primary/20 bg-primary/5 p-4"><div className="text-sm text-muted-foreground">Total requests</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.length}</div><div className="mt-1 text-xs text-muted-foreground">All records loaded</div></Card>
-            <Card className="border-emerald-500/20 bg-emerald-500/5 p-4"><div className="text-sm text-muted-foreground">Confirmed / assigned</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.filter((item) => ['Confirmed', 'Assigned', 'In Progress', 'Completed'].includes(String(item.status_c))).length}</div><div className="mt-1 text-xs text-muted-foreground">From live request statuses</div></Card>
+            <Card className="border-emerald-500/20 bg-emerald-500/5 p-4"><div className="text-sm text-muted-foreground">Completed jobs</div><div className="mt-2 font-heading text-3xl font-semibold">{jobs.filter((item) => item.status_c === 'Completed').length}</div><div className="mt-1 text-xs text-muted-foreground">From linked job records</div></Card>
+            <Card className="border-emerald-500/20 bg-emerald-500/5 p-4"><div className="text-sm text-muted-foreground">Fully paid jobs</div><div className="mt-2 font-heading text-3xl font-semibold">{jobs.filter((item) => item.payment_status_c === 'Final Payment Paid').length}</div><div className="mt-1 text-xs text-muted-foreground">Final payment recorded</div></Card>
+            <Card className="border-primary/20 bg-primary/5 p-4"><div className="text-sm text-muted-foreground">Confirmed / assigned requests</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.filter((item) => ['Confirmed', 'Assigned', 'In Progress', 'Completed'].includes(String(item.status_c))).length}</div><div className="mt-1 text-xs text-muted-foreground">Request lifecycle</div></Card>
             <Card className="border-amber-500/20 bg-amber-500/5 p-4"><div className="text-sm text-muted-foreground">Pending review</div><div className="mt-2 font-heading text-3xl font-semibold">{requests.filter((item) => ['Open', 'Quoted', 'Negotiating'].includes(String(item.status_c))).length}</div><div className="mt-1 text-xs text-muted-foreground">Needs dispatch attention</div></Card>
             <Card className="border-violet-500/20 bg-violet-500/5 p-4"><div className="text-sm text-muted-foreground">Awaiting provider response</div><div className="mt-2 font-heading text-3xl font-semibold">{responses.filter((item) => item.status_c === 'Pending' && /Central LOCAL assignment invitation/i.test(String(item.message_c ?? ''))).length}</div><div className="mt-1 text-xs text-muted-foreground">Open invitations</div></Card>
           </div>
