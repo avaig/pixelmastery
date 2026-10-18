@@ -223,21 +223,9 @@ export default function ResponsesDetail() {
   async function confirmProvider() {
     setWorking(true);
     try {
-      if (isCustomer && !isVendorAccepted) {
-        const price = Number(response.final_agreed_price_c ?? response.proposed_price_c);
-        if (!Number.isFinite(price) || price <= 0) throw new Error('The offer does not contain a valid price.');
-        const history = String(response.negotiation_history_c ?? '').trim();
-        const alreadyRecorded = /Customer accepted price and sent for Service Provider acceptance/i.test(history);
-        const nextHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer accepted price ₹' + price.toLocaleString('en-IN') + '; sent for Service Provider acceptance';
-        const responseUpdate = await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Price Accepted', final_agreed_price_c: price, negotiation_history_c: nextHistory, message_c: 'Customer accepted price: ₹' + price.toLocaleString('en-IN') + '. Awaiting Service Provider acceptance.' });
-        if (!responseUpdate.data?.length) throw new Error(responseUpdate.messages?.filter(Boolean).join(' | ') || responseUpdate.message || 'Could not save price acceptance.');
-        const requestUpdate = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Price Accepted' });
-        if (!requestUpdate.data?.length) throw new Error(requestUpdate.messages?.filter(Boolean).join(' | ') || requestUpdate.message || 'Price accepted, but request status could not be updated.');
-        toast.success('Price accepted. Sent to the Service Provider for acceptance.');
-        await run();
-      } else {
-        await createJob();
-      }
+      // Simplified flow: customer confirmation immediately creates the job.
+      // No negotiation or second provider-acceptance stage is required.
+      await createJob();
     } catch (err) {
       toast.error(err.message ?? 'Could not confirm the service provider.');
     } finally {
