@@ -244,8 +244,10 @@ export default function RequestDetail() {
           request_c: request.Id,
           response_c: response.Id,
           customer_c: request.customer_c?.Id ?? request.customer_c,
-          // Lookup fields require the referenced record's scalar integer/UUID ID.
-          technician_c: providerId,
+          // The connected Jobs table expects lookup objects for the Service Provider
+          // relation. ResponsesDetail already uses this shape successfully; sending only
+          // the scalar ID here triggers "Service Provider: Reference record does not exist".
+          technician_c: { Id: providerId, Name: providerName },
           agreed_price_c: billing.servicePrice,
           original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
           booking_commitment_amount_c: billing.bookingCommitment,
