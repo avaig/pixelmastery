@@ -119,14 +119,14 @@ export default function JobsDetail() {
           image.onload = () => {
             // The current Apper storage adapter can return attachment metadata without a public URL.
             // Keep a compact image preview as a fallback so the workflow does not depend on URL resolution.
-            const scale = Math.min(1, 420 / Math.max(image.naturalWidth, image.naturalHeight));
+            const scale = Math.min(1, 256 / Math.max(image.naturalWidth, image.naturalHeight));
             const canvas = document.createElement('canvas');
             canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
             canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
             const context = canvas.getContext('2d');
             if (!context) { reject(new Error('Photo compression is not supported by this browser.')); return; }
             context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.32));
+            resolve(canvas.toDataURL('image/jpeg', 0.2));
           };
           image.src = String(reader.result);
         };
@@ -183,7 +183,7 @@ export default function JobsDetail() {
     const photoRefs = inspectionDraft.photos.filter((photo) => photo.view?.startsWith('pre-')).map(({ view, name, data, fileId, type, size }) => ({ view, name, data, fileId, type, size }));
     const report = { registration: inspectionDraft.registration.trim(), notes: inspectionDraft.notes.trim(), customerName: displayLookup(job.customer_c), version: 4, inspectedAt, inspectedBy: displayLookup(job.technician_c), stage: 'Vehicle handover', confirmedAt: null };
     const photosJson = JSON.stringify(photoRefs);
-    if (photosJson.length > 20000) { toast.error('The photo references are unusually large. Please replace the photos and try again.'); return; }
+    if (photosJson.length > 60000) { toast.error('The six compressed photo previews are still too large to save safely. Please upload smaller image files or contact LOCAL support.'); return; }
     await updateJob({ vehicle_condition_report_c: JSON.stringify(report), pickup_photos_c: photosJson, vehicle_condition_status_c: 'Awaiting Customer Confirmation' }, 'Vehicle condition report saved and shared with the customer.');
   }
 
