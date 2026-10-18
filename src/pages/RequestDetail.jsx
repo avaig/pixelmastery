@@ -204,7 +204,30 @@ export default function RequestDetail() {
   async function confirmTechnician(response) {
     setWorking(true);
     try {
+      // Validate every lookup against the live database before changing offer status or creating a job.
+      // Old offers can retain a provider ID after that provider profile has been deleted.
       const providerId = response.technician_c?.Id ?? response.technician_c;
+      const customerId = request.customer_c?.Id ?? request.customer_c;
+      const requestCheck = await sdk.table('service_requests_c').select(['Id', 'customer_c', 'status_c']).get(request.Id);
+      if (!requestCheck.success || !requestCheck.data?.Id) {
+        throw new Error('This service request no longer exists in the database. Refresh Service Requests and open a current request.');
+      }
+      if (!providerId || typeof providerId !== 'string') {
+        throw new Error('This offer does not contain a valid Service Provider record ID. Ask the provider to submit a fresh offer from their current account.');
+      }
+      const providerCheck = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c', 'status_c']).get(String(providerId));
+      if (!providerCheck.success || !providerCheck.data?.Id) {
+        throw new Error('This offer is linked to a deleted or unavailable Service Provider profile. Do not keep retrying this offer. Ask the provider to submit a fresh offer from their current account, then refresh this request.');
+      }
+      if (!customerId || typeof customerId !== 'string') {
+        throw new Error('The customer profile linked to this request is missing. The request must be recreated from a valid customer account.');
+      }
+      const customerCheck = await sdk.table('customer_profiles_c').select(['Id', 'Name']).get(String(customerId));
+      if (!customerCheck.success || !customerCheck.data?.Id) {
+        throw new Error('The customer profile linked to this request no longer exists. Please sign in with a valid customer account and create a new request.');
+      }
+      const validProviderId = String(providerCheck.data.Id);
+      const validCustomerId = String(customerCheck.data.Id);
       const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
       if (!completedJobsRes.success) throw new Error(completedJobsRes.message);
       const completedJobsCount = (completedJobsRes.data ?? []).filter((job) => String(job.technician_c?.Id ?? job.technician_c) === String(providerId) && job.status_c === 'Completed').length;
