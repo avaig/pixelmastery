@@ -250,7 +250,7 @@ export function EntityListPage({ entity }) {
 
   async function deleteSelectedResponses() {
     if (!isResponsesList || !selectedIds.length || deletingSelected) return;
-    const confirmation = window.confirm(\`Permanently delete \${selectedIds.length} selected technician offer(s)? Offers linked to existing jobs will be protected so booking history remains intact.\`);
+    const confirmation = window.confirm(`Permanently delete ${selectedIds.length} selected technician offer(s)? Offers linked to existing jobs will be protected so booking history remains intact.`);
     if (!confirmation) return;
     setDeletingSelected(true);
     try {
@@ -275,7 +275,7 @@ export function EntityListPage({ entity }) {
       if (!removed.data || removed.data.length !== deletableIds.length) throw new Error(removed.messages?.[0] || 'Some offers could not be deleted. Refresh the list and inspect the remaining records.');
       setSelectedIds(protectedIds);
       await run();
-      toast.success(\`Deleted \${deletableIds.length} offer(s). \${protectedIds.length ? protectedIds.length + ' offer(s) linked to jobs were preserved.' : 'No job-linked offers needed protection.'}\`);
+      toast.success(`Deleted ${deletableIds.length} offer(s). ${protectedIds.length ? protectedIds.length + ' offer(s) linked to jobs were preserved.' : 'No job-linked offers needed protection.'}`);
     } catch (error) {
       toast.error(error.message || 'Could not delete the selected offers.');
       await run();
