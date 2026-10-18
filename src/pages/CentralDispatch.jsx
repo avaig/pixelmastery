@@ -230,8 +230,8 @@ export default function CentralDispatch() {
         toast.error('Only a provider who accepted a Central LOCAL assignment can be confirmed.');
         return;
       }
-      const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
-      if (request.pricing_mode_c === 'Fixed Price' && fixedPrice === null) {
+      const fixedPrice = isFixedPriceRequest(request) ? getFixedPrice(request) : null;
+      if (isFixedPriceRequest(request) && fixedPrice === null) {
         toast.error('A clear, positive fixed service total could not be read. Please review the price before confirming; no job was created.');
         return;
       }
