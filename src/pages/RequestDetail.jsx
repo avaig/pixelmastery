@@ -206,16 +206,38 @@ export default function RequestDetail() {
     setWorking(true);
     let confirmationStage = 'reading the selected offer';
     try {
-      // The offer's technician_c lookup is the authoritative provider reference.
-      // Customer-side RLS can hide provider profiles from list queries, so never
-      // infer that a provider is missing by scanning technician_profiles_c here.
-      // Use the lookup ID and let the jobs_c reference validation decide whether it
-      // is valid; if it is stale, return a specific error without creating a job.
-      const providerId = response.technician_c?.Id ?? response.technician_c?.id ?? response.technician_c?.recordId ?? response.technician_c;
-      const providerName = String(response.technician_c?.Name ?? response.technician_c?.name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
+      // Resolve the offer's provider lookup against the live Service Provider table
+      // before creating a job. Old offers can retain IDs from profiles that were
+      // deleted and recreated. Repair only when there is exactly one unambiguous
+      // current profile match; never attach a booking to an arbitrary same-name user.
+      let providerId = response.technician_c?.Id ?? response.technician_c?.id ?? response.technician_c?.recordId ?? response.technician_c;
+      let providerName = String(response.technician_c?.Name ?? response.technician_c?.name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
       if (providerId == null || String(providerId).trim() === '' || typeof providerId === 'object') {
-        throw new Error('This offer has no valid linked Service Provider record. No booking was created. Please ask the provider to submit a fresh offer from their current account.');
+        throw new Error('This offer has no valid linked Service Provider record. No booking was created. Ask the provider to submit a fresh offer from the current account.');
       }
+      let liveProvider = null;
+      const directProviderRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).where(eq('Id', providerId)).page(1, 10).fetch();
+      if (directProviderRes.success) liveProvider = (directProviderRes.data ?? []).find((item) => String(item.Id) === String(providerId)) ?? null;
+      if (!liveProvider) {
+        const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
+        if (providersRes.success) {
+          const normalizedName = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+          const offerName = normalizedName(providerName);
+          const matches = (providersRes.data ?? []).filter((item) => normalizedName(item.Name) === offerName);
+          if (matches.length === 1) {
+            liveProvider = matches[0];
+            providerId = liveProvider.Id;
+            providerName = liveProvider.Name || providerName;
+            const relinkRes = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: providerId });
+            if (!relinkRes.success || !relinkRes.data?.length) throw new Error('A matching current Service Provider profile was found, but LOCAL could not repair this offer link. No booking was created. Please create a fresh offer.');
+            response.technician_c = liveProvider;
+            toast.info('Repaired the old offer link to the current Service Provider profile.');
+          } else if (matches.length > 1) {
+            throw new Error('This offer points to a deleted provider profile and multiple current profiles share the same name. For safety, no booking was created. Ask the provider to submit a fresh offer from the current account.');
+          }
+        }
+      }
+      if (!liveProvider) throw new Error('This offer points to a Service Provider record that cannot be found in the current database. No booking was created. Open a fresh offer submitted from the current Service Provider account; creating another profile alone does not repair an old offer.');
       const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
 
