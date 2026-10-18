@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader, StatusBadge } from '@/components/local/EntityPages';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { getEligibleRequests } from '@/services/providerMatching';
+// Provider visibility is driven by Central LOCAL assignment invitations, not an open bidding marketplace.
 
 const { contains, eq, isIn, and } = window.ApperSDK.CoreSDK;
 
@@ -76,8 +76,19 @@ export default function RequestsList() {
       filters.push(isIn('status_c', ['Open', 'Quoted', 'Negotiating']));
     }
     if (profile === 'ServiceProvider_c') {
-      const eligible = await getEligibleRequests(profileId);
-      const filtered = eligible
+      if (!profileId) return { rows: [], total: 0, hasMore: false };
+      const assignmentsRes = await sdk.table('technician_responses_c').select(['Id', 'request_c', 'technician_c', 'status_c', 'message_c']).page(1, 2000).fetch();
+      if (!assignmentsRes.success) throw new Error(assignmentsRes.message || 'Could not load LOCAL assignment invitations.');
+      const assignedRequestIds = new Set((assignmentsRes.data ?? [])
+        .filter((item) => String(item.technician_c?.Id ?? item.technician_c) === String(profileId))
+        .filter((item) => /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')))
+        .filter((item) => ['Pending', 'Selected'].includes(String(item.status_c ?? '')))
+        .map((item) => String(item.request_c?.Id ?? item.request_c)));
+      if (!assignedRequestIds.size) return { rows: [], total: 0, hasMore: false };
+      const allRequestsRes = await sdk.table('service_requests_c').select(FIELDS).orderByDesc('CreatedOn').page(1, 1000).fetch();
+      if (!allRequestsRes.success) throw new Error(allRequestsRes.message || 'Could not load assigned service requests.');
+      const filtered = (allRequestsRes.data ?? [])
+        .filter((request) => assignedRequestIds.has(String(request.Id)))
         .filter((request) => !search || String(request.Name ?? '').toLowerCase().includes(search.toLowerCase()))
         .filter((request) => status === 'all' || String(request.status_c ?? '').toLowerCase() === status.toLowerCase());
       const start = (page - 1) * 12;
@@ -132,7 +143,7 @@ export default function RequestsList() {
       <PageHeader
         eyebrow="Marketplace"
         title="Service Requests"
-        description={user?.profile === 'ServiceProvider_c' ? 'View requests assigned by Central LOCAL and respond to an assignment invitation. Do not send competing price offers.' : user?.profile === 'Customer_c' ? 'Your requests are reviewed by Central LOCAL. The team assigns a suitable provider; there is no bidding or provider price competition.' : 'Review customer requests before central assignment to an eligible service provider.'}
+        description={user?.profile === 'ServiceProvider_c' ? 'Only requests assigned by Central LOCAL appear here. Accept or decline the invitation; do not send competing price offers.' : user?.profile === 'Customer_c' ? 'Your requests are reviewed by Central LOCAL. The team assigns a suitable provider; there is no bidding or provider price competition.' : 'Review customer requests before central assignment to an eligible service provider.'}
         action={null}
       />
       <div className="mb-5 flex flex-col gap-3 md:flex-row">
@@ -152,7 +163,7 @@ export default function RequestsList() {
         <div aria-busy={loading} className={loading ? 'pointer-events-none opacity-60' : ''}>
           <div className="space-y-3">
             {rows.map((request) => <div key={request.Id} className="flex flex-col gap-3 border-l-4 border-primary bg-card p-5 md:flex-row md:items-start md:justify-between"><Link to={'/requests/' + request.Id} className="min-w-0 flex-1 hover:text-primary"><div className="flex flex-col justify-between gap-4 md:flex-row md:items-start"><div><div className="flex flex-wrap items-center gap-2"><h2 className="font-heading text-lg font-semibold">{request.Name}</h2><StatusBadge value={request.status_c} /></div><div className="mt-2 text-sm text-muted-foreground">{request.service_category_c?.Name ?? 'Service'} • {request.required_capability_c?.Name ?? 'Capability'} • {request.location_c}{user?.profile === 'ServiceProvider_c' && request.distance_label_c ? ' • ' + request.distance_label_c + ' away' : ''}</div><div className="mt-2 flex flex-wrap items-center gap-2 text-sm"><span>{request.preferred_time_c === 'Scheduled' && request.scheduled_at_c ? 'Scheduled for ' + new Date(request.scheduled_at_c).toLocaleString('en-IN') : request.preferred_time_c === 'ASAP' ? 'Book Now — need help now' : request.preferred_time_c}</span>{(request.requested_at_c || request.CreatedOn) && <span className="text-xs text-muted-foreground">• Requested {new Date(request.requested_at_c || request.CreatedOn).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>}</div></div><div className="text-sm font-semibold text-primary">Open request <ApperIcon name="ArrowUpRight" size={15} /></div></div></Link>{user?.profile === 'Admin_c' && <Button type="button" variant="destructive" size="sm" className="shrink-0" onClick={() => setDeleteTarget(request)} disabled={deleting}><ApperIcon name="Trash2" size={15} /> Delete permanently</Button>}</div>)}
-            {!rows.length && <Card className="p-10 text-center"><div className="font-medium">{user?.profile === 'ServiceProvider_c' ? 'No matching open requests right now.' : 'No requests match the current view.'}</div>{user?.profile === 'ServiceProvider_c' && <p className="mt-2 text-sm text-muted-foreground">Only open requests matching your active service capabilities appear here. The sidebar badge may count all requests across LOCAL.</p>}</Card>}
+            {!rows.length && <Card className="p-10 text-center"><div className="font-medium">{user?.profile === 'ServiceProvider_c' ? 'No Central LOCAL assignment invitations are waiting for you.' : 'No requests match the current view.'}</div>{user?.profile === 'ServiceProvider_c' && <p className="mt-2 text-sm text-muted-foreground">Only requests explicitly assigned by Central LOCAL appear here. The provider must accept an invitation before LOCAL confirms the booking.</p>}</Card>}
           </div>
           <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground"><span>{data?.total ?? rows.length} total</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={!data?.hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button></div></div>
         </div>
