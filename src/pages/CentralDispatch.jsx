@@ -421,10 +421,12 @@ export default function CentralDispatch() {
 
 
           </div>
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row">
-            <div className="relative min-w-0 flex-1"><ApperIcon name="Search" size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by request, service, customer or location…" /></div>
-            <Select value={requestFilter} onValueChange={setRequestFilter}><SelectTrigger className="w-full lg:w-48"><SelectValue /></SelectTrigger><SelectContent>{['All', 'Open', 'Quoted', 'Negotiating', 'Confirmed', 'Completed', 'Cancelled'].map((value) => <SelectItem key={value} value={value}>{value === 'All' ? 'All statuses' : value}</SelectItem>)}</SelectContent></Select>
-            <Button variant="outline" onClick={run} disabled={loading}><ApperIcon name="RefreshCw" size={16} /> Refresh</Button>
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm xl:flex-row">
+            <div className="relative min-w-0 flex-1"><ApperIcon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" /><Input className="h-11 border-slate-200 pl-10 text-slate-800" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search by customer name, service, location…" /></div>
+            <Select value={serviceFilter} onValueChange={(value) => { setServiceFilter(value); setPage(1); }}><SelectTrigger className="h-11 w-full border-slate-200 xl:w-44"><SelectValue placeholder="All Services" /></SelectTrigger><SelectContent><SelectItem value="All">All Services</SelectItem>{serviceNames.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
+            <Select value={requestFilter} onValueChange={(value) => { setRequestFilter(value); setPage(1); }}><SelectTrigger className="h-11 w-full border-slate-200 xl:w-40"><SelectValue /></SelectTrigger><SelectContent>{['All', 'Open', 'Quoted', 'Negotiating', 'Confirmed', 'Completed', 'Cancelled'].map((value) => <SelectItem key={value} value={value}>{value === 'All' ? 'All Status' : value}</SelectItem>)}</SelectContent></Select>
+            <Select value={dateFilter} onValueChange={(value) => { setDateFilter(value); setPage(1); }}><SelectTrigger className="h-11 w-full border-slate-200 xl:w-44"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="30">Last 30 Days</SelectItem><SelectItem value="7">Last 7 Days</SelectItem><SelectItem value="90">Last 90 Days</SelectItem><SelectItem value="All">All Time</SelectItem></SelectContent></Select>
+            <Button className="h-11 border-blue-200 text-blue-700 hover:bg-blue-50" variant="outline" onClick={run} disabled={loading}><ApperIcon name="RefreshCw" size={17} /> Refresh</Button>
           </div>
           <div className="space-y-3" aria-busy={loading}>
             {visibleRequests.map((request) => {
