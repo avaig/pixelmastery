@@ -412,7 +412,7 @@ export function EntityListPage({ entity }) {
           {hasBulkDelete && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={rows.length > 0 && rows.every((row) => selectedIds.includes(String(row.Id)))} onCheckedChange={(checked) => setSelectedIds(checked ? rows.map((row) => String(row.Id)) : [])} /> Select all on this page <span className="text-muted-foreground">({selectedIds.length} selected)</span></label>
             {isCustomerList && <Button variant="outline" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={blockSelectedCustomers}><ApperIcon name="ShieldAlert" size={16} /> Block selected</Button>}
-            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={isProviderList ? deleteSelectedProviders : deleteSelectedCustomers}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Processing…' : `Delete selected (${selectedIds.length})`}</Button>
+            <Button variant="destructive" size="sm" disabled={!selectedIds.length || deletingSelected || loading} onClick={isProviderList ? deleteSelectedProviders : isCustomerList ? deleteSelectedCustomers : deleteSelectedResponses}><ApperIcon name="Trash2" size={16} /> {deletingSelected ? 'Processing…' : `Delete selected (${selectedIds.length})`}</Button>
           </div>}
           <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <table className="min-w-full text-sm">
