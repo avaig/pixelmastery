@@ -39,7 +39,7 @@ export const TABLE_PERMISSIONS = {
     technician_profiles_c: { access: 'Read' },
     service_requests_c: { access: 'Full' },
     technician_responses_c: { access: 'Read,Create,Update' },
-    jobs_c: { access: 'Read,Create' },
+    jobs_c: { access: 'Read,Create,Update' },
   },
   ServiceProvider_c: {
     service_categories_c: { access: 'Read' },
