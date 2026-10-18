@@ -70,6 +70,8 @@ export default function CentralDispatch() {
       const distance = providerDistance(request, provider);
       const radius = Number(provider.service_radius_km_c ?? 25);
       if (distance !== null && distance > radius) continue;
+      const availability = String(provider.availability_c ?? '').trim().toLowerCase();
+      if (availability && /unavailable|busy|offline|inactive/.test(availability)) continue;
       const capabilities = await getProviderCapabilities(provider.Id);
       if (!providerCanHandleRequest(request, capabilities)) continue;
       const alreadyAssigned = responses.some((response) =>
