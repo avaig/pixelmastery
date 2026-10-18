@@ -84,7 +84,7 @@ export default function CentralDispatch() {
   }
 
   async function assignProvider(request, provider, method) {
-    if (!request?.Id || !provider?.Id || busyKey) return;
+    if (!request?.Id || !provider?.Id) return;
     const key = request.Id + ':' + provider.Id;
     setBusyKey(key);
     try {

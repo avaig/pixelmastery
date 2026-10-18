@@ -132,7 +132,7 @@ export default function RequestsList() {
       <PageHeader
         eyebrow="Marketplace"
         title="Service Requests"
-        description={user?.profile === 'ServiceProvider_c' ? 'Open local requests and send offers to customers.' : user?.profile === 'Customer_c' ? 'Active requests awaiting quotes, negotiation, or your Service Provider selection. Confirmed bookings are tracked under Jobs.' : 'Review every request flowing through LOCAL.'}
+        description={user?.profile === 'ServiceProvider_c' ? 'View requests assigned by Central LOCAL and respond to an assignment invitation. Do not send competing price offers.' : user?.profile === 'Customer_c' ? 'Your requests are reviewed by Central LOCAL. The team assigns a suitable provider; there is no bidding or provider price competition.' : 'Review customer requests before central assignment to an eligible service provider.'}
         action={null}
       />
       <div className="mb-5 flex flex-col gap-3 md:flex-row">

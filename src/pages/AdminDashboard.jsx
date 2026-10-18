@@ -66,7 +66,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <PageHeader eyebrow="Admin workspace" title="LOCAL marketplace overview" description="Watch the marketplace loop: requests → offers → jobs, plus emergency & urgent services." action={<div className="flex flex-wrap gap-2"><Button variant="outline" disabled={restoringSetup} onClick={restoreSetup}><ApperIcon name="DatabaseBackup" size={17} /> {restoringSetup ? 'Restoring setup…' : 'Restore service catalogue'}</Button><Button asChild variant="outline"><Link to="/categories"><ApperIcon name="Layers3" size={17} /> Manage categories</Link></Button></div>} />
+      <PageHeader eyebrow="Admin workspace" title="LOCAL operations overview" description="Central control for customer requests, provider assignment, jobs and emergency services. No bidding or bargaining." action={<div className="flex flex-wrap gap-2"><Button variant="outline" disabled={restoringSetup} onClick={restoreSetup}><ApperIcon name="DatabaseBackup" size={17} /> {restoringSetup ? 'Restoring setup…' : 'Restore service catalogue'}</Button><Button asChild variant="outline"><Link to="/categories"><ApperIcon name="Layers3" size={17} /> Manage categories</Link></Button></div>} />
       {loading && !data ? <div className="grid gap-4 md:grid-cols-3"><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /><Card className="h-28 animate-pulse" /></div> : error ? <Card className="border-l-4 border-destructive p-6"><div className="font-medium">Could not load the admin dashboard.</div><p className="mt-1 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : (
         <>
           <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
               ['Customers', data.customers.length, 'Users', '/customers'],
               ['Service Providers', data.technicians.length, 'Wrench', '/technicians'],
               ['Requests', data.requests.length, 'ClipboardList', '/requests'],
-              ['Offers', data.responses.length, 'BadgeIndianRupee', '/responses'],
+              ['Provider Responses', data.responses.length, 'UserCheck', '/admin/dispatch'],
               ['Jobs', data.jobs.length, 'BriefcaseBusiness', '/jobs'],
             ].map(([label, value, icon, href]) => <Link key={href} to={href}><Card className="h-full border-l-4 border-primary p-4 transition-colors hover:bg-accent"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{label}</span><ApperIcon name={icon} size={17} className="text-primary" /></div><div className="mt-3 font-heading text-3xl font-semibold">{value}</div></Card></Link>)}
           </div>
@@ -118,7 +118,7 @@ export default function AdminDashboard() {
                 <Button asChild variant="outline" className="justify-start"><Link to="/customers"><ApperIcon name="Users" size={17} /> Manage customers</Link></Button>
                 <Button asChild variant="outline" className="justify-start"><Link to="/technicians"><ApperIcon name="Wrench" size={17} /> Manage service providers</Link></Button>
                 <Button asChild variant="outline" className="justify-start"><Link to="/admin/provider-onboarding"><ApperIcon name="ClipboardCheck" size={17} /> Review provider onboarding</Link></Button>
-                <Button asChild variant="outline" className="justify-start"><Link to="/requests"><ApperIcon name="ClipboardList" size={17} /> Review requests</Link></Button>
+                <Button asChild variant="outline" className="justify-start"><Link to="/admin/dispatch"><ApperIcon name="Route" size={17} /> Central Dispatch & Assignments</Link></Button><Button asChild variant="outline" className="justify-start"><Link to="/requests"><ApperIcon name="ClipboardList" size={17} /> Review requests</Link></Button>
                 <Button asChild variant="outline" className="justify-start"><Link to="/jobs"><ApperIcon name="BriefcaseBusiness" size={17} /> Review jobs</Link></Button>
                 <Button asChild variant="outline" className="justify-start"><Link to="/emergency-requests"><ApperIcon name="AlertTriangle" size={17} /> Emergency requests</Link></Button>
               </div>
