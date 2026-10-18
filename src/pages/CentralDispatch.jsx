@@ -446,7 +446,7 @@ export default function CentralDispatch() {
               const activeAssignments = getRequestAssignments(request);
               const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
               const assignedProvider = acceptedAssignment ? providers.find((item) => String(item.Id) === String(acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c)) : null;
-              const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
+              const fixedPrice = isFixedPriceRequest(request) ? getFixedPrice(request) : null;
               const distance = assignedProvider ? providerDistance(request, assignedProvider) : null;
               const lifecycle = displayLifecycle(request, linkedJob, acceptedAssignment);
               const providerName = linkedJob?.technician_c?.Name ?? assignedProvider?.Name ?? activeAssignments[0]?.technician_c?.Name ?? 'Not assigned yet';
