@@ -79,7 +79,6 @@ export default function RequestDetail() {
   const [working, setWorking] = useState(false);
   const [negotiatingId, setNegotiatingId] = useState(null);
   const [counterPrice, setCounterPrice] = useState('');
-  const [confirmingResponse, setConfirmingResponse] = useState(null);
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -387,8 +386,8 @@ export default function RequestDetail() {
               <div key={response.Id} className="border-l-4 border-primary bg-muted/30 p-4">
                 <div className="flex flex-col gap-4">
                   <div className="min-w-0 w-full"><div className="flex flex-wrap items-center gap-2"><div className="font-medium">{response.technician_c?.Name ?? 'Service Provider'}</div><StatusBadge value={vendorAccepted ? 'Vendor Accepted' : response.status_c} /></div><div className="mt-1 text-sm text-muted-foreground">{response.availability_c}{isCustomer && response.provider_distance_label_c ? ' • ' + response.provider_distance_label_c + ' from your location' : ''}</div><p className="mt-2 break-words text-sm">{isFixedRateDriverRequest ? 'Available for this driver request.' : (response.message_c || 'No additional message.')}</p></div>
-                  <div className="w-full min-w-0">{isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && !vendorAccepted && !relatedJob && <div className="mt-3 flex flex-wrap gap-2 md:justify-end">{!isFixedRateDriverRequest && <Button size="sm" variant="outline" disabled={working} onClick={() => { setNegotiatingId(response.Id); setCounterPrice(String(response.proposed_price_c ?? '')); }}>{tr('Negotiate', language)}</Button>}<Button size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}
-                {isCustomer && vendorAccepted && !relatedJob && <div className="mt-3 flex w-full min-w-0 flex-col items-start gap-3 rounded-lg border border-success-border bg-success-muted p-3"><p className="break-words text-sm text-success"><strong>Provider accepted.</strong> Final agreed price: ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Review the booking before confirming.</p><Button className="max-w-full whitespace-normal" size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>Select This Provider</Button></div>}{isCustomer && response.status_c === 'Selected' && !relatedJob && <div className="mt-3 flex flex-wrap items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">Provider selected; review and finish booking confirmation.</span><Button size="sm" disabled={working} onClick={() => setConfirmingResponse(response)}>Confirm Booking</Button></div>}{isTechnician && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
+                  <div className="w-full min-w-0">{isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && !vendorAccepted && !relatedJob && <div className="mt-3 flex flex-wrap gap-2 md:justify-end">{!isFixedRateDriverRequest && <Button size="sm" variant="outline" disabled={working} onClick={() => { setNegotiatingId(response.Id); setCounterPrice(String(response.proposed_price_c ?? '')); }}>{tr('Negotiate', language)}</Button>}<Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}
+                {isCustomer && vendorAccepted && !relatedJob && <div className="mt-3 flex w-full min-w-0 flex-col items-start gap-3 rounded-lg border border-success-border bg-success-muted p-3"><p className="break-words text-sm text-success"><strong>Provider accepted.</strong> Final agreed price: ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Review the booking before confirming.</p><Button className="max-w-full whitespace-normal" size="sm" disabled={working} onClick={() => confirmTechnician(response)}>Select This Provider</Button></div>}{isCustomer && response.status_c === 'Selected' && !relatedJob && <div className="mt-3 flex flex-wrap items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">Provider selected; review and finish booking confirmation.</span><Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>Confirm Booking</Button></div>}{isTechnician && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
                 </div>
                 {!isFixedRateDriverRequest && response.negotiation_history_c && <div className="mt-3 rounded-md border border-border bg-background p-3"><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{tr('Negotiation history', language)}</div><pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-5 text-muted-foreground">{response.negotiation_history_c}</pre></div>}
                 {negotiatingId === response.Id && isCustomer && (
@@ -401,39 +400,6 @@ export default function RequestDetail() {
           </div>
         </Card>
       </div>
-      <AlertDialog open={confirmingResponse != null} onOpenChange={(open) => { if (!open && !working) setConfirmingResponse(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{tr('Confirm Booking', language)}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {tr('You selected this Service Provider. Check the final agreed price below, then confirm to create your job.', language)}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {confirmingResponse && (() => {
-            const previewPrice = Number(confirmingResponse.final_agreed_price_c ?? confirmingResponse.proposed_price_c);
-            const calculatedPreviewBilling = getBillingBreakdown(previewPrice, request.service_mode_c ?? 'Normal', 0, 0, 0);
-            const isCarWashPreview = String(request.Name ?? '').toLowerCase().includes('car wash');
-            const isAcPreview = isAcTechnicianRequest(request);
-            const previewBilling = isCarWashPreview || isAcPreview
-              ? { ...calculatedPreviewBilling, servicePrice: previewPrice, bookingCommitment: 0, remainingServiceAmount: previewPrice, customerPayableNow: 0, localServiceFee: 0 }
-              : calculatedPreviewBilling;
-            return (
-              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4 text-sm">
-                <div className="flex justify-between gap-4"><span>{tr('Service Provider', language)}</span><span className="font-medium">{confirmingResponse.technician_c?.Name ?? 'Service Provider'}</span></div>
-                <div className="flex justify-between gap-4"><span>{tr('Final agreed price', language)}</span><span className="font-semibold">₹{previewBilling.servicePrice.toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between gap-4"><span>{tr('Booking commitment', language)}</span><span>₹{previewBilling.bookingCommitment.toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between gap-4"><span>{tr('LOCAL Service Fee', language)}</span><span>₹{previewBilling.localServiceFee.toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between gap-4 border-t border-border pt-3"><span className="font-semibold">{isAcPreview ? 'Pay after service completion' : tr('Pay now to confirm', language)}</span><span className="font-heading text-xl font-semibold">₹{previewBilling.customerPayableNow.toLocaleString('en-IN')}</span></div>
-                <p className="text-xs leading-5 text-muted-foreground">{isAcPreview ? 'No advance is collected for AC service. The final agreed amount is payable after the customer confirms the completed work.' : tr('The Booking Commitment is adjusted against the final service price. The LOCAL Service Fee is the platform charge.', language)}</p>
-              </div>
-            );
-          })()}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={working}>{tr('Cancel', language)}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const selected = confirmingResponse; confirmTechnician(selected); }} disabled={working}>{working ? 'Creating booking…' : 'Confirm Booking & Create Job'}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
