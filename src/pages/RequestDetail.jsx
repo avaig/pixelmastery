@@ -222,7 +222,9 @@ export default function RequestDetail() {
       const providerProfiles = providerProfilesRes.data ?? [];
       let currentProvider = providerProfiles.find((item) => String(item.Id) === String(providerId));
       if (!currentProvider) {
-        const savedName = String(response.technician_c?.Name ?? '').trim().toLowerCase();
+        const savedLookupName = String(response.technician_c?.Name ?? '').trim();
+        const savedOfferName = String(response.Name ?? '').split(' • ')[0].trim();
+        const savedName = (savedLookupName || savedOfferName).toLowerCase();
         const savedEmail = String(response.technician_c?.email_c ?? '').trim().toLowerCase();
         const matches = providerProfiles.filter((item) =>
           (savedEmail && String(item.email_c ?? '').trim().toLowerCase() === savedEmail) ||
