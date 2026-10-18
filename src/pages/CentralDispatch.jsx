@@ -155,6 +155,85 @@ export default function CentralDispatch() {
     await assignProvider(request, matched, 'Manual assignment');
   }
 
+  function getCleanRequestNotes(value) {
+    return String(value ?? '')
+      .replace(/CUSTOMER_CAR_WASH_OFFER_JSON:[\\s\\S]*$/i, '')
+      .replace(/CAR_WASH_DECISIONS_JSON:[\\s\\S]*$/i, '')
+      .trim();
+  }
+
+  function getFixedPrice(request) {
+    const notes = String(request.problem_description_c ?? '');
+    const matches = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Actual Price of Service)\\s*:?\\s*₹?\\s*([\\d,]+(?:\\.\\d{1,2})?)/gi)];
+    if (!matches.length) return null;
+    const value = Number(matches[matches.length - 1][1].replace(/,/g, ''));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  async function confirmBooking(request, acceptedAssignment) {
+    if (!request?.Id || !acceptedAssignment?.Id) return;
+    const key = 'confirm:' + request.Id;
+    setBusyKey(key);
+    try {
+      if (request.status_c === 'Confirmed' || request.status_c === 'Completed' || request.status_c === 'Cancelled') {
+        toast.info('This request is already finalized or closed.');
+        return;
+      }
+      const existingJobs = await sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 20).fetch();
+      if (!existingJobs.success) throw new Error(existingJobs.message || 'Could not check for an existing job.');
+      if ((existingJobs.data ?? []).length) {
+        if (request.status_c !== 'Confirmed') {
+          const updateExisting = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+          if (!updateExisting.data?.length) throw new Error(updateExisting.messages?.[0] || 'Existing job found, but request status could not be updated.');
+        }
+        toast.info('A job already exists for this request; no duplicate was created.');
+        await run();
+        return;
+      }
+      if (acceptedAssignment.status_c !== 'Selected' || !/Central LOCAL assignment invitation/i.test(String(acceptedAssignment.message_c ?? ''))) {
+        toast.error('Only a provider who accepted a Central LOCAL assignment can be confirmed.');
+        return;
+      }
+      const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
+      if (request.pricing_mode_c === 'Fixed Price' && fixedPrice === null) {
+        toast.error('A clear, positive fixed service total could not be read. Please review the price before confirming; no job was created.');
+        return;
+      }
+      if (request.pricing_mode_c !== 'Fixed Price') {
+        toast.error('This request needs a confirmed inspection/estimate amount before booking can be finalized.');
+        return;
+      }
+      const jobName = 'LOCAL Job • ' + request.Name;
+      const jobRes = await sdk.table('jobs_c').create({
+        Name: jobName,
+        request_c: request.Id,
+        response_c: acceptedAssignment.Id,
+        customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
+        technician_c: acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c,
+        agreed_price_c: fixedPrice,
+        original_provider_quote_c: null,
+        scheduled_at_c: request.scheduled_at_c || null,
+        status_c: 'Assigned',
+        payment_status_c: 'Unpaid',
+        billing_status_c: 'Ready for Confirmation',
+        admin_review_note_c: 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
+      });
+      if (!jobRes.data?.length) throw new Error(jobRes.messages?.[0] || 'Job creation failed; request remains unconfirmed.');
+      const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+      if (!requestRes.data?.length) {
+        toast.warning('Job was created, but the request status update failed. Refresh and review the job before retrying.');
+        await run();
+        return;
+      }
+      toast.success('Booking confirmed and job created for ' + (acceptedAssignment.technician_c?.Name ?? 'the accepted provider') + '.');
+      await run();
+    } catch (err) {
+      toast.error(err.message || 'Booking confirmation failed.');
+    } finally {
+      setBusyKey('');
+    }
+  }
+
   return (
     <div>
       <PageHeader eyebrow="Operations control" title="Central LOCAL Dispatch" description="Every customer request arrives here first. LOCAL staff control assignment; providers accept or decline. No bidding, bargaining, or automatic booking confirmation. Every assignment is sent by LOCAL staff and must be accepted or declined by the provider." />
@@ -171,6 +250,8 @@ export default function CentralDispatch() {
         <div className="space-y-4" aria-busy={loading}>
           {visibleRequests.map((request) => {
             const activeAssignments = responses.filter((item) => String(item.request_c?.Id ?? item.request_c) === String(request.Id) && /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')) && !['Declined', 'Withdrawn'].includes(String(item.status_c ?? '')));
+            const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
+            const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
             const matchedCount = eligibleProviders.filter((provider) => {
               const distance = providerDistance(request, provider);
               const radius = Number(provider.service_radius_km_c ?? 25);
@@ -183,9 +264,9 @@ export default function CentralDispatch() {
                     <div className="flex flex-wrap items-center gap-2"><h2 className="font-heading text-lg font-semibold">{request.Name}</h2><StatusBadge value={request.status_c} /></div>
                     <p className="mt-2 text-sm text-muted-foreground">{request.service_category_c?.Name ?? 'Service'} · {request.required_capability_c?.Name ?? 'Capability not mapped'}</p>
                     <p className="mt-1 text-sm">{request.location_c || 'Location missing'}{request.preferred_time_c ? ' · ' + (request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c) : ''}</p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{request.problem_description_c || 'No additional problem details.'}</p>
-                    <div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full border px-2.5 py-1 text-xs">{request.pricing_mode_c === 'Fixed Price' ? 'Pre-decided Price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspect & Quote' : request.pricing_mode_c || 'Pricing method not set'}</span><span className="rounded-full border px-2.5 py-1 text-xs">{matchedCount} providers with nearby location data</span><span className="rounded-full border px-2.5 py-1 text-xs">{activeAssignments.length} active invitations</span></div>
-                    {activeAssignments.length > 0 && <div className="mt-3 rounded-md bg-muted/50 p-3 text-sm"><strong>Invitations already sent</strong><div className="mt-1 space-y-1">{activeAssignments.map((item) => <div key={item.Id}>{item.technician_c?.Name ?? 'Assigned provider'} — {item.status_c === 'Selected' ? 'Accepted/selected' : item.status_c === 'Pending' ? 'Awaiting response' : item.status_c}</div>)}</div></div>}
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{getCleanRequestNotes(request.problem_description_c) || 'No additional problem details.'}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"><div className="rounded-md border bg-background p-3"><div className="text-xs text-muted-foreground">Pricing</div><div className="mt-1 text-sm font-medium">{request.pricing_mode_c === 'Fixed Price' ? 'Pre-decided price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspection / estimate' : request.pricing_mode_c || 'Not set'}</div></div><div className="rounded-md border bg-background p-3"><div className="text-xs text-muted-foreground">Service total</div><div className="mt-1 text-sm font-semibold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : 'Review required'}</div></div><div className="rounded-md border bg-background p-3"><div className="text-xs text-muted-foreground">Nearby providers</div><div className="mt-1 text-sm font-medium">{matchedCount} with location data</div></div></div>
+                    {activeAssignments.length > 0 && <div className="mt-3 rounded-md bg-muted/50 p-3 text-sm"><strong>Assignment status</strong><div className="mt-1 space-y-2">{activeAssignments.map((item) => <div key={item.Id} className="flex flex-wrap items-center justify-between gap-2"><span>{item.technician_c?.Name ?? 'Assigned provider'}</span><span className="rounded-full border px-2 py-0.5 text-xs">{item.status_c === 'Selected' ? 'Accepted' : item.status_c === 'Pending' ? 'Awaiting response' : item.status_c}</span></div>)}</div></div>}
                   </div>
                   <div className="min-w-0 rounded-lg border bg-muted/20 p-4">
                     <div className="font-semibold">Assignment controls</div>
@@ -194,6 +275,7 @@ export default function CentralDispatch() {
                       <div><label className="mb-1.5 block text-sm font-medium">Manual provider assignment</label><Select value={providerChoice[request.Id] ?? ''} onValueChange={(value) => setProviderChoice((current) => ({ ...current, [request.Id]: value }))}><SelectTrigger><SelectValue placeholder="Select eligible provider" /></SelectTrigger><SelectContent>{eligibleProviders.map((provider) => <SelectItem key={provider.Id} value={provider.Id}>{provider.Name}{providerDistance(request, provider) !== null ? ' · ' + formatDistance(providerDistance(request, provider)) : ''}</SelectItem>)}</SelectContent></Select></div>
                       <Button variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => manualAssign(request)}><ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : 'Assign Manually'}</Button>
                       <Button disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => findNearby(request)}><ApperIcon name="MapPinned" size={16} /> {busyKey === request.Id ? 'Checking nearby…' : 'Find Nearby & Invite'}</Button>
+                      {acceptedAssignment && <div className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3"><div className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><ApperIcon name="CheckCircle2" size={17} /> Provider accepted</div><p className="mt-1 text-xs text-muted-foreground">{acceptedAssignment.technician_c?.Name ?? 'Selected provider'} accepted this assignment. Admin must verify the total and confirm the booking.</p><Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || fixedPrice === null || request.pricing_mode_c !== 'Fixed Price'} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>{(request.pricing_mode_c !== 'Fixed Price' || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">A verified fixed total is required before this action is enabled.</p>}</div>}
                     </div>
                   </div>
                 </div>
