@@ -189,18 +189,18 @@ export default function CentralDispatch() {
   function isFixedPriceRequest(request) {
     if (String(request?.pricing_mode_c ?? '').toLowerCase() === 'fixed price') return true;
     const notes = String(request?.problem_description_c ?? '');
-    return /listed package price\s*:/i.test(notes) || /menu total\s*:/i.test(notes) || /customer car wash total offer\s*:/i.test(notes);
+    return /(?:listed package price|menu total|customer car wash total offer|actual price of service|fixed service total|package price)\s*:/i.test(notes);
   }
 
   function getFixedPrice(request) {
     const notes = String(request?.problem_description_c ?? '');
     const patterns = [
-      /(?:Menu Total|Customer Car Wash total offer|Actual Price of Service|Listed package price|Package price|Fixed service total|Service total)\s*:?\s*₹?\s*([\d,]+(?:\.\d{1,2})?)/gi,
+      /(?:Menu Total|Customer Car Wash total offer|Actual Price of Service|Listed package price|Package price|Fixed service total|Service total)\s*:?\s*(?:₹|INR)?\s*([\d,]+(?:\.\d{1,2})?)/gi,
     ];
     const matches = patterns.flatMap((pattern) => [...notes.matchAll(pattern)]);
     if (!matches.length) return null;
     // When multiple amounts are listed, use the explicit total/package price, not an incidental item price.
-    const preferred = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Fixed service total|Listed package price|Package price|Service total)\s*:?\s*₹?\s*([\d,]+(?:\.\d{1,2})?)/gi)];
+    const preferred = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Fixed service total|Listed package price|Package price|Service total)\s*:?\s*(?:₹|INR)?\s*([\d,]+(?:\.\d{1,2})?)/gi)];
     const selected = preferred.length ? preferred[preferred.length - 1] : matches[matches.length - 1];
     const value = Number(selected[1].replace(/,/g, ''));
     return Number.isFinite(value) && value > 0 ? value : null;
@@ -284,7 +284,7 @@ export default function CentralDispatch() {
     const linkedJob = getRequestJob(request);
     const activeAssignments = getRequestAssignments(request);
     const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
-    const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
+    const fixedPrice = isFixedPriceRequest(request) ? getFixedPrice(request) : null;
     const nearbyCount = eligibleProviders.filter((provider) => {
       const distance = providerDistance(request, provider);
       return distance !== null && distance <= Number(provider.service_radius_km_c ?? 25);
@@ -311,7 +311,7 @@ export default function CentralDispatch() {
                 <div className="rounded-xl bg-primary/10 p-3 text-primary"><ApperIcon name="CarFront" size={26} /></div>
                 <div>
                   <div className="font-semibold">{request.service_category_c?.Name ?? 'Service'} · {request.required_capability_c?.Name ?? 'Capability not mapped'}</div>
-                  <p className="mt-1 text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Pre-decided price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspection / estimate required' : request.pricing_mode_c || 'Pricing not set'}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{isFixedPriceRequest(request) ? 'Fixed package price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspection / estimate required' : request.pricing_mode_c || 'Pricing not set'}</p>
                 </div>
               </div>
               <div className="grid gap-4 border-y py-4 sm:grid-cols-2">

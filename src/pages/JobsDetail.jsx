@@ -50,7 +50,7 @@ export default function JobsDetail() {
   const isCarService = /car service|service package|economy service|normal service|major service|point checkup/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? ''));
   const isCarCare = isCarWash || isCarService;
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
-  const isPayAfterCompletion = isCarWash || isAcService;
+  const isPayAfterCompletion = isCarWash || isCarService || isAcService;
   const language = getLanguage();
   const completedJobsBeforeThisBooking = Number(job?.provider_completed_jobs_count_c ?? 0);
   const billing = getBillingBreakdown(job?.agreed_price_c ?? 0, job?.service_mode_c ?? 'Normal', completedJobsBeforeThisBooking, job?.customer_discount_amount_c ?? 0, job?.customer_tax_amount_c ?? 0);
@@ -233,7 +233,7 @@ export default function JobsDetail() {
   }
 
   async function confirmCustomerCompletion() {
-    if (isCarWash && (!hasSixBeforePhotos || !hasSixAfterPhotos)) {
+    if (isCarCare && (!hasSixBeforePhotos || !hasSixAfterPhotos)) {
       toast.error('Completion confirmation is locked until all six before-service and all six after-service vehicle photos are saved to this job.');
       return;
     }
@@ -241,7 +241,7 @@ export default function JobsDetail() {
       toast.error('This job has an open dispute. Admin review is required before completion.');
       return;
     }
-    const alreadyPaidAtConfirmation = isCarWash && isPaid;
+    const alreadyPaidAtConfirmation = isCarCare && isPaid;
     await updateJob({ customer_completion_confirmed_at_c: new Date().toISOString(), status_c: 'Completed', payment_status_c: alreadyPaidAtConfirmation ? 'Final Payment Paid' : 'Balance Pending', billing_status_c: alreadyPaidAtConfirmation ? 'Final Paid' : 'Ready for Confirmation', payout_status_c: alreadyPaidAtConfirmation ? 'Pending Release' : 'Not Eligible' }, alreadyPaidAtConfirmation ? 'Completion confirmed. Your full payment was already recorded.' : 'Completion confirmed. The full final payment is now due.');
   }
 
@@ -285,11 +285,11 @@ export default function JobsDetail() {
   async function simulatePayment() {
     setWorking(true);
     try {
-      const isFinalBalancePayment = !isCarWash && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid';
-      const amount = isCarWash || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
+      const isFinalBalancePayment = !isCarCare && !isAcService && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid';
+      const amount = isCarCare || isAcService || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
       const calculated = getBillingBreakdown(job.agreed_price_c, job.service_mode_c ?? 'Normal', Number(job.provider_completed_jobs_count_c ?? 0), Number(job.customer_discount_amount_c ?? 0), 0);
       const reference = 'DEMO-' + paymentMethod.toUpperCase().replace(' ', '-') + '-' + String(Date.now()).slice(-6);
-      const values = (isCarWash || isFinalBalancePayment) ? {
+      const values = (isCarCare || isAcService || isFinalBalancePayment) ? {
         remaining_amount_c: 0,
         customer_payable_now_c: amount,
         billing_status_c: 'Final Paid',
@@ -317,7 +317,7 @@ export default function JobsDetail() {
       toast.success('Demo payment recorded. No real money was charged.');
       setShowDemoQr(false);
       run();
-      if (isCustomer && (isCarWash || isFinalBalancePayment)) {
+      if (isCustomer && (isCarCare || isAcService || isFinalBalancePayment)) {
         await emailInvoiceToCustomer(amount, reference);
       }
     } catch (err) {
@@ -441,7 +441,7 @@ export default function JobsDetail() {
             [tr('Payment status', language), <StatusBadge value={job.payment_status_c ?? 'Unpaid'} />],
             ...(job.payment_method_c ? [['Payment method', job.payment_method_c]] : []),
             ...(job.payment_reference_c ? [['Payment reference', job.payment_reference_c]] : []),
-            ...(isCarWash ? [['Payout status', <StatusBadge value={job.payout_status_c ?? 'Not Eligible'} />], ['Dispute status', <StatusBadge value={job.dispute_status_c ?? 'None'} />]] : []),
+            ...(isCarCare ? [['Payout status', <StatusBadge value={job.payout_status_c ?? 'Not Eligible'} />], ['Dispute status', <StatusBadge value={job.dispute_status_c ?? 'None'} />]] : []),
           ].map(([label, value]) => (
             <div key={label}>
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</div>
@@ -501,16 +501,16 @@ export default function JobsDetail() {
             {isPaid && <div className="rounded-md border border-success-border bg-success-muted p-4"><p className="font-semibold text-success">Payment recorded</p><p className="mt-1 text-sm text-success">No real money was charged or transferred in this demo.</p><div className="mt-3 flex flex-wrap gap-2"><Button onClick={printInvoice}><ApperIcon name="FileDown" size={16} /> Download Invoice / Save as PDF</Button><Button type="button" variant="outline" onClick={() => emailInvoiceToCustomer(Number(job.agreed_price_c ?? 0), job.payment_reference_c ?? '')} disabled={emailingInvoice}><ApperIcon name="Mail" size={16} /> {emailingInvoice ? 'Emailing invoice…' : 'Email invoice details'}</Button></div><p className="mt-2 text-xs text-success">Invoice email delivery requires a configured email sender. The PDF can be saved locally.</p></div>}
           </section>
         )}
-        {isCarWash && (isProvider || isAdmin) && (
+        {isCarCare && (isProvider || isAdmin) && (
           <div className="mt-7 space-y-5 border-t border-border pt-5">
             <section>
-              <h2 className="font-heading text-xl font-semibold">Car Wash job progress</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Complete the vehicle handover details first. After the Car Wash is finished, upload all six required photographs before marking the vehicle as returned.</p>
+              <h2 className="font-heading text-xl font-semibold">{isCarWash ? 'Car Wash job progress' : 'Car Service job progress'}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Complete the vehicle handover details first. After the {isCarWash ? 'wash' : 'service'} is finished, upload all six required after-service photographs before marking the vehicle as returned.</p>
               {job.pickup_confirmed_at_c && <p className="mt-2 text-xs text-muted-foreground">Job started: {formatTimestamp(job.pickup_confirmed_at_c)}</p>}
-              {isProvider && job.status_c === 'Assigned' && <Button className="mt-3" onClick={() => updateJob({ pickup_confirmed_at_c: new Date().toISOString(), status_c: 'In Progress' }, 'Car Wash started.')} disabled={working || inspectionStatus !== 'Confirmed' || (job.payment_timing_c === 'Pay at confirmation' && !isPaid)}><ApperIcon name="Play" size={16} /> {working ? 'Saving…' : 'Start Car Wash'}</Button>}
-              {isProvider && job.status_c === 'Assigned' && inspectionStatus !== 'Confirmed' && <p className="mt-2 text-sm font-medium text-highlight">To start this job, send all six vehicle photos and the condition report to the customer for confirmation. Start Car Wash remains locked until the customer confirms.</p>}
-              {isProvider && job.status_c === 'Assigned' && inspectionStatus === 'Confirmed' && job.payment_timing_c === 'Pay at confirmation' && !isPaid && <p className="mt-2 text-sm text-highlight">The customer chose to pay the full agreed amount before service starts. Wait until the full payment is recorded before starting the Car Wash.</p>}
-              {isProvider && job.status_c === 'In Progress' && <div className="mt-4 space-y-4 rounded-lg border border-border p-4"><h3 className="font-semibold">Car Photos After Washing — 6 Photos Needed</h3><p className="text-sm text-muted-foreground">After washing the car, upload all six photos before handing the car back to the customer.</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space'].map((view) => { const photo = inspectionDraft.photos.find((item) => item.view === 'post-' + view); return <div key={view} className="rounded-lg border border-border p-3"><div className="mb-2 flex items-center justify-between gap-2"><label className="text-sm font-semibold">{view} photo — after service <span className="text-destructive">*</span></label><span className={`text-xs font-medium ${photo ? 'text-success' : 'text-highlight'}`}>{photo ? 'Uploaded' : 'Required'}</span></div>{photo ? <img src={photo.data} alt={`${view} after service`} className="h-36 w-full rounded-md border object-cover" /> : <div className="flex h-36 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">{view} after-service photo required</div>}<label className="relative mt-3 flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"><ApperIcon name="Camera" size={16} />{photo ? 'Replace Photo' : 'Upload Photo'}<input type="file" accept="image/*" capture="environment" onChange={(event) => addInspectionPhotos(event, 'post-' + view)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label={`${photo ? 'Replace' : 'Upload'} ${view} after-service photo`} /></label></div>; })}</div><div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"><Button onClick={async () => { const requiredViews = ['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space']; const missing = requiredViews.filter((view) => !inspectionDraft.photos.some((photo) => photo.view === 'post-' + view && photo.data)); if (missing.length) { toast.error('Upload all six photos first: ' + missing.join(', ') + '.'); return; } const returnPhotosJson = JSON.stringify(inspectionDraft.photos.filter((photo) => photo.view?.startsWith('post-')).map(({ view, name, data, fileId, type, size }) => ({ view, name, data, fileId, type, size }))); if (returnPhotosJson.length > 60000) { toast.error('The six after-service photos exceed the safe save size. Please re-upload them; photos are now compressed more strongly.'); return; } await updateJob({ return_photos_c: returnPhotosJson }, 'After-service photos saved.'); }} disabled={working}><ApperIcon name="Camera" size={16} /> Save Photos</Button><Button onClick={() => { const requiredViews = ['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space']; const missing = requiredViews.filter((view) => !inspectionDraft.photos.some((photo) => photo.view === 'post-' + view && photo.data)); if (missing.length) { toast.error('Upload all six photos before returning the car: ' + missing.join(', ') + '.'); return; } const returnPhotosJson = JSON.stringify(inspectionDraft.photos.filter((photo) => photo.view?.startsWith('post-')).map(({ view, name, data, fileId, type, size }) => ({ view, name, data, fileId, type, size }))); if (returnPhotosJson.length > 60000) { toast.error('The six after-service photos exceed the safe save size. Please re-upload them; photos are now compressed more strongly.'); return; } const now = new Date().toISOString(); updateJob({ return_photos_c: returnPhotosJson, returned_at_c: now, completion_requested_at_c: now, status_c: 'Awaiting Customer Confirmation' }, 'Photos saved. Car marked as returned. Waiting for customer confirmation.'); }} disabled={working || !savedInspection}><ApperIcon name="CheckCircle2" size={16} /> {working ? 'Saving…' : 'Save Photos & Return Car'}</Button></div></div>}
+              {isProvider && job.status_c === 'Assigned' && <Button className="mt-3" onClick={() => updateJob({ pickup_confirmed_at_c: new Date().toISOString(), status_c: 'In Progress' }, isCarWash ? 'Car Wash started.' : 'Car Service started.')} disabled={working || inspectionStatus !== 'Confirmed' || (job.payment_timing_c === 'Pay at confirmation' && !isPaid)}><ApperIcon name="Play" size={16} /> {working ? 'Saving…' : 'Start Car Wash'}</Button>}
+              {isProvider && job.status_c === 'Assigned' && inspectionStatus !== 'Confirmed' && <p className="mt-2 text-sm font-medium text-highlight">To start this job, send all six vehicle photos and the condition report to the customer for confirmation. Job start remains locked until the customer confirms.</p>}
+              {isProvider && job.status_c === 'Assigned' && inspectionStatus === 'Confirmed' && job.payment_timing_c === 'Pay at confirmation' && !isPaid && <p className="mt-2 text-sm text-highlight">The customer chose to pay the full agreed amount before service starts. Wait until the full payment is recorded before starting the service.</p>}
+              {isProvider && job.status_c === 'In Progress' && <div className="mt-4 space-y-4 rounded-lg border border-border p-4"><h3 className="font-semibold">{isCarWash ? 'Car Photos After Washing — 6 Photos Needed' : 'Car Service After-Work Photos — 6 Photos Needed'}</h3><p className="text-sm text-muted-foreground">Upload all six after-service photos before handing the car back to the customer.</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space'].map((view) => { const photo = inspectionDraft.photos.find((item) => item.view === 'post-' + view); return <div key={view} className="rounded-lg border border-border p-3"><div className="mb-2 flex items-center justify-between gap-2"><label className="text-sm font-semibold">{view} photo — after service <span className="text-destructive">*</span></label><span className={`text-xs font-medium ${photo ? 'text-success' : 'text-highlight'}`}>{photo ? 'Uploaded' : 'Required'}</span></div>{photo ? <img src={photo.data} alt={`${view} after service`} className="h-36 w-full rounded-md border object-cover" /> : <div className="flex h-36 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">{view} after-service photo required</div>}<label className="relative mt-3 flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"><ApperIcon name="Camera" size={16} />{photo ? 'Replace Photo' : 'Upload Photo'}<input type="file" accept="image/*" capture="environment" onChange={(event) => addInspectionPhotos(event, 'post-' + view)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label={`${photo ? 'Replace' : 'Upload'} ${view} after-service photo`} /></label></div>; })}</div><div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"><Button onClick={async () => { const requiredViews = ['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space']; const missing = requiredViews.filter((view) => !inspectionDraft.photos.some((photo) => photo.view === 'post-' + view && photo.data)); if (missing.length) { toast.error('Upload all six photos first: ' + missing.join(', ') + '.'); return; } const returnPhotosJson = JSON.stringify(inspectionDraft.photos.filter((photo) => photo.view?.startsWith('post-')).map(({ view, name, data, fileId, type, size }) => ({ view, name, data, fileId, type, size }))); if (returnPhotosJson.length > 60000) { toast.error('The six after-service photos exceed the safe save size. Please re-upload them; photos are now compressed more strongly.'); return; } await updateJob({ return_photos_c: returnPhotosJson }, 'After-service photos saved.'); }} disabled={working}><ApperIcon name="Camera" size={16} /> Save Photos</Button><Button onClick={() => { const requiredViews = ['Front', 'Back', 'Right side', 'Left side', 'Odometer', 'Boot Space']; const missing = requiredViews.filter((view) => !inspectionDraft.photos.some((photo) => photo.view === 'post-' + view && photo.data)); if (missing.length) { toast.error('Upload all six photos before returning the car: ' + missing.join(', ') + '.'); return; } const returnPhotosJson = JSON.stringify(inspectionDraft.photos.filter((photo) => photo.view?.startsWith('post-')).map(({ view, name, data, fileId, type, size }) => ({ view, name, data, fileId, type, size }))); if (returnPhotosJson.length > 60000) { toast.error('The six after-service photos exceed the safe save size. Please re-upload them; photos are now compressed more strongly.'); return; } const now = new Date().toISOString(); updateJob({ return_photos_c: returnPhotosJson, returned_at_c: now, completion_requested_at_c: now, status_c: 'Awaiting Customer Confirmation' }, 'Photos saved. Car marked as returned. Waiting for customer confirmation.'); }} disabled={working || !savedInspection}><ApperIcon name="CheckCircle2" size={16} /> {working ? 'Saving…' : 'Save Photos & Return Car'}</Button></div></div>}
               {isProvider && job.status_c === 'Awaiting Customer Confirmation' && <p className="mt-3 text-sm text-muted-foreground">Waiting for the customer to confirm completion or report an issue.</p>}
               {job.customer_completion_confirmed_at_c && <p className="mt-2 text-sm text-muted-foreground">Completion confirmed: {formatTimestamp(job.customer_completion_confirmed_at_c)}</p>}
             </section>
@@ -519,10 +519,10 @@ export default function JobsDetail() {
           </div>
         )}
 
-        {isCarWash && isCustomer && (
+        {isCarCare && isCustomer && (
           <div className="mt-7 space-y-5 border-t border-border pt-5">
             <section className="space-y-4 rounded-lg border border-border p-4">
-              <div><h2 className="font-heading text-xl font-semibold">Vehicle photo evidence</h2><p className="mt-1 text-sm text-muted-foreground">Review the six photos taken before the wash and the six photos taken after it. These records help both sides resolve condition or damage disputes. Completion confirmation and post-service payment remain locked if either set is incomplete.</p></div>
+              <div><h2 className="font-heading text-xl font-semibold">Vehicle photo evidence</h2><p className="mt-1 text-sm text-muted-foreground">Review the six photos taken before and after the service. These records help both sides resolve condition or damage disputes. Completion confirmation and post-service payment remain locked if either set is incomplete.</p></div>
               <div className="grid gap-4 md:grid-cols-2">
                 {[{ title: 'Before service', prefix: 'pre-', complete: hasSixBeforePhotos }, { title: 'After service', prefix: 'post-', complete: hasSixAfterPhotos }].map((group) => (
                   <div key={group.prefix} className="rounded-lg border border-border p-3">
