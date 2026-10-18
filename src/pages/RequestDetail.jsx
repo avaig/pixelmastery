@@ -309,33 +309,6 @@ export default function RequestDetail() {
     }
   }
 
-  async function negotiate(response) {
-    const price = Number(counterPrice);
-    if (!price || price <= 0) {
-      toast.error('Enter a valid counter price.');
-      return;
-    }
-    setWorking(true);
-    try {
-      const previousPrice = Number(response.proposed_price_c ?? 0);
-      const history = String(response.negotiation_history_c ?? '').trim();
-      const nextHistory = (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer counter-offer: ₹' + price.toLocaleString('en-IN') + ' (previous ₹' + previousPrice.toLocaleString('en-IN') + ')';
-      const res = await sdk.table('technician_responses_c').update({ Id: response.Id, proposed_price_c: price, status_c: 'Pending', negotiation_status_c: 'Negotiating', negotiation_history_c: nextHistory, message_c: 'Customer counter-offer: ₹' + price.toLocaleString('en-IN') });
-      if (!res.data?.length) {
-        toast.error(res.messages?.[0] ?? 'Counter-offer was not saved.');
-        return;
-      }
-      const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Negotiating' });
-      if (!requestRes.data?.length) toast.warning('Offer updated, but request status did not change.');
-      toast.success('Counter-offer sent.');
-      setNegotiatingId(null);
-      setCounterPrice('');
-      run();
-    } finally {
-      setWorking(false);
-    }
-  }
-
   const canEditRequest = isCustomer && !responses.length && !relatedJob && String(request?.status_c ?? '') === 'Open';
   const canCancelRequest = isCustomer && ['Open', 'Quoted', 'Negotiating', 'Confirmed', 'In progress'].includes(String(request?.status_c ?? ''));
 
