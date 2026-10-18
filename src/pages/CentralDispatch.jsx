@@ -37,18 +37,23 @@ export default function CentralDispatch() {
   const [providerChoice, setProviderChoice] = useState({});
   const [busyKey, setBusyKey] = useState('');
   const { data, loading, error, run } = useFetch(async () => {
-    const [requestRes, providerRes, responseRes] = await Promise.all([
+    const [requestRes, providerRes, responseRes, jobsRes] = await Promise.all([
       sdk.table('service_requests_c').select(REQUEST_FIELDS).orderByDesc('CreatedOn').page(1, 500).fetch(),
       sdk.table('technician_profiles_c').select(PROVIDER_FIELDS).page(1, 1000).fetch(),
       sdk.table('technician_responses_c').select(['Id', 'Name', 'request_c', 'technician_c', 'status_c', 'availability_c', 'message_c', 'proposed_price_c']).page(1, 2000).fetch(),
+      sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'technician_c', 'agreed_price_c', 'status_c', 'payment_status_c', 'billing_status_c', 'payment_method_c', 'payment_reference_c', 'payout_status_c', 'returned_at_c', 'customer_completion_confirmed_at_c', 'dispute_status_c']).page(1, 2000).fetch(),
     ]);
-    if (!requestRes.success || !providerRes.success || !responseRes.success) throw new Error('Central dispatch data could not be loaded. Check table permissions and try again.');
-    return { requests: requestRes.data ?? [], providers: providerRes.data ?? [], responses: responseRes.data ?? [] };
+    if (!requestRes.success || !providerRes.success || !responseRes.success || !jobsRes.success) throw new Error('Central dispatch data could not be loaded. Check table permissions and try again.');
+    return { requests: requestRes.data ?? [], providers: providerRes.data ?? [], responses: responseRes.data ?? [], jobs: jobsRes.data ?? [] };
   }, []);
 
   const requests = data?.requests ?? [];
   const providers = data?.providers ?? [];
   const responses = data?.responses ?? [];
+  const jobs = data?.jobs ?? [];
+  function getRequestJob(request) {
+    return jobs.find((job) => String(job.request_c?.Id ?? job.request_c) === String(request?.Id)) ?? null;
+  }
   const eligibleProviders = useMemo(() => providers.filter((provider) => {
     const verification = String(provider.verification_status_c ?? (provider.status_c === 'Active' ? 'Approved' : '')).toLowerCase();
     return provider.status_c === 'Active' && verification === 'approved';
@@ -246,6 +251,7 @@ export default function CentralDispatch() {
   }
 
   function renderRequestDetail(request) {
+    const linkedJob = getRequestJob(request);
     const activeAssignments = getRequestAssignments(request);
     const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
     const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
@@ -359,6 +365,7 @@ export default function CentralDispatch() {
           </div>
           <div className="space-y-3" aria-busy={loading}>
             {visibleRequests.map((request) => {
+              const linkedJob = getRequestJob(request);
               const activeAssignments = getRequestAssignments(request);
               const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
               const assignedProvider = acceptedAssignment ? providers.find((item) => String(item.Id) === String(acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c)) : null;
