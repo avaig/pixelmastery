@@ -351,7 +351,7 @@ export default function ResponsesDetail() {
               <div className="mt-3 overflow-hidden rounded-md border border-border">
                 <table className="w-full table-fixed text-left text-sm"><thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="w-[58%] px-2 py-2 sm:px-3">Service item</th><th className="w-[12%] px-1 py-2 text-center sm:px-2">Qty.</th><th className="w-[30%] px-2 py-2 text-right sm:px-3">Menu price</th></tr></thead><tbody>{carWashItems.map((item, index) => <tr key={item.name + '-' + index} className="border-t border-border"><td className="break-words px-2 py-2.5 font-medium sm:px-3">{item.name}</td><td className="px-1 py-2.5 text-center text-muted-foreground sm:px-2">{item.quantity}</td><td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums sm:px-3">₹{(item.price * item.quantity).toLocaleString('en-IN')}</td></tr>)}<tr className="border-t bg-muted/40"><td colSpan={2} className="px-2 py-3 font-semibold sm:px-3">Actual Price of Service</td><td className="whitespace-nowrap px-2 py-3 text-right text-base font-bold tabular-nums sm:px-3">₹{carWashMenuTotal.toLocaleString('en-IN')}</td></tr></tbody></table>
               </div>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">The customer and provider negotiate one overall booking total. Pickup &amp; Drop is included in the total and cannot be negotiated separately.</p>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">The Service Provider submits one final total. The customer can confirm the provider directly; Pickup &amp; Drop is included in the total.</p>
             </div>
           )}
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
@@ -361,7 +361,7 @@ export default function ResponsesDetail() {
               <div className="mt-2 text-sm text-muted-foreground">{response.availability_c}</div>
             </div>
             <div className="text-left md:text-right">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">{isCounterOffer ? 'Customer counter-offer' : isCarWashOffer ? 'Car Wash total offer / counter-offer' : 'Proposed price'}</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">'Final quote'</div>
               <div className="font-heading text-3xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>
               {response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">Original quote ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}
             </div>
@@ -372,12 +372,8 @@ export default function ResponsesDetail() {
             <div className="mt-6 border-t border-border pt-5">
               {isCustomer && response.status_c === 'Pending' && (
                 <div className="flex flex-wrap gap-2">
+                  <Button onClick={confirmProvider} disabled={working}>{working ? 'Confirming…' : 'Confirm Service Provider'}</Button>
                   <Button variant="outline" onClick={declineOffer} disabled={working}>Decline offer</Button>
-                  <div className="flex min-w-[280px] flex-1 gap-2">
-                    <Input type="number" min="1" value={counterPrice} onChange={(event) => setCounterPrice(event.target.value)} placeholder="Counter price" />
-                    <Button variant="outline" onClick={negotiate} disabled={working}>Negotiate</Button>
-                  </div>
-                  <Button onClick={confirmProvider} disabled={working}>Confirm Service Provider</Button>
                 </div>
               )}
               {isCustomer && isVendorAccepted && (
