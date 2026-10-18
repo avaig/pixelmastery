@@ -296,7 +296,7 @@ export default function RequestDetail() {
     } catch (err) {
       const message = String(err?.message ?? '');
       if (/reference record does not exist|must be a record id|invalid.*technician_c/i.test(message)) {
-        toast.error('This offer is linked to a Service Provider profile that no longer exists in the database. No booking was created. Do not repeat onboarding: ask Vijay Kumar to open Service Requests and submit a fresh offer from his current account, then refresh this request and confirm the new offer.');
+        toast.error('This specific offer still points to a deleted Service Provider record. Creating a new provider profile does not update an older offer. No booking was created. Sign in with the new Service Provider account, open this same service request, submit a fresh offer, then return here and confirm that new offer. Do not repeat onboarding.');
       } else {
         toast.error(message || 'Could not confirm Service Provider.');
       }
