@@ -109,11 +109,13 @@ export default function RequestsList() {
       if (!offersRes.success) throw new Error(offersRes.message || 'Could not check linked offers.');
       const offerIds = (offersRes.data ?? []).map((offer) => offer.Id).filter(Boolean);
       if (offerIds.length) {
-        const removeOffers = await sdk.table('technician_responses_c').remove(offerIds.map((Id) => ({ Id })));
-        if (removeOffers.data?.length !== offerIds.length) throw new Error(removeOffers.messages?.filter(Boolean).join(' | ') || 'Could not delete every linked offer. The request was kept.');
+        const removeOffers = await sdk.table('technician_responses_c').remove(offerIds);
+        if (!removeOffers.success || removeOffers.data?.length !== offerIds.length) {
+          throw new Error(removeOffers.messages?.filter(Boolean).join(' | ') || removeOffers.message || 'Could not delete every linked offer. The request was kept.');
+        }
       }
-      const removeRequest = await sdk.table('service_requests_c').remove([{ Id: deleteTarget.Id }]);
-      if (!removeRequest.data?.length) throw new Error(removeRequest.messages?.filter(Boolean).join(' | ') || removeRequest.message || 'The request could not be permanently deleted.');
+      const removeRequest = await sdk.table('service_requests_c').remove([deleteTarget.Id]);
+      if (!removeRequest.success || !removeRequest.data?.length) throw new Error(removeRequest.messages?.filter(Boolean).join(' | ') || removeRequest.message || 'The request could not be permanently deleted.');
       toast.success('Service request and linked offers permanently deleted.');
       setDeleteTarget(null);
       if (rows.length === 1 && page > 1) setPage((value) => value - 1);
