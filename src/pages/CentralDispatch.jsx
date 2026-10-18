@@ -157,14 +157,14 @@ export default function CentralDispatch() {
 
   function getCleanRequestNotes(value) {
     return String(value ?? '')
-      .replace(/CUSTOMER_CAR_WASH_OFFER_JSON:[\\s\\S]*$/i, '')
-      .replace(/CAR_WASH_DECISIONS_JSON:[\\s\\S]*$/i, '')
+      .replace(/CUSTOMER_CAR_WASH_OFFER_JSON:[\s\S]*$/i, '')
+      .replace(/CAR_WASH_DECISIONS_JSON:[\s\S]*$/i, '')
       .trim();
   }
 
   function getFixedPrice(request) {
     const notes = String(request.problem_description_c ?? '');
-    const matches = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Actual Price of Service)\\s*:?\\s*₹?\\s*([\\d,]+(?:\\.\\d{1,2})?)/gi)];
+    const matches = [...notes.matchAll(/(?:Menu Total|Customer Car Wash total offer|Actual Price of Service)\s*:?\s*₹?\s*([\d,]+(?:\.\d{1,2})?)/gi)];
     if (!matches.length) return null;
     const value = Number(matches[matches.length - 1][1].replace(/,/g, ''));
     return Number.isFinite(value) && value > 0 ? value : null;
