@@ -201,44 +201,19 @@ export default function RequestDetail() {
   async function confirmTechnician(response) {
     setWorking(true);
     try {
-      // The provider profile table deliberately restricts customer SELECT to owner/Admin.
-      // Therefore a customer-side .get() on technician_profiles_c can return no row even
-      // when the provider exists. The offer's technician_c Lookup is the saved reference;
-      // validate its shape, but do not mistake RLS-filtered reads for deleted records.
-      let providerId = response.technician_c?.Id ?? response.technician_c;
+      // Customer SELECT access to technician_profiles_c is intentionally restricted by RLS.
+      // Never scan that private table from this customer action: an empty result means
+      // "not visible", not "deleted". Use the provider Lookup already saved on the offer.
+      const providerId = response.technician_c?.Id ?? response.technician_c;
+      const currentProvider = response.technician_c && typeof response.technician_c === 'object'
+        ? response.technician_c
+        : null;
       const customerId = request.customer_c?.Id ?? request.customer_c;
       if (!request?.Id || typeof request.Id !== 'string') {
         throw new Error('This service request has no valid database record ID. Refresh and open the request again.');
       }
       if (!providerId || typeof providerId !== 'string') {
-        throw new Error('This offer does not contain a valid Service Provider record ID. The offer must be repaired before booking.');
-      }
-      // If the offer points to a deleted/recreated provider, resolve the saved provider name
-      // against current profiles and persist the canonical Lookup before creating the job.
-      const providerProfilesRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
-      if (!providerProfilesRes.success) throw new Error(providerProfilesRes.message || 'Could not verify the Service Provider profile.');
-      const providerProfiles = providerProfilesRes.data ?? [];
-      let currentProvider = providerProfiles.find((item) => String(item.Id) === String(providerId));
-      if (!currentProvider) {
-        const savedLookupName = String(response.technician_c?.Name ?? '').trim();
-        const savedOfferName = String(response.Name ?? '').split(' • ')[0].trim();
-        const savedName = (savedLookupName || savedOfferName).toLowerCase();
-        const savedEmail = String(response.technician_c?.email_c ?? '').trim().toLowerCase();
-        const matches = providerProfiles.filter((item) =>
-          (savedEmail && String(item.email_c ?? '').trim().toLowerCase() === savedEmail) ||
-          (savedName && String(item.Name ?? '').trim().toLowerCase() === savedName)
-        );
-        if (matches.length !== 1) {
-          throw new Error(matches.length > 1
-            ? 'The saved provider reference is stale and multiple current profiles match. Admin must resolve the duplicate provider profiles.'
-            : 'The saved provider reference is stale and no matching current profile was found. Verify this provider in Admin → Provider onboarding.');
-        }
-        currentProvider = matches[0];
-        const relinkResult = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: currentProvider.Id });
-        if (!relinkResult.success || !relinkResult.data?.length) {
-          throw new Error(relinkResult.messages?.filter(Boolean).join(' | ') || relinkResult.message || 'Found the current provider profile but could not repair the offer reference.');
-        }
-        providerId = currentProvider.Id;
+        throw new Error('This offer has no valid Service Provider reference. Ask the Service Provider to submit a fresh quote.');
       }
       if (!customerId || typeof customerId !== 'string') {
         throw new Error('The customer profile linked to this request is missing. The request must be recreated from a valid customer account.');
