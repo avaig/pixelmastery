@@ -141,17 +141,9 @@ export default function RequestDetail() {
   const carWashMenuTotal = requestLineItems.reduce((sum, item) => sum + (Number(item.price ?? 0)), 0);
 
   useEffect(() => {
-    if (!loading && request && isTechnician && /car wash/i.test(String(request.Name ?? '')) && !relatedJob) {
-      // If this provider has already replied to the Car Wash request, reopen that
-      // offer record so the newest customer counter-offer and full history appear.
-      const latestProviderOffer = responses[0];
-      if (latestProviderOffer?.Id) {
-        navigate('/responses/' + encodeURIComponent(latestProviderOffer.Id), { replace: true });
-      } else {
-        navigate('/responses/new?requestId=' + encodeURIComponent(request.Id), { replace: true });
-      }
-    }
-  }, [loading, request?.Id, request?.Name, isTechnician, relatedJob?.Id, responses[0]?.Id, navigate]);
+    // Service Providers remain on the request page to accept or decline a Central LOCAL assignment.
+    // Legacy quote pages are restricted and are no longer part of the customer booking flow.
+  }, []);
 
   async function acceptDriverRequest() {
     if (!request?.Id || !isFixedRateDriverRequest || !isTechnician) return;

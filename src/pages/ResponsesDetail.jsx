@@ -17,7 +17,7 @@ const { eq } = window.ApperSDK.CoreSDK;
 export const route = {
   path: '/responses/:id',
   layout: 'owner',
-  access: "profile === 'Customer_c' || profile === 'ServiceProvider_c' || profile === 'Admin_c'",
+  access: "profile === 'Admin_c'",
 };
 
 export default function ResponsesDetail() {

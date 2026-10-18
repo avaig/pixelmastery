@@ -17,7 +17,7 @@ import { getProviderCapabilities, providerCanHandleRequest, getDistanceKm, forma
 
 const { eq } = window.ApperSDK.CoreSDK;
 
-export const route = { path: '/responses/new', layout: 'owner', access: "profile === 'ServiceProvider_c' || profile === 'Admin_c'" };
+export const route = { path: '/responses/new', layout: 'owner', access: "profile === 'Admin_c'" };
 
 export default function ResponseNew() {
   const user = useSelector((state) => state.user.user);
