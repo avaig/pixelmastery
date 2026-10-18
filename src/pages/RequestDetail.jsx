@@ -202,138 +202,71 @@ export default function RequestDetail() {
   }
 
   async function confirmTechnician(response) {
-    if (working || !request?.Id || !response?.Id) return;
     setWorking(true);
-    let confirmationStage = 'reading the selected offer';
     try {
-      // Resolve the offer's provider lookup against the live Service Provider table
-      // before creating a job. Old offers can retain IDs from profiles that were
-      // deleted and recreated. Repair only when there is exactly one unambiguous
-      // current profile match; never attach a booking to an arbitrary same-name user.
-      let providerId = response.technician_c?.Id ?? response.technician_c?.id ?? response.technician_c?.recordId ?? response.technician_c;
-      let providerName = String(response.technician_c?.Name ?? response.technician_c?.name ?? response.Name ?? 'Service Provider').trim().replace(/\s*[•-]\s*.*$/, '') || 'Service Provider';
-      if (providerId == null || String(providerId).trim() === '' || typeof providerId === 'object') {
-        throw new Error('This offer has no valid linked Service Provider record. No booking was created. Ask the provider to submit a fresh offer from the current account.');
-      }
-      let liveProvider = null;
-      const directProviderRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).where(eq('Id', providerId)).page(1, 10).fetch();
-      if (directProviderRes.success) liveProvider = (directProviderRes.data ?? []).find((item) => String(item.Id) === String(providerId)) ?? null;
-      if (!liveProvider) {
-        const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c']).page(1, 1000).fetch();
-        if (providersRes.success) {
-          const normalizedName = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-          const offerName = normalizedName(providerName);
-          const matches = (providersRes.data ?? []).filter((item) => normalizedName(item.Name) === offerName);
-          if (matches.length === 1) {
-            liveProvider = matches[0];
-            providerId = liveProvider.Id;
-            providerName = liveProvider.Name || providerName;
-            const relinkRes = await sdk.table('technician_responses_c').update({ Id: response.Id, technician_c: providerId });
-            if (!relinkRes.success || !relinkRes.data?.length) throw new Error('A matching current Service Provider profile was found, but LOCAL could not repair this offer link. No booking was created. Please create a fresh offer.');
-            response.technician_c = liveProvider;
-            toast.info('Repaired the old offer link to the current Service Provider profile.');
-          } else if (matches.length > 1) {
-            throw new Error('This offer points to a deleted provider profile and multiple current profiles share the same name. For safety, no booking was created. Ask the provider to submit a fresh offer from the current account.');
-          }
-        }
-      }
-      if (!liveProvider) throw new Error('This offer points to a Service Provider record that cannot be found in the current database. No booking was created. Open a fresh offer submitted from the current Service Provider account; creating another profile alone does not repair an old offer.');
-      const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
-      if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('The offer has no valid agreed price. Reopen negotiation before confirming.');
-
-      const existingJobsRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 10).fetch();
-      if (!existingJobsRes.success) throw new Error(existingJobsRes.message ?? 'Could not check whether this request already has a job.');
-      let job = (existingJobsRes.data ?? [])[0] ?? null;
-      if (job) {
-        const existingProviderId = job.technician_c?.Id ?? job.technician_c;
-        if (String(existingProviderId ?? '') !== String(providerId)) {
-          throw new Error('This request already has a job assigned to a different Service Provider. Please contact LOCAL support before changing the assignment.');
-        }
-      } else {
-        confirmationStage = 'checking provider job history';
-        const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
-        if (!completedJobsRes.success) throw new Error(completedJobsRes.message ?? 'Could not load Service Provider job history.');
-        const completedJobsCount = (completedJobsRes.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c) === String(providerId) && item.status_c === 'Completed').length;
-        const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
-        const isAcBooking = isAcTechnicianRequest(request);
-        const calculatedBilling = getBillingBreakdown(finalPrice, request.service_mode_c ?? 'Normal', completedJobsCount, 0, 0);
-        const billing = isCarWashBooking || isAcBooking
-          ? { ...calculatedBilling, servicePrice: finalPrice, bookingCommitment: 0, remainingServiceAmount: finalPrice, customerPayableNow: 0, localServiceFee: 0 }
-          : calculatedBilling;
-        confirmationStage = 'creating the booking; checking request, customer, accepted-offer and Service Provider database references';
-        const jobRes = await sdk.table('jobs_c').create({
-          Name: request.Name + ' • ' + providerName,
-          request_c: request.Id,
-          response_c: response.Id,
-          customer_c: request.customer_c?.Id ?? request.customer_c,
-          // Apper Lookup fields require the referenced record's scalar Id.
-          // Passing an object produces "Field 'technician_c' must be a record id".
-          technician_c: providerId,
-          agreed_price_c: billing.servicePrice,
-          original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
-          booking_commitment_amount_c: billing.bookingCommitment,
-          remaining_amount_c: billing.remainingServiceAmount,
-          local_service_fee_amount_c: billing.localServiceFee,
-          customer_discount_amount_c: billing.discount,
-          customer_tax_amount_c: billing.applicableTax,
-          customer_payable_now_c: billing.customerPayableNow,
-          provider_completed_jobs_count_c: completedJobsCount,
-          provider_commission_rate_c: billing.providerCommissionRate,
-          provider_commission_amount_c: billing.providerCommission,
-          provider_settlement_amount_c: billing.providerSettlement,
-          billing_status_c: 'Ready for Confirmation',
-          payment_status_c: 'Unpaid',
-          payout_status_c: 'Not Eligible',
-          dispute_status_c: 'None',
-          scheduled_at_c: request.scheduled_at_c || new Date(Date.now() + 3600000).toISOString(),
-          status_c: 'Assigned',
-        });
-        job = jobRes.data?.[0] ?? null;
-        if (!job) {
-          // A retry/read protects against a successful server insert whose response was lost.
-          const retryRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 10).fetch();
-          if (retryRes.success) job = (retryRes.data ?? [])[0] ?? null;
-          if (!job) throw new Error(jobRes.messages?.filter(Boolean).join(' | ') || jobRes.message || 'The Service Provider was selected, but LOCAL could not create the job. No request/offer status was changed; retry after refreshing.');
-        }
-      }
-
-      const history = String(response.negotiation_history_c ?? '').trim();
-      const alreadyRecorded = /Customer selected Service Provider|Final agreed price locked/i.test(history);
-      const agreedHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
-      confirmationStage = 'updating the selected offer';
-      const responseUpdate = await sdk.table('technician_responses_c').update({
-        Id: response.Id,
-        technician_c: providerId,
-        status_c: 'Selected',
-        final_agreed_price_c: finalPrice,
-        negotiation_status_c: 'Agreed',
-        negotiation_history_c: agreedHistory,
-      });
-      if (!responseUpdate.data?.length) throw new Error('Job ' + job.Id + ' exists, but the offer status could not be synchronized: ' + (responseUpdate.messages?.filter(Boolean).join(' | ') || responseUpdate.message || 'update not confirmed') + '. Retry confirmation to finish syncing statuses.');
-
-      confirmationStage = 'updating the service request status';
-      const requestUpdate = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
-      if (!requestUpdate.data?.length) throw new Error('Job ' + job.Id + ' exists and the offer is selected, but the request status could not be synchronized: ' + (requestUpdate.messages?.filter(Boolean).join(' | ') || requestUpdate.message || 'update not confirmed') + '. Retry confirmation to finish syncing statuses.');
-
-      const otherIds = responses.filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
-      if (otherIds.length) await sdk.table('technician_responses_c').update(otherIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
+      const providerId = response.technician_c?.Id ?? response.technician_c;
+      const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
+      if (!completedJobsRes.success) throw new Error(completedJobsRes.message);
+      const completedJobsCount = (completedJobsRes.data ?? []).filter((job) => String(job.technician_c?.Id ?? job.technician_c) === String(providerId) && job.status_c === 'Completed').length;
+      const finalPriceForBooking = Number(response.final_agreed_price_c ?? response.proposed_price_c);
       const isCarWashBooking = String(request.Name ?? '').toLowerCase().includes('car wash');
       const isAcBooking = isAcTechnicianRequest(request);
-      toast.success(job.status_c === 'Assigned' ? 'Service Provider confirmed. Job is now Assigned.' : 'This booking already exists; its statuses are synchronized.');
-      navigate('/jobs/' + job.Id);
+      const calculatedBilling = getBillingBreakdown(finalPriceForBooking, request.service_mode_c ?? 'Normal', completedJobsCount, 0, 0);
+      const billing = isCarWashBooking || isAcBooking
+        ? { ...calculatedBilling, servicePrice: finalPriceForBooking, bookingCommitment: 0, remainingServiceAmount: finalPriceForBooking, customerPayableNow: 0, localServiceFee: 0 }
+        : calculatedBilling;
+
+      const jobsRes = await sdk.table('jobs_c').select(['Id']).where(eq('request_c', request.Id)).page(1, 1).fetch();
+      if (!jobsRes.success) throw new Error(jobsRes.message);
+      if (jobsRes.data?.length) {
+        toast.error('A job already exists for this request.');
+        return;
+      }
+      const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
+      const history = String(response.negotiation_history_c ?? '').trim();
+      const agreedHistory = (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
+      await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', final_agreed_price_c: finalPrice, negotiation_status_c: 'Agreed', negotiation_history_c: agreedHistory });
+      const otherIds = responses.filter((item) => String(item.Id) !== String(response.Id) && item.status_c === 'Pending').map((item) => item.Id);
+      if (otherIds.length) await sdk.table('technician_responses_c').update(otherIds.map((responseId) => ({ Id: responseId, status_c: 'Declined' })));
+      const jobRes = await sdk.table('jobs_c').create({
+        Name: request.Name + ' • ' + (response.technician_c?.Name ?? 'Service Provider'),
+        request_c: request.Id,
+        response_c: response.Id,
+        customer_c: request.customer_c?.Id ?? request.customer_c,
+        technician_c: response.technician_c?.Id ?? response.technician_c,
+        agreed_price_c: billing.servicePrice,
+        original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
+        booking_commitment_amount_c: billing.bookingCommitment,
+        remaining_amount_c: billing.remainingServiceAmount,
+        local_service_fee_amount_c: billing.localServiceFee,
+        customer_discount_amount_c: billing.discount,
+        customer_tax_amount_c: billing.applicableTax,
+        customer_payable_now_c: billing.customerPayableNow,
+        provider_completed_jobs_count_c: completedJobsCount,
+        provider_commission_rate_c: billing.providerCommissionRate,
+        provider_commission_amount_c: billing.providerCommission,
+        provider_settlement_amount_c: billing.providerSettlement,
+        billing_status_c: 'Ready for Confirmation',
+        payment_status_c: 'Unpaid',
+        payout_status_c: 'Not Eligible',
+        dispute_status_c: 'None',
+        scheduled_at_c: request.scheduled_at_c || new Date(Date.now() + 3600000).toISOString(),
+        status_c: 'Assigned',
+      });
+      if (!jobRes.data?.length) {
+        toast.error(jobRes.messages?.[0] ?? 'Service Provider was selected, but the job was not created.');
+        return;
+      }
+      const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+      if (!requestRes.data?.length) toast.warning('Job created, but request status could not be updated.');
+      toast.success(isCarWashBooking ? 'Service Provider confirmed. No advance is due for Car Wash.' : isAcBooking ? 'AC Service Provider confirmed. Payment is due after service completion.' : 'Service Provider confirmed and job created. Opening payment options…');
+      navigate('/jobs/' + jobRes.data[0].Id);
     } catch (err) {
-      const message = String(err?.message ?? err?.details ?? '');
-      // Preserve the exact failing step and backend error; a foreign-key failure
-      // may come from any lookup on the booking, not only technician_c.
-      toast.error('Booking failed while ' + confirmationStage + '. Database response: ' + (message || 'No detailed error returned') + '. No successful confirmation was reported.');
+      toast.error(err.message ?? 'Could not confirm Service Provider.');
     } finally {
       setWorking(false);
     }
   }
-
-  // Booking creation is deliberately user-triggered. A previously Selected offer
-  // must not silently create a job on page load; the customer uses the explicit
-  // Complete booking setup action to review and confirm it.
 
   async function negotiate(response) {
     const price = Number(counterPrice);
