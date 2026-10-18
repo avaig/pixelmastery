@@ -33,6 +33,9 @@ const PROVIDER_FIELDS = ['Id', 'Name', 'email_c', 'phone_c', 'status_c', 'verifi
 export default function CentralDispatch() {
   const [search, setSearch] = useState('');
   const [requestFilter, setRequestFilter] = useState('All');
+  const [serviceFilter, setServiceFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('30');
+  const [page, setPage] = useState(1);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [providerChoice, setProviderChoice] = useState({});
   const [busyKey, setBusyKey] = useState('');
@@ -59,11 +62,26 @@ export default function CentralDispatch() {
     return provider.status_c === 'Active' && verification === 'approved';
   }), [providers]);
 
-  const visibleRequests = useMemo(() => requests.filter((request) => {
-    const matchesSearch = !search || [request.Name, request.location_c, request.problem_description_c, request.service_category_c?.Name, request.required_capability_c?.Name].some((value) => String(value ?? '').toLowerCase().includes(search.toLowerCase()));
+  const serviceNames = useMemo(() => [...new Set(requests.map((request) => request.required_capability_c?.Name ?? request.service_category_c?.Name ?? 'Service'))].sort(), [requests]);
+  const recentRequests = useMemo(() => requests.filter((request) => {
+    if (dateFilter === 'All') return true;
+    const created = request.CreatedOn ? new Date(request.CreatedOn).getTime() : 0;
+    return created > 0 && created >= Date.now() - Number(dateFilter) * 24 * 60 * 60 * 1000;
+  }), [requests, dateFilter]);
+  const visibleRequests = useMemo(() => recentRequests.filter((request) => {
+    const matchesSearch = !search || [request.Name, request.location_c, request.problem_description_c, request.customer_c?.Name, request.service_category_c?.Name, request.required_capability_c?.Name].some((value) => String(value ?? '').toLowerCase().includes(search.toLowerCase()));
     const matchesStatus = requestFilter === 'All' || String(request.status_c ?? '') === requestFilter;
-    return matchesSearch && matchesStatus;
-  }), [requests, search, requestFilter]);
+    const serviceName = request.required_capability_c?.Name ?? request.service_category_c?.Name ?? 'Service';
+    const matchesService = serviceFilter === 'All' || serviceName === serviceFilter;
+    return matchesSearch && matchesStatus && matchesService;
+  }), [recentRequests, search, requestFilter, serviceFilter]);
+  const pageSize = 4;
+  const pageCount = Math.max(1, Math.ceil(visibleRequests.length / pageSize));
+  const pagedRequests = visibleRequests.slice((Math.min(page, pageCount) - 1) * pageSize, Math.min(page, pageCount) * pageSize);
+  const recentCount = recentRequests.length;
+  const assignedCount = recentRequests.filter((request) => ['Confirmed', 'Assigned', 'In Progress', 'Completed'].includes(String(request.status_c)) || getRequestJob(request)).length;
+  const pendingCount = recentRequests.filter((request) => ['Open', 'Quoted', 'Negotiating'].includes(String(request.status_c))).length;
+  const noProviderCount = recentRequests.filter((request) => !getRequestAssignments(request).length && !getRequestJob(request) && !['Cancelled', 'Completed'].includes(String(request.status_c))).length;
 
   function providerDistance(request, provider) {
     if (request.latitude_c == null || request.longitude_c == null || provider.latitude_c == null || provider.longitude_c == null) return null;
@@ -362,9 +380,37 @@ export default function CentralDispatch() {
     );
   }
 
+  function formatCreated(value) {
+    if (!value) return 'Date not recorded';
+    return new Date(value).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function serviceIcon(request) {
+    const value = String(request.required_capability_c?.Name ?? request.service_category_c?.Name ?? '').toLowerCase();
+    if (/ambulance/.test(value)) return 'Ambulance';
+    if (/ac|air condition/.test(value)) return 'AirVent';
+    if (/wash/.test(value)) return 'CarFront';
+    if (/bike|motorcycle|scooter/.test(value)) return 'Bike';
+    if (/electric|plumb|home/.test(value)) return 'Wrench';
+    return 'CarFront';
+  }
+
+  function displayLifecycle(request, job, acceptedAssignment) {
+    if (job) {
+      if (job.status_c === 'Completed' && ['Final Payment Paid', 'Paid', 'Completed'].includes(String(job.payment_status_c))) return { label: 'Completed · Paid', tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+      if (job.status_c === 'Completed') return { label: 'Completed · Payment pending', tone: 'border-amber-200 bg-amber-50 text-amber-700' };
+      if (job.payment_status_c === 'Final Payment Paid') return { label: 'Paid', tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+      return { label: job.status_c || 'Job created', tone: 'border-blue-200 bg-blue-50 text-blue-700' };
+    }
+    if (acceptedAssignment) return { label: 'Provider accepted', tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+    if (getRequestAssignments(request).some((item) => item.status_c === 'Pending')) return { label: 'Awaiting acceptance', tone: 'border-amber-200 bg-amber-50 text-amber-700' };
+    if (['Cancelled', 'Completed'].includes(String(request.status_c))) return { label: request.status_c, tone: 'border-slate-200 bg-slate-50 text-slate-700' };
+    return { label: 'Finding provider', tone: 'border-violet-200 bg-violet-50 text-violet-700' };
+  }
+
   return (
-    <div>
-      <PageHeader eyebrow="Operations control" title="Central Dispatch" description={selectedRequest ? 'Review the customer request, provider assignment and booking confirmation.' : 'Monitor customer requests, see assignment progress and open any request to take action.'} />
+    <div className="min-w-0 space-y-5 text-slate-900">
+      <PageHeader eyebrow="" title="Central Dispatch" description="Manage and assign customer service requests" />
       {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
         <>
           <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -388,30 +434,28 @@ export default function CentralDispatch() {
               const assignedProvider = acceptedAssignment ? providers.find((item) => String(item.Id) === String(acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c)) : null;
               const fixedPrice = request.pricing_mode_c === 'Fixed Price' ? getFixedPrice(request) : null;
               const distance = assignedProvider ? providerDistance(request, assignedProvider) : null;
-              const statusLabel = acceptedAssignment ? 'Provider accepted' : activeAssignments.some((item) => item.status_c === 'Pending') ? 'Awaiting acceptance' : ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c)) ? request.status_c : 'Needs dispatch';
-              return <Card key={request.Id} className="p-4 transition-colors hover:border-primary/40 sm:p-5">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]">
-                  <div className="flex min-w-0 gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="CarFront" size={23} /></div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2"><h2 className="font-heading font-semibold">{request.Name}</h2><StatusBadge value={request.status_c} /></div>
-                      <p className="mt-1 text-sm text-muted-foreground">{request.service_category_c?.Name ?? 'Service'} · {request.required_capability_c?.Name ?? 'Capability not mapped'}</p>
-                      <p className="mt-2 text-sm">{request.location_c || 'Location missing'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Time not specified'}</p>
-                    </div>
+              const lifecycle = displayLifecycle(request, linkedJob, acceptedAssignment);
+              const providerName = linkedJob?.technician_c?.Name ?? assignedProvider?.Name ?? activeAssignments[0]?.technician_c?.Name ?? 'Not assigned yet';
+              const customerName = request.customer_c?.Name ?? 'Customer details unavailable';
+              const customerPhone = request.customer_c?.phone_c ?? request.customer_c?.Phone ?? request.customer_c?.mobile_c ?? '';
+              const capabilityName = request.required_capability_c?.Name ?? request.service_category_c?.Name ?? 'Service';
+              const total = linkedJob?.agreed_price_c ?? fixedPrice;
+              return <Card key={request.Id} className="overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
+                <div className="grid min-w-0 gap-0 xl:grid-cols-[1.05fr_1.12fr_0.92fr_1.12fr_168px]">
+                  <div className="flex min-w-0 items-start gap-3 p-4">
+                    <div className={'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ' + (/ambulance/i.test(capabilityName) ? 'bg-rose-50 text-rose-600' : /ac|air condition/i.test(capabilityName) ? 'bg-violet-50 text-violet-600' : /wash/i.test(capabilityName) ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600')}><ApperIcon name={serviceIcon(request)} size={27} /></div>
+                    <div className="min-w-0"><h2 className="break-words font-semibold leading-5 text-slate-900">{request.Name}</h2><p className="mt-1 text-xs text-slate-500">{formatCreated(request.CreatedOn)}</p><span className="mt-2 inline-flex max-w-full rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{capabilityName}</span></div>
                   </div>
-                  <div className="grid content-start gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                    <div><p className="text-xs text-muted-foreground">Service total</p><p className="font-semibold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : request.pricing_mode_c === 'Fixed Price' ? 'Price review needed' : 'Inspection / estimate'}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Assigned provider</p><p className="font-medium">{assignedProvider?.Name ?? activeAssignments[0]?.technician_c?.Name ?? 'Not assigned'}</p>{distance !== null && <p className="text-xs text-muted-foreground">{formatDistance(distance)} away</p>}</div>
-                    <div className="sm:col-span-2 xl:col-span-1"><p className="text-xs text-muted-foreground">Dispatch status</p><p className="mt-1 text-sm font-medium">{statusLabel}</p></div>
-                  </div>
-                  <div className="flex items-center xl:justify-end"><Button className="w-full sm:w-auto" variant="outline" onClick={() => setSelectedRequestId(request.Id)}>View details <ApperIcon name="ChevronRight" size={16} /></Button></div>
+                  <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="MapPin" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{request.location_c || 'Location not recorded'}</span></p><p className="flex items-start gap-2 text-sm font-semibold text-slate-800"><ApperIcon name="IndianRupee" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{total !== null && total !== undefined ? '₹' + Number(total).toLocaleString('en-IN') : request.pricing_mode_c === 'Fixed Price' ? 'Price review needed' : 'Inspection charge / estimate'}{/wash/i.test(capabilityName) && /Pickup\s*&\s*Drop\s*—?\s*₹?\s*100/i.test(String(request.problem_description_c ?? '')) ? ' (incl. Pickup & Drop ₹100)' : ''}</span></p><p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="CalendarDays" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.scheduled_at_c ? new Date(request.scheduled_at_c).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : request.preferred_time_c || 'Time not recorded'}</span></p></div>
+                  <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-center gap-2 text-xs text-slate-500"><ApperIcon name="UserRound" size={15} /> Customer</p><p className="flex items-start gap-2 text-sm font-medium text-slate-800"><ApperIcon name="User" size={15} className="mt-0.5 shrink-0 text-slate-500" /><span>{customerName}</span></p>{customerPhone && <p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="Phone" size={15} className="mt-0.5 shrink-0 text-slate-500" /><span>{customerPhone}</span></p>}</div>
+                  <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="text-xs text-slate-500">Assignment Method</p><span className={'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ' + (activeAssignments.some((item) => /Nearby/i.test(String(item.message_c))) ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-blue-200 bg-blue-50 text-blue-700')}>{activeAssignments.some((item) => /Nearby/i.test(String(item.message_c))) ? 'Nearby Check' : activeAssignments.length ? 'Manual Assignment' : 'Not assigned'}</span><p className="pt-1 text-xs text-slate-500">Assigned Provider</p><p className="flex items-center gap-2 text-sm font-medium text-slate-800"><ApperIcon name="UserRound" size={15} className="shrink-0 text-slate-500" /><span>{providerName}</span></p>{activeAssignments.length > 0 && <p className={'flex items-center gap-1.5 text-xs font-medium ' + (acceptedAssignment ? 'text-emerald-700' : 'text-amber-700')}><ApperIcon name={acceptedAssignment ? 'CheckCircle2' : 'Clock3'} size={14} />{acceptedAssignment ? 'Accepted' : 'Awaiting Acceptance'}</p>}{linkedJob && <p className="text-xs text-slate-500">Payout: {linkedJob.payout_status_c || 'Not recorded'}</p>}</div>
+                  <div className="flex flex-col items-stretch justify-center gap-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><span className={'inline-flex items-center justify-center gap-1.5 rounded-full border px-2 py-2 text-center text-xs font-semibold ' + lifecycle.tone}><ApperIcon name={linkedJob?.status_c === 'Completed' && linkedJob?.payment_status_c === 'Final Payment Paid' ? 'CheckCircle2' : acceptedAssignment ? 'CheckCircle2' : 'Clock3'} size={14} />{lifecycle.label}</span><Button className="w-full border-slate-200 text-slate-800" variant="outline" onClick={() => setSelectedRequestId(request.Id)}><ApperIcon name="Eye" size={16} /> View Details <ApperIcon name="ChevronDown" size={14} /></Button></div>
                 </div>
               </Card>;
             })}
-            {!visibleRequests.length && <Card className="p-10 text-center"><p className="font-medium">No requests in this view.</p><p className="mt-1 text-sm text-muted-foreground">Try another status filter or refresh to check for new requests.</p></Card>}
+            {!pagedRequests.length && <Card className="p-10 text-center"><p className="font-medium">No requests in this view.</p><p className="mt-1 text-sm text-muted-foreground">Try another service, status, date range or search term.</p></Card>}
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Showing {visibleRequests.length} of {requests.length} loaded requests.</p>
+          <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-3 sm:flex-row"><p className="text-sm text-slate-600">Showing {visibleRequests.length ? (Math.min(page, pageCount) - 1) * pageSize + 1 : 0}–{Math.min(page, pageCount) * pageSize} of {visibleRequests.length} requests</p><div className="flex items-center gap-1"><Button variant="outline" size="icon" className="h-9 w-9" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ApperIcon name="ChevronLeft" size={16} /></Button>{Array.from({ length: Math.min(pageCount, 5) }, (_, index) => { const pageNumber = pageCount <= 5 ? index + 1 : Math.min(Math.max(1, page - 2), pageCount - 4) + index; return <Button key={pageNumber} variant={Math.min(page, pageCount) === pageNumber ? 'default' : 'outline'} className="h-9 w-9" onClick={() => setPage(pageNumber)}>{pageNumber}</Button>; })}<Button variant="outline" size="icon" className="h-9 w-9" disabled={page >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}><ApperIcon name="ChevronRight" size={16} /></Button></div></div>
         </>
       )}
     </div>
