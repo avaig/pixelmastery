@@ -413,7 +413,7 @@ export default function CentralDispatch() {
       <PageHeader eyebrow="" title="Central Dispatch" description="Manage and assign customer service requests" />
       {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
         <>
-          <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="flex items-center gap-4 border-blue-100 bg-gradient-to-br from-white to-blue-50/80 p-4 shadow-sm"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"><ApperIcon name="ClipboardList" size={23} /></div><div><p className="text-sm text-slate-600">Total Requests <span className="block text-xs">({dateFilter === 'All' ? 'All Time' : 'Last ' + dateFilter + ' Days'})</span></p><p className="text-3xl font-bold tracking-tight">{recentCount}</p></div></Card>
             <Card className="flex items-center gap-4 border-emerald-100 bg-gradient-to-br from-white to-emerald-50/80 p-4 shadow-sm"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white"><ApperIcon name="Check" size={25} /></div><div><p className="text-sm text-slate-600">Assigned</p><p className="text-3xl font-bold tracking-tight">{assignedCount} <span className="text-sm font-semibold text-emerald-700">{recentCount ? Math.round(assignedCount / recentCount * 100) : 0}%</span></p></div></Card>
             <Card className="flex items-center gap-4 border-orange-100 bg-gradient-to-br from-white to-orange-50/80 p-4 shadow-sm"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white"><ApperIcon name="Clock3" size={25} /></div><div><p className="text-sm text-slate-600">Pending Review</p><p className="text-3xl font-bold tracking-tight">{pendingCount} <span className="text-sm font-semibold text-orange-600">{recentCount ? Math.round(pendingCount / recentCount * 100) : 0}%</span></p></div></Card>
@@ -428,7 +428,7 @@ export default function CentralDispatch() {
             <Select value={dateFilter} onValueChange={(value) => { setDateFilter(value); setPage(1); }}><SelectTrigger className="h-11 w-full border-slate-200 xl:w-44"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="30">Last 30 Days</SelectItem><SelectItem value="7">Last 7 Days</SelectItem><SelectItem value="90">Last 90 Days</SelectItem><SelectItem value="All">All Time</SelectItem></SelectContent></Select>
             <Button className="h-11 border-blue-200 text-blue-700 hover:bg-blue-50" variant="outline" onClick={run} disabled={loading}><ApperIcon name="RefreshCw" size={17} /> Refresh</Button>
           </div>
-          <div className="space-y-3" aria-busy={loading}>
+          <div className="space-y-2.5" aria-busy={loading}>
             {visibleRequests.map((request) => {
               const linkedJob = getRequestJob(request);
               const activeAssignments = getRequestAssignments(request);
