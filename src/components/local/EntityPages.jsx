@@ -113,7 +113,8 @@ export function EntityListPage({ entity }) {
   const [deletingSelected, setDeletingSelected] = useState(false);
   const isProviderList = entity === 'technicians';
   const isCustomerList = entity === 'customers';
-  const hasBulkDelete = isProviderList || isCustomerList;
+  const isResponsesList = entity === 'responses';
+  const hasBulkDelete = isProviderList || isCustomerList || isResponsesList;
   const fields = useMemo(() => isProviderList ? [...new Set([...getFields(config), 'email_c'])] : getFields(config), [config, isProviderList]);
   const { data: providerAssignments = [] } = useFetch(
     () => isProviderList ? sdk.table('service_provider_capabilities_c').select(['Id', 'technician_c', 'capability_c', 'status_c']).page(1, 1000).fetch().then((res) => {
@@ -241,6 +242,42 @@ export function EntityListPage({ entity }) {
       toast.success(`Deleted ${targets.length} provider profile(s) and ${assignmentIds.length} service assignment(s). Customer and marketplace history was not targeted.`);
     } catch (error) {
       toast.error(error.message || 'Could not delete the selected providers.');
+      await run();
+    } finally {
+      setDeletingSelected(false);
+    }
+  }
+
+  async function deleteSelectedResponses() {
+    if (!isResponsesList || !selectedIds.length || deletingSelected) return;
+    const confirmation = window.confirm(\`Permanently delete \${selectedIds.length} selected technician offer(s)? Offers linked to existing jobs will be protected so booking history remains intact.\`);
+    if (!confirmation) return;
+    setDeletingSelected(true);
+    try {
+      const [offerResult, jobResult] = await Promise.all([
+        sdk.table('technician_responses_c').select(['Id', 'Name']).page(1, 1000).fetch(),
+        sdk.table('jobs_c').select(['Id', 'response_c']).page(1, 1000).fetch(),
+      ]);
+      if (!offerResult.success || !jobResult.success) throw new Error('Could not verify offers and linked jobs. Nothing was deleted.');
+      const offers = offerResult.data ?? [];
+      const jobs = jobResult.data ?? [];
+      if (offers.length < Number(offerResult.total ?? offers.length) || jobs.length < Number(jobResult.total ?? jobs.length)) {
+        throw new Error('Deletion stopped because an offers or jobs table has more than 1,000 records. Nothing was deleted.');
+      }
+      const offerById = new Map(offers.map((row) => [String(row.Id), row]));
+      const targets = selectedIds.map(String);
+      if (targets.some((id) => !offerById.has(id))) throw new Error('Some selected offers are no longer available. Refresh the list and try again.');
+      const linkedJobOfferIds = new Set(jobs.map((job) => String(job.response_c?.Id ?? job.response_c_id ?? job.response_c ?? '')).filter(Boolean));
+      const protectedIds = targets.filter((id) => linkedJobOfferIds.has(id));
+      const deletableIds = targets.filter((id) => !linkedJobOfferIds.has(id));
+      if (!deletableIds.length) throw new Error('All selected offers are linked to jobs. They were kept to preserve booking history.');
+      const removed = await sdk.table('technician_responses_c').remove(deletableIds.map((id) => offerById.get(id).Id));
+      if (!removed.data || removed.data.length !== deletableIds.length) throw new Error(removed.messages?.[0] || 'Some offers could not be deleted. Refresh the list and inspect the remaining records.');
+      setSelectedIds(protectedIds);
+      await run();
+      toast.success(\`Deleted \${deletableIds.length} offer(s). \${protectedIds.length ? protectedIds.length + ' offer(s) linked to jobs were preserved.' : 'No job-linked offers needed protection.'}\`);
+    } catch (error) {
+      toast.error(error.message || 'Could not delete the selected offers.');
       await run();
     } finally {
       setDeletingSelected(false);
@@ -381,7 +418,7 @@ export function EntityListPage({ entity }) {
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-muted/40">
                 <tr>
-                  {hasBulkDelete && <th className="w-12 px-3 py-3 text-left font-medium text-muted-foreground">Select</th>}
+                  {hasBulkDelete && <th className="w-12 px-3 py-3 text-left font-medium text-muted-foreground"><span className="sr-only">Select offer</span><Checkbox aria-label="Select all offers on this page" checked={rows.length > 0 && rows.every((row) => selectedIds.includes(String(row.Id)))} onCheckedChange={(checked) => setSelectedIds(checked ? [...new Set([...selectedIds, ...rows.map((row) => String(row.Id))])] : selectedIds.filter((id) => !rows.some((row) => String(row.Id) === id)))} /></th>}
                   {config.columns.map((column) => <th key={column} className="px-4 py-3 text-left font-medium text-muted-foreground">{columnLabel(config, column)}</th>)}
                   {isProviderList && <th className="px-4 py-3 text-left font-medium text-muted-foreground">Service capabilities</th>}
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">Open</th>
