@@ -361,7 +361,7 @@ export default function ResponsesDetail() {
               <div className="mt-2 text-sm text-muted-foreground">{response.availability_c}</div>
             </div>
             <div className="text-left md:text-right">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">'Final quote'</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Final quote</div>
               <div className="font-heading text-3xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>
               {response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">Original quote ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}
             </div>
@@ -383,36 +383,15 @@ export default function ResponsesDetail() {
                 </div>
               )}
 
-              {isProvider && response.status_c === 'Price Accepted' && (
-                <div className="space-y-3 rounded-lg border border-highlight/40 bg-muted/30 p-4">
-                  <p className="text-sm">The customer has accepted ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Accept this booking to create the job and move it to Jobs.</p>
-                  <Button onClick={confirmProvider} disabled={working}>{working ? 'Accepting…' : 'Accept Job & Confirm Booking'}</Button>
-                </div>
-              )}
+
               {isProvider && (isVendorAccepted || (response.status_c === 'Pending' && response.negotiation_status_c === 'Agreed')) && (
                 <div className="rounded-lg border border-success-border bg-success-muted p-4 text-sm text-success">You accepted the customer's price of ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Waiting for the customer to confirm the booking.</div>
               )}
-              {isProvider && response.status_c === 'Pending' && response.negotiation_status_c !== 'Agreed' && (isCounterOffer || isCarWashOffer) && (
-                <div className="space-y-3">
-                  <Button className="w-full sm:w-auto" onClick={acceptCustomerOffer} disabled={working}><ApperIcon name="Check" size={16} /> {working ? 'Accepting…' : 'Accept ₹' + Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</Button>
-                  <details className="rounded-lg border border-border p-3">
-                    <summary className="cursor-pointer text-sm font-semibold">Make a counter-offer or decline</summary>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input type="number" min="1" value={providerCounterPrice} onChange={(event) => setProviderCounterPrice(event.target.value)} placeholder="Your total counter-offer (₹)"/><Button variant="outline" onClick={providerCounter} disabled={working || !providerCounterPrice.trim()}>Send counter-offer</Button><Button variant="outline" onClick={declineOffer} disabled={working}>Decline</Button></div>
-                  </details>
-                </div>
+              {isProvider && response.status_c === 'Pending' && (
+                <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">Your final quote is submitted. The customer can confirm this provider directly.</div>
               )}
 
-              {isProvider && response.status_c === 'Pending' && response.negotiation_status_c !== 'Agreed' && !isCounterOffer && !isCarWashOffer && (
-                <div className="space-y-3">
-                  <div className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                    Your offer is waiting for the customer. You can counter or leave the current quote unchanged.
-                  </div>
-                  <div className="flex min-w-[280px] gap-2">
-                    <Input type="number" min="1" value={providerCounterPrice} onChange={(event) => setProviderCounterPrice(event.target.value)} placeholder="Counter price" />
-                    <Button variant="outline" onClick={providerCounter} disabled={working}>Counter-offer</Button>
-                  </div>
-                </div>
-              )}
+
 
               {isAdmin && response.status_c === 'Pending' && (
                 <div className="flex flex-wrap gap-2">
@@ -423,12 +402,7 @@ export default function ResponsesDetail() {
             </div>
           )}
 
-          {response.negotiation_history_c && (
-            <details className="mt-6 rounded-lg border border-border bg-muted/20 p-4">
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">View negotiation history</summary>
-              <pre className="mt-3 whitespace-pre-wrap font-sans text-xs leading-5 text-muted-foreground">{response.negotiation_history_c}</pre>
-            </details>
-          )}
+
 
           {response.status_c === 'Price Accepted' && isCustomer && (
             <div className="mt-6 rounded-md border border-highlight/40 bg-muted/30 p-4 text-sm">
@@ -437,7 +411,7 @@ export default function ResponsesDetail() {
           )}
           {isVendorAccepted && isCustomer && (
             <div className="mt-6 rounded-md border border-success-border bg-success-muted p-4 text-sm text-success">
-              <strong>Vendor Accepted</strong><p className="mt-1">The Service Provider accepted the negotiated price. Confirm the booking above to create the job and assign it to this provider.</p>
+              <strong>Provider selected</strong><p className="mt-1">Confirm the booking above to create the job and assign it to this provider.</p>
             </div>
           )}
           {response.status_c === 'Selected' && (
