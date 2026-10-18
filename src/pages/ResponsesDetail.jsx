@@ -104,35 +104,15 @@ export default function ResponsesDetail() {
   const carWashMenuTotal = carWashItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   async function createJob() {
+    // Customer accounts cannot list full provider profiles because those rows contain private onboarding and payout details.
+    // The response lookup is the authoritative provider reference; an RLS-filtered empty list is not proof the provider was deleted.
     const linkedProvider = response.technician_c;
-    const linkedProviderId = linkedProvider?.Id ?? linkedProvider;
-    const linkedProviderName = String(linkedProvider?.Name ?? providerProfile?.Name ?? response.Name ?? '').split(' • ')[0].trim();
-    const providersRes = await sdk.table('technician_profiles_c').select(['Id', 'Name', 'email_c', 'latitude_c', 'longitude_c']).page(1, 1000).fetch();
-    if (!providersRes.success) throw new Error(providersRes.message ?? 'Could not verify the Service Provider profile.');
-    const providerRows = providersRes.data ?? [];
-    let validProvider = providerRows.find((item) => String(item.Id) === String(linkedProviderId ?? '')) ?? null;
-    if (!validProvider && linkedProviderName) {
-      const normalizedName = linkedProviderName.trim().toLowerCase().split(' ').filter(Boolean).join(' ');
-      validProvider = providerRows.find((item) => String(item.Name ?? '').trim().toLowerCase().split(' ').filter(Boolean).join(' ') === normalizedName) ?? null;
+    const providerId = linkedProvider?.Id ?? linkedProvider?.id ?? linkedProvider;
+    const providerName = String(linkedProvider?.Name ?? providerProfile?.Name ?? response.Name ?? 'Service Provider').split(' • ')[0].trim() || 'Service Provider';
+    if (providerId == null || String(providerId).trim() === '' || typeof providerId === 'object') {
+      throw new Error('This offer has no valid Service Provider reference. Ask the provider to submit a fresh offer from their current account.');
     }
-    if (!validProvider?.Id) {
-      throw new Error('The accepted offer points to a Service Provider record that no longer exists, and no matching active profile was found. The booking has not been changed. Open Provider onboarding for this provider and restore the profile, or ask LOCAL Admin to repair the provider record.');
-    }
-    const providerId = validProvider.Id;
-    async function updateProviderLookup(tableName, recordId) {
-      // Apper Lookup fields may require a record-reference object rather than a raw scalar ID.
-      let result = await sdk.table(tableName).update({ Id: recordId, technician_c: { Id: providerId } });
-      if (result.data?.length) return result;
-      const firstMessage = result.messages?.filter(Boolean).join(' | ') || result.message || '';
-      result = await sdk.table(tableName).update({ Id: recordId, technician_c: providerId });
-      if (result.data?.length) return result;
-      const secondMessage = result.messages?.filter(Boolean).join(' | ') || result.message || '';
-      throw new Error('Could not save the Service Provider reference. Object-reference attempt: ' + firstMessage + '. ID-reference attempt: ' + secondMessage);
-    }
-    if (String(linkedProviderId ?? '') !== String(providerId)) {
-      await updateProviderLookup('technician_responses_c', response.Id);
-      response.technician_c = validProvider;
-    }
+    const validProvider = { Id: providerId, Name: providerName };
     const finalPrice = Number(response.final_agreed_price_c ?? response.proposed_price_c);
     if (!Number.isFinite(finalPrice) || finalPrice <= 0) throw new Error('Enter or agree a valid service price before creating the job.');
 
@@ -161,7 +141,7 @@ export default function ResponsesDetail() {
         request_c: request.Id,
         response_c: response.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c,
-        technician_c: { Id: providerId, Name: validProvider.Name },
+        technician_c: { Id: providerId, Name: providerName },
         agreed_price_c: billing.servicePrice,
         original_provider_quote_c: Number(response.original_proposed_price_c ?? response.proposed_price_c),
         booking_commitment_amount_c: billing.bookingCommitment,
