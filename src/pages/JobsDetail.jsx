@@ -93,27 +93,68 @@ export default function JobsDetail() {
   async function addInspectionPhotos(event, view) {
     const file = Array.from(event.target.files ?? []).find((item) => item.type.startsWith('image/'));
     if (!file) return;
-    const files = [file];
-    const converted = await Promise.all(files.map((file) => new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const image = new Image();
-        image.onload = () => {
-          const scale = Math.min(1, 1000 / Math.max(image.width, image.height));
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(image.width * scale));
-          canvas.height = Math.max(1, Math.round(image.height * scale));
-          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-          resolve({ name: file.name, data: canvas.toDataURL('image/jpeg', 0.62) });
+    setWorking(true);
+    try {
+      const optimizedFile = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read the selected photo.'));
+        reader.onload = () => {
+          const image = new Image();
+          image.onerror = () => reject(new Error('The selected file is not a readable image.'));
+          image.onload = () => {
+            const scale = Math.min(1, 1400 / Math.max(image.naturalWidth, image.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            const context = canvas.getContext('2d');
+            if (!context) { reject(new Error('Photo compression is not supported by this browser.')); return; }
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+              if (!blob) { reject(new Error('Could not optimize this photo.')); return; }
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', 0.72);
+          };
+          image.src = String(reader.result);
         };
-        image.onerror = () => resolve(null);
-        image.src = String(reader.result);
+        reader.readAsDataURL(file);
+      });
+      const uploaded = await sdk.storage.upload(optimizedFile);
+      if (!uploaded) throw new Error('Photo upload did not return a saved file reference.');
+      const photoFile = {
+        ...uploaded,
+        name: uploaded.name ?? uploaded.Name ?? optimizedFile.name,
+        type: uploaded.type ?? uploaded.Type ?? 'image/jpeg',
       };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    })));
-    setInspectionDraft((current) => ({ ...current, photos: [...current.photos.filter((photo) => photo.view !== view), ...converted.filter(Boolean).map((photo) => ({ ...photo, view }))] }));
-    event.target.value = '';
+      let imageUrl = photoFile.url ?? photoFile.Url ?? photoFile.previewUrl ?? photoFile.preview_url ?? photoFile.downloadUrl ?? photoFile.download_url ?? '';
+      if (!imageUrl) {
+        try {
+          const preview = await sdk.storage.preview(photoFile);
+          imageUrl = preview?.url ?? '';
+        } catch { /* resolve using download below */ }
+      }
+      if (!imageUrl) {
+        try {
+          const download = await sdk.storage.download(photoFile);
+          imageUrl = download?.url ?? '';
+        } catch { /* show a clear upload error below */ }
+      }
+      if (!imageUrl) throw new Error('The photo was uploaded but its preview URL could not be resolved. Please try uploading it again.');
+      const photo = {
+        view,
+        name: photoFile.name,
+        data: imageUrl,
+        fileId: photoFile.Id ?? photoFile.id ?? null,
+        type: photoFile.type,
+        size: photoFile.size ?? photoFile.Size ?? optimizedFile.size,
+      };
+      setInspectionDraft((current) => ({ ...current, photos: [...current.photos.filter((item) => item.view !== view), photo] }));
+      toast.success(view.replace(/^pre-/, '').replace(/^post-/, '') + ' photo uploaded.');
+    } catch (err) {
+      toast.error(err?.message ?? 'Photo upload failed. Please retry.');
+    } finally {
+      setWorking(false);
+      event.target.value = '';
+    }
   }
 
   async function saveVehicleInspection() {
