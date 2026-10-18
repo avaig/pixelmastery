@@ -204,6 +204,7 @@ export default function RequestDetail() {
   async function confirmTechnician(response) {
     if (working || !request?.Id || !response?.Id) return;
     setWorking(true);
+    let confirmationStage = 'reading the selected offer';
     try {
       // The offer's technician_c lookup is the authoritative provider reference.
       // Customer-side RLS can hide provider profiles from list queries, so never
@@ -227,6 +228,7 @@ export default function RequestDetail() {
           throw new Error('This request already has a job assigned to a different Service Provider. Please contact LOCAL support before changing the assignment.');
         }
       } else {
+        confirmationStage = 'checking provider job history';
         const completedJobsRes = await sdk.table('jobs_c').select(['Id', 'technician_c', 'status_c']).page(1, 1000).fetch();
         if (!completedJobsRes.success) throw new Error(completedJobsRes.message ?? 'Could not load Service Provider job history.');
         const completedJobsCount = (completedJobsRes.data ?? []).filter((item) => String(item.technician_c?.Id ?? item.technician_c) === String(providerId) && item.status_c === 'Completed').length;
@@ -236,6 +238,7 @@ export default function RequestDetail() {
         const billing = isCarWashBooking || isAcBooking
           ? { ...calculatedBilling, servicePrice: finalPrice, bookingCommitment: 0, remainingServiceAmount: finalPrice, customerPayableNow: 0, localServiceFee: 0 }
           : calculatedBilling;
+        confirmationStage = 'creating the booking; checking request, customer, accepted-offer and Service Provider database references';
         const jobRes = await sdk.table('jobs_c').create({
           Name: request.Name + ' • ' + providerName,
           request_c: request.Id,
@@ -274,6 +277,7 @@ export default function RequestDetail() {
       const history = String(response.negotiation_history_c ?? '').trim();
       const alreadyRecorded = /Customer selected Service Provider|Final agreed price locked/i.test(history);
       const agreedHistory = alreadyRecorded ? history : (history ? history + '\n' : '') + new Date().toLocaleString('en-IN') + ' — Customer selected Service Provider at ₹' + finalPrice.toLocaleString('en-IN');
+      confirmationStage = 'updating the selected offer';
       const responseUpdate = await sdk.table('technician_responses_c').update({
         Id: response.Id,
         technician_c: providerId,
@@ -284,6 +288,7 @@ export default function RequestDetail() {
       });
       if (!responseUpdate.data?.length) throw new Error('Job ' + job.Id + ' exists, but the offer status could not be synchronized: ' + (responseUpdate.messages?.filter(Boolean).join(' | ') || responseUpdate.message || 'update not confirmed') + '. Retry confirmation to finish syncing statuses.');
 
+      confirmationStage = 'updating the service request status';
       const requestUpdate = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
       if (!requestUpdate.data?.length) throw new Error('Job ' + job.Id + ' exists and the offer is selected, but the request status could not be synchronized: ' + (requestUpdate.messages?.filter(Boolean).join(' | ') || requestUpdate.message || 'update not confirmed') + '. Retry confirmation to finish syncing statuses.');
 
@@ -294,12 +299,10 @@ export default function RequestDetail() {
       toast.success(job.status_c === 'Assigned' ? 'Service Provider confirmed. Job is now Assigned.' : 'This booking already exists; its statuses are synchronized.');
       navigate('/jobs/' + job.Id);
     } catch (err) {
-      const message = String(err?.message ?? '');
-      if (/reference record does not exist|must be a record id|invalid.*technician_c/i.test(message)) {
-        toast.error('This specific offer still points to a deleted Service Provider record. Creating a new provider profile does not update an older offer. No booking was created. Sign in with the new Service Provider account, open this same service request, submit a fresh offer, then return here and confirm that new offer. Do not repeat onboarding.');
-      } else {
-        toast.error(message || 'Could not confirm Service Provider.');
-      }
+      const message = String(err?.message ?? err?.details ?? '');
+      // Preserve the exact failing step and backend error; a foreign-key failure
+      // may come from any lookup on the booking, not only technician_c.
+      toast.error('Booking failed while ' + confirmationStage + '. Database response: ' + (message || 'No detailed error returned') + '. No successful confirmation was reported.');
     } finally {
       setWorking(false);
     }
