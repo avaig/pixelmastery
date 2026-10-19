@@ -368,7 +368,7 @@ export default function JobsDetail() {
     invoiceWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(invoiceNumber)} - LOCAL Invoice</title><style>
       body{font-family:Arial,sans-serif;color:#21152f;margin:0;padding:32px;background:#fff}
       .wrap{max-width:760px;margin:auto}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #5b21b6;padding-bottom:18px}
-      .brand{font-size:30px;font-weight:800;letter-spacing:5px;color:#24103f}.muted{color:#666174;font-size:12px;line-height:1.6}
+      .brand-logo{display:block;width:170px;max-height:64px;height:auto;object-fit:contain;object-position:left center}.muted{color:#666174;font-size:12px;line-height:1.6}
       h1{font-size:22px;margin:24px 0 8px}.meta,.parties{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;background:#f8f5fc;padding:16px;margin:18px 0}
       .parties{grid-template-columns:1fr 1fr}.label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#777;margin-bottom:5px}
       table{width:100%;border-collapse:collapse;margin:18px 0}th{background:#4b1a78;color:white;text-align:left}td,th{padding:11px;border:1px solid #e2d8eb;font-size:13px}td:last-child,th:last-child{text-align:right}
@@ -376,7 +376,7 @@ export default function JobsDetail() {
       .actions{margin:18px 0}.actions button{background:#4b1a78;color:white;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
       @media print{body{padding:0}.actions{display:none}.wrap{max-width:none}}
     </style></head><body><div class="wrap">
-      <div class="top"><div><div class="brand">LOCAL</div><div class="muted">Happy To Help</div></div><div style="text-align:right"><strong>INVOICE &amp; PAYMENT RECEIPT</strong><div class="muted">Status: ${safe(job.payment_status_c === 'Final Payment Paid' ? 'PAID (DEMO)' : 'PAYMENT PENDING')}</div></div></div>
+      <div class="top"><div><img class="brand-logo" src="${window.location.origin}/local-logo.svg" alt="LOCAL — Happy to Help"></div><div style="text-align:right"><strong>INVOICE &amp; PAYMENT RECEIPT</strong><div class="muted">Status: ${safe(job.payment_status_c === 'Final Payment Paid' ? 'PAID (DEMO)' : 'PAYMENT PENDING')}</div></div></div>
       <div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
       <h1>Invoice details</h1><div class="meta">
       <div><div class="label">Invoice number</div><strong>${safe(invoiceNumber)}</strong></div>
