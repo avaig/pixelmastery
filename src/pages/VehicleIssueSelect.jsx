@@ -85,10 +85,10 @@ export default function VehicleIssueSelect() {
           return (
           <button key={label} type="button" onClick={() => handleIssue(label)} className="w-full text-left">
             <Card className="flex h-full min-h-[80px] flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[100px] sm:p-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ApperIcon name={icon} size={27} />
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white">
+                <ApperIcon name={icon} size={25} />
               </div>
-              <div className="mt-4 flex w-full min-w-0 flex-1 items-end justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="break-words font-semibold leading-snug">{tr(cardTitle, language)}</div>
                   {label === 'Towing Required' && (
@@ -114,10 +114,10 @@ export default function VehicleIssueSelect() {
           className="w-full text-left"
         >
           <Card className="flex min-h-[80px] h-full flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[100px] sm:p-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <ApperIcon name="CarTaxiFront" size={27} />
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white">
+              <ApperIcon name="CarTaxiFront" size={25} />
             </div>
-            <div className="mt-4 flex w-full min-w-0 flex-1 items-end justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="break-words font-semibold leading-snug">{tr('Emergency Car Rental', language)}</div>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tr('Request a rental quote from available providers and negotiate before booking.', language)}</p>
