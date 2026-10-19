@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { sdk } from '@/services/sdk';
@@ -44,33 +44,6 @@ export default function JobsList() {
     if (!res.success) throw new Error(res.message);
     return { rows: res.data, total: res.total, hasMore: res.hasMore };
   }, [user?.profile, user?.emailAddress, user?.email, search, status, page]);
-
-  // Keep the list live independently of whether a job detail has ever been opened.
-  // Run the same database query every 3 seconds; serialize polls so slow responses
-  // are not cancelled by the next tick. Refresh immediately when the tab becomes active.
-  const refreshInFlight = useRef(false);
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    let active = true;
-    const refreshWhenVisible = async () => {
-      if (!active || !mountedRef.current || document.visibilityState !== 'visible' || refreshInFlight.current) return;
-      refreshInFlight.current = true;
-      try {
-        await run();
-      } finally {
-        refreshInFlight.current = false;
-      }
-    };
-    const interval = setInterval(refreshWhenVisible, 3000);
-    document.addEventListener('visibilitychange', refreshWhenVisible);
-    return () => {
-      active = false;
-      mountedRef.current = false;
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', refreshWhenVisible);
-    };
-  }, [run]);
 
   const rows = data?.rows ?? [];
   return (
