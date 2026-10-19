@@ -57,19 +57,19 @@ export default function CarCareAssistance() {
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
-      <div className="mb-7 text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ApperIcon name="CarFront" size={34} />
+      <div className="mb-4 text-center sm:mb-5">
+        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-14">
+          <ApperIcon name="CarFront" size={28} />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {tr('Car Care & Assistance', language)}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
           {tr('What Does Your Car Need?', language)}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5">
+      <div className="grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-2 sm:gap-4">
         {services.map((service) => (
           <button
             key={service.title}
@@ -77,16 +77,16 @@ export default function CarCareAssistance() {
             onClick={() => navigate(service.href)}
             className="group flex min-w-0 w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <Card className="flex h-[100px] w-full min-w-0 items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:h-[104px] sm:gap-5 sm:p-5">
-              <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-[#132F55] text-white">
-                <ApperIcon name={service.icon} size={32} />
+            <Card className="flex flex-row h-[88px] w-full min-w-0 items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:h-[96px] sm:gap-4 sm:p-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white sm:size-14">
+                <ApperIcon name={service.icon} size={27} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-heading text-base font-bold leading-snug text-foreground sm:text-lg">
                   {tr(service.title, language)}
                 </div>
               </div>
-              <ApperIcon name="ArrowRight" size={25} className="ml-auto shrink-0 text-[#132F55] transition-transform group-hover:translate-x-1" />
+              <ApperIcon name="ArrowRight" size={22} className="ml-auto shrink-0 text-[#132F55] transition-transform group-hover:translate-x-1" />
             </Card>
           </button>
         ))}
