@@ -394,6 +394,7 @@ export default function ServiceProviderProfile() {
           Type: file.Type ?? file.type ?? 'image/jpeg',
           Size: file.Size ?? file.size ?? 0,
           url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
+          previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
         }))),
         provider_documents_c: JSON.stringify(Object.fromEntries(Object.entries(documents).map(([key, files]) => [key, (files ?? []).map((file) => ({
           Id: file.Id,
@@ -401,6 +402,7 @@ export default function ServiceProviderProfile() {
           Type: file.Type ?? file.type ?? 'application/octet-stream',
           Size: file.Size ?? file.size ?? 0,
           url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
+          previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
         }))]))),
       };
       // A browser-local demo application is not proof that a database row exists.
