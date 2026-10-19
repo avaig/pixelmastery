@@ -7,6 +7,7 @@ import { useFunction } from '@/hooks/useFunction';
 import ApperIcon from '@/components/ApperIcon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import FilePicker from '@/components/FilePicker';
 import { PageHeader, StatusBadge } from '@/components/local/EntityPages';
 import { toast } from 'sonner';
 import { getBillingBreakdown, getBookingCommitmentAmount } from '@/services/pricing';
@@ -29,6 +30,7 @@ export default function JobsDetail() {
   const [carWashExtraDescription, setCarWashExtraDescription] = useState('');
   const [carWashExtraPrice, setCarWashExtraPrice] = useState('');
   const [carWashExtraQuantity, setCarWashExtraQuantity] = useState('1');
+  const [carWashReceiptFiles, setCarWashReceiptFiles] = useState([]);
   const [paymentTimingDraft, setPaymentTimingDraft] = useState('');
   const [acDiagnosisDraft, setAcDiagnosisDraft] = useState('');
   const [acEstimateDraft, setAcEstimateDraft] = useState('');
@@ -260,12 +262,21 @@ export default function JobsDetail() {
     if (carWashPendingExtras.length) { toast.error('A revised bill is already awaiting customer approval.'); return; }
     const originalPrice = Number(job.original_car_wash_price_c ?? job.original_provider_quote_c ?? job.agreed_price_c ?? 0);
     const revision = Number(job.car_wash_revision_number_c ?? 0) + 1;
-    const item = { id: 'extra-' + Date.now(), description, unitPrice, quantity, status: 'Pending', proposedAt: new Date().toISOString(), proposedBy: displayLookup(job.technician_c), revision };
+    const receipts = Array.isArray(carWashReceiptFiles) ? carWashReceiptFiles.map((file) => ({
+      Id: file.Id ?? file.id ?? null,
+      Name: file.Name ?? file.name ?? 'Purchase receipt',
+      Type: file.Type ?? file.type ?? '',
+      Size: file.Size ?? file.size ?? 0,
+      url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? file.downloadUrl ?? file.download_url ?? null,
+      path: file.path ?? null,
+    })) : [];
+    const item = { id: 'extra-' + Date.now(), description, unitPrice, quantity, status: 'Pending', proposedAt: new Date().toISOString(), proposedBy: displayLookup(job.technician_c), revision, receipts };
     const nextItems = [...carWashItems, item];
     await updateJob({ original_car_wash_price_c: originalPrice, car_wash_extra_items_c: JSON.stringify(nextItems), car_wash_revision_status_c: 'Pending Customer Approval', car_wash_revision_number_c: revision, car_wash_customer_approval_at_c: null, local_service_fee_amount_c: 25 }, 'Revised Car Wash bill sent to the customer. Do not perform the extra work until approved.');
     setCarWashExtraDescription('');
     setCarWashExtraPrice('');
     setCarWashExtraQuantity('1');
+    setCarWashReceiptFiles([]);
   }
 
   async function respondToCarWashRevision(approve) {
