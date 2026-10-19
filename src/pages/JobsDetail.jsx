@@ -87,10 +87,18 @@ export default function JobsDetail() {
   const hasSixBeforePhotos = requiredVehicleViews.every((view) => savedVehiclePhotos.some((photo) => photo.view === 'pre-' + view && photo.data));
   const hasSixAfterPhotos = requiredVehicleViews.every((view) => savedVehiclePhotos.some((photo) => photo.view === 'post-' + view && photo.data));
   useEffect(() => {
-    if (!isCarWash || job?.status_c !== 'Completed' || isPaid) return undefined;
-    const interval = setInterval(() => run(), 3000);
-    return () => clearInterval(interval);
-  }, [isCarWash, job?.status_c, isPaid, run]);
+    // Keep job details in sync across customer, provider, and admin sessions.
+    // Poll only while this page is visible so background tabs do not waste requests.
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    const interval = setInterval(refreshWhenVisible, 3000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [id, run]);
 
   useEffect(() => {
     if (savedInspection) setInspectionDraft({
