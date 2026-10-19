@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { sdk } from '@/services/sdk';
@@ -45,14 +45,24 @@ export default function JobsList() {
     return { rows: res.data, total: res.total, hasMore: res.hasMore };
   }, [user?.profile, user?.emailAddress, user?.email, search, status, page]);
 
-  // Refresh the job list itself; detail-page polling alone cannot update these cards.
+  // Refresh the job list itself, without overlapping requests. The shared useFetch
+  // hook aborts a previous run when a new one starts, so polling must be serialized.
+  const refreshInFlight = useRef(false);
   useEffect(() => {
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') run();
+    let active = true;
+    const refreshWhenVisible = async () => {
+      if (!active || document.visibilityState !== 'visible' || refreshInFlight.current) return;
+      refreshInFlight.current = true;
+      try {
+        await run();
+      } finally {
+        refreshInFlight.current = false;
+      }
     };
     const interval = setInterval(refreshWhenVisible, 5000);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
+      active = false;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
