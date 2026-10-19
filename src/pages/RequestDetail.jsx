@@ -119,7 +119,7 @@ export default function RequestDetail() {
       return true;
     });
 
-    const jobsRes = await sdk.table('jobs_c').select(['Id', 'request_c', 'status_c', 'payment_status_c']).where(eq('request_c', id)).page(1, 1).fetch();
+    const jobsRes = await sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'status_c', 'payment_status_c', 'billing_status_c', 'agreed_price_c', 'customer_payable_now_c', 'remaining_amount_c', 'payment_method_c', 'payment_reference_c', 'returned_at_c', 'customer_completion_confirmed_at_c', 'payout_status_c', 'payment_timing_c', 'customer_c', 'technician_c']).where(eq('request_c', id)).page(1, 1).fetch();
     if (!jobsRes.success) throw new Error(jobsRes.message);
 
     return { request: requestRes.data, responses: visibleResponses, job: jobsRes.data?.[0] ?? null };

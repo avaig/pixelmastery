@@ -624,10 +624,10 @@ export default function JobsDetail() {
           {(liveLocation?.service_start_otp_verified_at_c ?? job.service_start_otp_verified_at_c) && <p className="mt-4 rounded-lg border border-success-border bg-success-muted p-3 text-sm font-medium text-success">Service-start OTP verified at {formatTimestamp(liveLocation?.service_start_otp_verified_at_c ?? job.service_start_otp_verified_at_c)}. Job status: {liveLocation?.status_c ?? job.status_c}.</p>}
         </section>}
 
-        {isCustomer && isPaid && (
+        {(isCustomer || isAdmin) && isPaid && (
           <div className="mt-7 rounded-lg border border-success-border bg-success-muted p-4">
             <div className="font-semibold text-success">Invoice available</div>
-            <p className="mt-1 text-sm text-success">Your final payment is recorded. Generate a printable invoice / payment receipt for this service.</p>
+            <p className="mt-1 text-sm text-success">{isAdmin ? 'Final payment is recorded. Generate a printable invoice / payment receipt for this service.' : 'Your final payment is recorded. Generate a printable invoice / payment receipt for this service.'}</p>
             <Button className="mt-3" onClick={printInvoice}>
               <ApperIcon name="FileDown" size={16} /> Download Invoice / Save as PDF
             </Button>
