@@ -56,6 +56,7 @@ export default function JobsDetail() {
   const isCarWash = /car\s*wash/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? ''));
   const isCarService = /car service|service package|economy service|normal service|major service|point checkup/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? ''));
   const isCarCare = isCarWash || isCarService;
+  const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
   const isPayAfterCompletion = isCarWash || isCarService || isAcService;
   const language = getLanguage();
@@ -500,7 +501,7 @@ export default function JobsDetail() {
   }
 
   useEffect(() => {
-    if (!job?.Id || job.status_c === 'Completed' || job.status_c === 'Cancelled') return;
+    if (!job?.Id || job.status_c === 'Completed' || job.status_c === 'Cancelled' || !isPickupDrop) return;
     let active = true;
     let locationBusy = false;
     const readLatestLocation = async () => {
@@ -532,7 +533,7 @@ export default function JobsDetail() {
       return () => { active = false; window.clearInterval(poll); };
     }
     return () => { active = false; };
-  }, [job?.Id, job?.status_c, job?.provider_travel_status_c, isProvider, isCustomer, isAdmin]);
+  }, [job?.Id, job?.status_c, job?.provider_travel_status_c, isProvider, isCustomer, isAdmin, isPickupDrop]);
 
   async function recordProviderSettlement() {
     if (!isAdmin || !isPaid || job.status_c !== 'Completed' || !job.customer_completion_confirmed_at_c) {
@@ -591,7 +592,7 @@ export default function JobsDetail() {
           ))}
         </div>
 
-        {(isProvider || isCustomer || isAdmin) && job.status_c !== 'Completed' && job.status_c !== 'Cancelled' && <section className="mt-7 rounded-xl border border-border p-4 md:p-5">
+        {isPickupDrop && (isProvider || isCustomer || isAdmin) && job.status_c !== 'Completed' && job.status_c !== 'Cancelled' && <section className="mt-7 rounded-xl border border-border p-4 md:p-5">
           <div className="flex items-start gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><ApperIcon name="MapPinned" size={22} /></div><div className="min-w-0 flex-1"><h2 className="font-heading text-lg font-semibold">Live provider tracking & service-start OTP</h2><p className="mt-1 text-sm text-muted-foreground">Location sharing runs only for this active job while the provider is travelling. Customer verification is required before service can start.</p></div><StatusBadge value={(liveLocation?.provider_travel_status_c ?? job.provider_travel_status_c) || 'Not Started'} /></div>
           {(isProvider || isAdmin) && job.status_c === 'Assigned' && (job.provider_travel_status_c ?? liveLocation?.provider_travel_status_c) !== 'On The Way' && <div className="mt-4"><Button onClick={startProviderTravel} disabled={working || (isCarCare && inspectionStatus !== 'Confirmed')}><ApperIcon name="Navigation" size={16} /> {working ? 'Starting…' : 'Start Travel & Share Location'}</Button>{isCarCare && inspectionStatus !== 'Confirmed' && <p className="mt-2 text-xs text-muted-foreground">For Car Wash / Car Service, confirm the vehicle condition report before starting travel.</p>}</div>}
           {(isProvider || isAdmin) && (job.provider_travel_status_c ?? liveLocation?.provider_travel_status_c) === 'On The Way' && <div className="mt-4 space-y-3"><p className="text-sm">Location sharing is active. Keep this job screen open and allow location access. The latest position is saved about every 10 seconds while this page is active.</p><Button onClick={markProviderArrived} disabled={working}><ApperIcon name="MapPinCheck" size={16} /> {working ? 'Saving…' : 'I Have Arrived'}</Button></div>}
