@@ -86,19 +86,9 @@ export default function JobsDetail() {
   ].filter((photo, index, all) => all.findIndex((item) => item.view === photo.view) === index);
   const hasSixBeforePhotos = requiredVehicleViews.every((view) => savedVehiclePhotos.some((photo) => photo.view === 'pre-' + view && photo.data));
   const hasSixAfterPhotos = requiredVehicleViews.every((view) => savedVehiclePhotos.some((photo) => photo.view === 'post-' + view && photo.data));
-  useEffect(() => {
-    // Keep job details in sync across customer, provider, and admin sessions.
-    // Poll only while this page is visible so background tabs do not waste requests.
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') run();
-    };
-    const interval = setInterval(refreshWhenVisible, 3000);
-    document.addEventListener('visibilitychange', refreshWhenVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', refreshWhenVisible);
-    };
-  }, [id, run]);
+  // Do not poll the detail page on a timer: repeated fetches were disrupting
+  // customer/provider workflows while they were entering data or confirming jobs.
+  // The record loads on entry and refreshes after successful saves via updateJob().
 
   useEffect(() => {
     if (savedInspection) setInspectionDraft({
