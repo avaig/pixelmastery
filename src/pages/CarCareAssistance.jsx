@@ -47,7 +47,7 @@ export default function CarCareAssistance() {
   const language = getLanguage();
 
   return (
-    <div className="mx-auto -mt-8 max-w-5xl sm:mt-0">
+    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
       <button
         type="button"
         aria-label="Back"
