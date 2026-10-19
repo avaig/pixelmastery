@@ -77,19 +77,19 @@ export default function CarCareAssistance() {
             onClick={() => navigate(service.href)}
             className="group flex min-w-0 w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <Card className="flex min-h-[104px] w-full min-w-0 items-center gap-3 rounded-xl border-2 p-3 transition-all hover:border-primary hover:shadow-md sm:min-h-[124px] sm:gap-4 sm:p-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-14">
-                <ApperIcon name={service.icon} size={26} />
+            <Card className="flex min-h-[76px] w-full min-w-0 items-center gap-3 rounded-xl border-2 p-2.5 transition-all hover:border-primary hover:shadow-md sm:min-h-[88px] sm:gap-3 sm:p-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-11">
+                <ApperIcon name={service.icon} size={23} />
               </div>
               <div className="min-w-0 flex-1 py-1">
-                <div className="font-heading text-base font-semibold leading-snug sm:text-lg">
+                <div className="font-heading text-[15px] font-semibold leading-snug sm:text-base">
                   {tr(service.title, language)}
                 </div>
-                <p className="mt-1 text-sm leading-snug text-muted-foreground sm:leading-relaxed">
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground sm:text-sm sm:leading-snug">
                   {tr(service.description, language)}
                 </p>
               </div>
-              <ApperIcon name="ArrowUpRight" size={19} className="ml-auto shrink-0 self-start text-muted-foreground transition-colors group-hover:text-primary" />
+              <ApperIcon name="ArrowUpRight" size={17} className="ml-auto shrink-0 self-center text-muted-foreground transition-colors group-hover:text-primary" />
             </Card>
           </button>
         ))}
