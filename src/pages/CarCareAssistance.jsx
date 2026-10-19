@@ -47,18 +47,18 @@ export default function CarCareAssistance() {
   const language = getLanguage();
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
       <button
         type="button"
         aria-label="Back"
         onClick={() => navigate('/')}
-        className="mb-5 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        className="mb-2 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary sm:mb-3"
       >
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
-      <div className="mb-4 text-center sm:mb-5">
-        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-14">
+      <div className="mb-3 text-center sm:mb-5">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
           <ApperIcon name="CarFront" size={28} />
         </div>
         <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
