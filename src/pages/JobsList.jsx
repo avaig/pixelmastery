@@ -45,13 +45,16 @@ export default function JobsList() {
     return { rows: res.data, total: res.total, hasMore: res.hasMore };
   }, [user?.profile, user?.emailAddress, user?.email, search, status, page]);
 
-  // Refresh the job list itself, without overlapping requests. The shared useFetch
-  // hook aborts a previous run when a new one starts, so polling must be serialized.
+  // Keep the list live independently of whether a job detail has ever been opened.
+  // Run the same database query every 3 seconds; serialize polls so slow responses
+  // are not cancelled by the next tick. Refresh immediately when the tab becomes active.
   const refreshInFlight = useRef(false);
+  const mountedRef = useRef(true);
   useEffect(() => {
+    mountedRef.current = true;
     let active = true;
     const refreshWhenVisible = async () => {
-      if (!active || document.visibilityState !== 'visible' || refreshInFlight.current) return;
+      if (!active || !mountedRef.current || document.visibilityState !== 'visible' || refreshInFlight.current) return;
       refreshInFlight.current = true;
       try {
         await run();
@@ -59,10 +62,11 @@ export default function JobsList() {
         refreshInFlight.current = false;
       }
     };
-    const interval = setInterval(refreshWhenVisible, 5000);
+    const interval = setInterval(refreshWhenVisible, 3000);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       active = false;
+      mountedRef.current = false;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
