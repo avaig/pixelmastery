@@ -183,7 +183,25 @@ export default function CentralDispatch() {
     return String(value ?? '')
       .replace(/CUSTOMER_CAR_WASH_OFFER_JSON:[\s\S]*$/i, '')
       .replace(/CAR_WASH_DECISIONS_JSON:[\s\S]*$/i, '')
+      .replace(/^Customer requested these Car Wash services:[\s\S]*?(?:Prices are indicative demo menu prices\.?|$)/i, '')
+      .replace(/^Customer selected\s*/i, '')
       .trim();
+  }
+
+  function getCarWashAdminSummary(value) {
+    const text = String(value ?? '');
+    const body = text.match(/these Car Wash services:\s*(.*?)\.\s*(?:Menu Total|Estimated Total Value):/i)?.[1] ?? '';
+    const items = body.split(';').map((part) => part.trim()).filter(Boolean).map((part) => {
+      const pickup = /Pickup\s*&\s*Drop/i.test(part);
+      const itemMatch = part.match(/^(.*?)\s*[×x]\s*(\d+)\s*=\s*₹\s*([\d,]+)/i);
+      const pickupMatch = part.match(/Pickup\s*&\s*Drop\s*[—-]\s*₹\s*([\d,]+)/i);
+      if (pickup) return { name: 'Pickup & Drop', quantity: 1, amount: Number((pickupMatch?.[1] ?? '100').replace(/,/g, '')) };
+      if (itemMatch) return { name: itemMatch[1].trim(), quantity: Number(itemMatch[2]), amount: Number(itemMatch[3].replace(/,/g, '')) };
+      return { name: part, quantity: 1, amount: null };
+    });
+    const totalMatch = text.match(/Menu Total:\s*₹\s*([\d,]+)/i);
+    const offerMatch = text.match(/Customer Car Wash total offer:\s*₹\s*([\d,]+)/i);
+    return { items, menuTotal: totalMatch ? Number(totalMatch[1].replace(/,/g, '')) : null, customerOffer: offerMatch ? Number(offerMatch[1].replace(/,/g, '')) : null };
   }
 
   function isFixedPriceRequest(request) {
