@@ -26,6 +26,9 @@ export default function JobsDetail() {
   const [working, setWorking] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [showDemoQr, setShowDemoQr] = useState(false);
+  const [carWashExtraDescription, setCarWashExtraDescription] = useState('');
+  const [carWashExtraPrice, setCarWashExtraPrice] = useState('');
+  const [carWashExtraQuantity, setCarWashExtraQuantity] = useState('1');
   const [paymentTimingDraft, setPaymentTimingDraft] = useState('');
   const [acDiagnosisDraft, setAcDiagnosisDraft] = useState('');
   const [acEstimateDraft, setAcEstimateDraft] = useState('');
@@ -33,7 +36,7 @@ export default function JobsDetail() {
   const [inspectionDraft, setInspectionDraft] = useState({ registration: '', notes: '', photos: [] });
   const { invoke: sendInvoiceEmail, loading: emailingInvoice } = useFunction(import.meta.env.VITE_EMAIL_LOCAL_INVOICE);
   const { data: job, loading, error, run } = useFetch(() => sdk.table('jobs_c').select([
-    'Id','Name','request_c','response_c','customer_c','technician_c','agreed_price_c','original_provider_quote_c','payment_timing_c','booking_commitment_amount_c','remaining_amount_c','local_service_fee_amount_c','customer_discount_amount_c','customer_tax_amount_c','customer_payable_now_c','provider_completed_jobs_count_c','provider_commission_rate_c','provider_commission_amount_c','provider_settlement_amount_c','billing_status_c','service_mode_c','scheduled_at_c','status_c','payment_status_c','payment_method_c','payment_reference_c','pickup_photos_c','progress_photos_c','return_photos_c','pickup_confirmed_at_c','returned_at_c','completion_requested_at_c','customer_completion_confirmed_at_c','dispute_status_c','dispute_note_c','payout_status_c','admin_review_note_c','ac_diagnosis_c','ac_estimate_amount_c','ac_estimate_status_c','ac_estimate_notes_c','vehicle_condition_report_c','vehicle_condition_status_c','vehicle_condition_confirmed_at_c'
+    'Id','Name','request_c','response_c','customer_c','technician_c','agreed_price_c','original_provider_quote_c','payment_timing_c','booking_commitment_amount_c','remaining_amount_c','local_service_fee_amount_c','customer_discount_amount_c','customer_tax_amount_c','customer_payable_now_c','provider_completed_jobs_count_c','provider_commission_rate_c','provider_commission_amount_c','provider_settlement_amount_c','billing_status_c','service_mode_c','scheduled_at_c','status_c','payment_status_c','payment_method_c','payment_reference_c','pickup_photos_c','progress_photos_c','return_photos_c','pickup_confirmed_at_c','returned_at_c','completion_requested_at_c','customer_completion_confirmed_at_c','dispute_status_c','dispute_note_c','payout_status_c','admin_review_note_c','ac_diagnosis_c','ac_estimate_amount_c','ac_estimate_status_c','ac_estimate_notes_c','vehicle_condition_report_c','vehicle_condition_status_c','vehicle_condition_confirmed_at_c','original_car_wash_price_c','car_wash_extra_items_c','car_wash_revision_status_c','car_wash_revision_number_c','car_wash_customer_approval_at_c'
   ]).get(id).then((res) => {
     if (!res.success) throw new Error(res.message);
     return res.data ?? null;
@@ -57,6 +60,16 @@ export default function JobsDetail() {
   const displayLookup = (value) => value?.Name ?? value?.name ?? value?.Id ?? value ?? '—';
   const displayMoney = (value) => '₹' + Number(value ?? 0).toLocaleString('en-IN');
   const isPaid = job?.payment_status_c === 'Final Payment Paid';
+  let carWashItems = [];
+  try { carWashItems = job?.car_wash_extra_items_c ? JSON.parse(job.car_wash_extra_items_c) : []; } catch { carWashItems = []; }
+  if (!Array.isArray(carWashItems)) carWashItems = [];
+  const carWashBasePrice = Number(job?.original_car_wash_price_c ?? job?.original_provider_quote_c ?? job?.agreed_price_c ?? 0);
+  const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved');
+  const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending');
+  const carWashExtrasTotal = carWashApprovedExtras.reduce((sum, item) => sum + Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1), 0);
+  const carWashServiceTotal = isCarWash ? carWashBasePrice + carWashExtrasTotal : Number(job?.agreed_price_c ?? 0);
+  const carWashPlatformFee = isCarWash ? 25 : 0;
+  const carWashCustomerTotal = carWashServiceTotal + carWashPlatformFee;
   const awaitingSince = job?.completion_requested_at_c ? new Date(job.completion_requested_at_c).getTime() : 0;
   const adminReviewDue = job?.status_c === 'Awaiting Customer Confirmation' && awaitingSince > 0 && Date.now() - awaitingSince >= 24 * 60 * 60 * 1000;
   let savedInspection = null;
@@ -233,6 +246,36 @@ export default function JobsDetail() {
     await updateJob({ ac_estimate_status_c: 'Declined' }, 'Estimate declined. The Service Provider can revise and resubmit it.');
   }
 
+  async function submitCarWashExtra() {
+    if (!isProvider || !isCarWash) return;
+    const description = carWashExtraDescription.trim();
+    const unitPrice = Number(carWashExtraPrice);
+    const quantity = Number(carWashExtraQuantity);
+    if (!description) { toast.error('Describe the additional service or part.'); return; }
+    if (carWashExtraPrice === '' || !Number.isFinite(unitPrice) || unitPrice < 0 || !Number.isInteger(quantity) || quantity < 1) { toast.error('Enter a valid price and quantity.'); return; }
+    if (carWashPendingExtras.length) { toast.error('A revised bill is already awaiting customer approval.'); return; }
+    const originalPrice = Number(job.original_car_wash_price_c ?? job.original_provider_quote_c ?? job.agreed_price_c ?? 0);
+    const revision = Number(job.car_wash_revision_number_c ?? 0) + 1;
+    const item = { id: 'extra-' + Date.now(), description, unitPrice, quantity, status: 'Pending', proposedAt: new Date().toISOString(), proposedBy: displayLookup(job.technician_c), revision };
+    const nextItems = [...carWashItems, item];
+    await updateJob({ original_car_wash_price_c: originalPrice, car_wash_extra_items_c: JSON.stringify(nextItems), car_wash_revision_status_c: 'Pending Customer Approval', car_wash_revision_number_c: revision, car_wash_customer_approval_at_c: null, local_service_fee_amount_c: 25 }, 'Revised Car Wash bill sent to the customer. Do not perform the extra work until approved.');
+    setCarWashExtraDescription('');
+    setCarWashExtraPrice('');
+    setCarWashExtraQuantity('1');
+  }
+
+  async function respondToCarWashRevision(approve) {
+    if (!isCustomer || !isCarWash || !carWashPendingExtras.length) return;
+    const now = new Date().toISOString();
+    const pendingIds = new Set(carWashPendingExtras.map((item) => item.id));
+    const nextItems = carWashItems.map((item) => pendingIds.has(item.id) ? { ...item, status: approve ? 'Approved' : 'Rejected', customerRespondedAt: now } : item);
+    const approvedExtras = nextItems.filter((item) => item.status === 'Approved').reduce((sum, item) => sum + Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1), 0);
+    const basePrice = Number(job.original_car_wash_price_c ?? job.original_provider_quote_c ?? job.agreed_price_c ?? 0);
+    const serviceTotal = basePrice + approvedExtras;
+    const calculated = getBillingBreakdown(serviceTotal, job.service_mode_c ?? 'Normal', Number(job.provider_completed_jobs_count_c ?? 0), Number(job.customer_discount_amount_c ?? 0), Number(job.customer_tax_amount_c ?? 0));
+    await updateJob({ car_wash_extra_items_c: JSON.stringify(nextItems), car_wash_revision_status_c: approve ? 'Approved' : 'Rejected', car_wash_customer_approval_at_c: now, agreed_price_c: serviceTotal, local_service_fee_amount_c: 25, customer_payable_now_c: serviceTotal + 25, provider_commission_rate_c: calculated.providerCommissionRate, provider_commission_amount_c: calculated.providerCommission, provider_settlement_amount_c: calculated.providerSettlement, billing_status_c: 'Ready for Confirmation' }, approve ? 'Revised bill approved. The Service Provider may now perform the additional work.' : 'Additional work declined. The original agreed service remains unchanged.');
+  }
+
   async function confirmCustomerCompletion() {
     if (isCarCare && (!hasSixBeforePhotos || !hasSixAfterPhotos)) {
       toast.error('Completion confirmation is locked until all six before-service and all six after-service vehicle photos are saved to this job.');
@@ -287,11 +330,12 @@ export default function JobsDetail() {
     setWorking(true);
     try {
       const isFinalBalancePayment = !isCarCare && !isAcService && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid';
-      const amount = isCarCare || isAcService || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
+      const amount = isCarWash ? Number(job.agreed_price_c ?? job.original_car_wash_price_c ?? 0) + 25 : isCarCare || isAcService || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
       const calculated = getBillingBreakdown(job.agreed_price_c, job.service_mode_c ?? 'Normal', Number(job.provider_completed_jobs_count_c ?? 0), Number(job.customer_discount_amount_c ?? 0), 0);
       const reference = 'DEMO-' + paymentMethod.toUpperCase().replace(' ', '-') + '-' + String(Date.now()).slice(-6);
       const values = (isCarCare || isAcService || isFinalBalancePayment) ? {
         remaining_amount_c: 0,
+        local_service_fee_amount_c: isCarWash ? 25 : Number(job.local_service_fee_amount_c ?? 0),
         customer_payable_now_c: amount,
         billing_status_c: 'Final Paid',
         payment_status_c: 'Final Payment Paid',
