@@ -18,14 +18,22 @@ export default function OwnerLayout() {
   const { user, logout, homeRoute, navItems, navGroups, initials, displayName, counts } = useOwnerLayoutData();
   const location = useLocation();
 
-  // Reset the main content scroll position whenever the user navigates to a page.
-  // The browser may preserve the previous scroll offset across client-side routes.
-  useEffect(() => {
+  // Reset every likely page scroll container, including the document and app content.
+  function scrollPageToTop() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    const main = document.querySelector('main');
-    if (main) main.scrollTop = 0;
-    const scrollable = document.querySelectorAll('[data-page-scroll], main');
-    scrollable.forEach((element) => { element.scrollTop = 0; });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.querySelectorAll('main, [data-page-scroll], [class*="overflow-y-auto"], [class*="overflow-auto"]').forEach((element) => { element.scrollTop = 0; });
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.querySelectorAll('main, [data-page-scroll], [class*="overflow-y-auto"], [class*="overflow-auto"]').forEach((element) => { element.scrollTop = 0; });
+    });
+  }
+
+  useEffect(() => {
+    scrollPageToTop();
   }, [location.pathname, location.search, location.hash]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [language, setLanguageState] = useState(getLanguage);
@@ -98,17 +106,8 @@ export default function OwnerLayout() {
                 end={item.to === homeRoute || item.to === '/admin' || item.to === '/admin/provider-onboarding'}
                 onClick={() => {
                   setMobileOpen(false);
-                  // Reset scroll even when the clicked link is already the active route.
-                  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-                  document.documentElement.scrollTop = 0;
-                  document.body.scrollTop = 0;
-                  requestAnimationFrame(() => {
-                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-                    document.documentElement.scrollTop = 0;
-                    document.body.scrollTop = 0;
-                    const main = document.querySelector('main');
-                    if (main) main.scrollTop = 0;
-                  });
+                  // Also reset when the clicked link is already active.
+                  scrollPageToTop();
                 }}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
@@ -179,6 +178,15 @@ export default function OwnerLayout() {
         <main className="min-w-0 p-4 md:p-6 lg:p-8">
           <ErrorBoundary><Outlet /></ErrorBoundary>
         </main>
+        <button
+          type="button"
+          onClick={scrollPageToTop}
+          aria-label="Scroll to top"
+          title="Back to top"
+          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-lg transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <ApperIcon name="ArrowUp" size={22} />
+        </button>
       </div>
     </div>
   );
