@@ -564,7 +564,7 @@ export default function JobsDetail() {
         eyebrow={tr('Job', language)}
         title={job.Name}
         description={isCarWash ? 'Car Wash evidence, customer confirmation and post-return payment.' : isAcService ? 'AC service progress, customer confirmation and post-service payment.' : tr('Manage the confirmed service job and its progress.', language)}
-        action={<Button asChild variant="outline"><Link to="/jobs"><ApperIcon name="ArrowLeft" size={16} /> {tr('Back to jobs', language)}</Link></Button>}
+        action={<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => run()} disabled={loading}><ApperIcon name="RefreshCw" size={16} className={loading ? 'animate-spin' : ''} /> Refresh</Button><Button asChild variant="outline"><Link to="/jobs"><ApperIcon name="ArrowLeft" size={16} /> {tr('Back to jobs', language)}</Link></Button></div>}
       />
       <Card className="border-l-4 border-success p-5 md:p-7">
         <div className="grid gap-6 md:grid-cols-2">

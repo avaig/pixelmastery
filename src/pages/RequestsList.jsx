@@ -158,6 +158,7 @@ export default function RequestsList() {
             ).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button type="button" variant="outline" className="shrink-0" onClick={() => run()} disabled={loading}><ApperIcon name="RefreshCw" size={16} className={loading ? 'animate-spin' : ''} /> Refresh</Button>
       </div>
       {loading && !data ? <div className="h-96 animate-pulse rounded-lg border border-border bg-muted" /> : error ? <Card className="border-l-4 border-destructive p-6"><div className="font-medium">Could not load service requests.</div><p className="mt-1 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : (
         <div aria-busy={loading} className={loading ? 'pointer-events-none opacity-60' : ''}>
