@@ -96,7 +96,20 @@ export default function OwnerLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.to === homeRoute || item.to === '/admin' || item.to === '/admin/provider-onboarding'}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => {
+                  setMobileOpen(false);
+                  // Reset scroll even when the clicked link is already the active route.
+                  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+                  document.documentElement.scrollTop = 0;
+                  document.body.scrollTop = 0;
+                  requestAnimationFrame(() => {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                    const main = document.querySelector('main');
+                    if (main) main.scrollTop = 0;
+                  });
+                }}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground',
