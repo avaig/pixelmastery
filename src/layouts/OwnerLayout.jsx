@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useOwnerLayoutData } from '@/hooks/useOwnerLayoutData';
 import { APP_CONFIG } from '@/config/app.config';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,17 @@ const PROVIDER_AVAILABILITY = ['Available Now', 'Available Later', 'Unavailable 
 
 export default function OwnerLayout() {
   const { user, logout, homeRoute, navItems, navGroups, initials, displayName, counts } = useOwnerLayoutData();
+  const location = useLocation();
+
+  // Reset the main content scroll position whenever the user navigates to a page.
+  // The browser may preserve the previous scroll offset across client-side routes.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    const main = document.querySelector('main');
+    if (main) main.scrollTop = 0;
+    const scrollable = document.querySelectorAll('[data-page-scroll], main');
+    scrollable.forEach((element) => { element.scrollTop = 0; });
+  }, [location.pathname, location.search, location.hash]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [language, setLanguageState] = useState(getLanguage);
   const [providerAvailability, setProviderAvailability] = useState('Unavailable Today');
