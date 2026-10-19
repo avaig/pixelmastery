@@ -25,6 +25,8 @@ export default function JobsDetail() {
   const { id } = useParams();
   const user = useSelector((state) => state.user.user);
   const [working, setWorking] = useState(false);
+  const [providerOtpDraft, setProviderOtpDraft] = useState('');
+  const [liveLocation, setLiveLocation] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [showDemoQr, setShowDemoQr] = useState(false);
   const [carWashExtraDescription, setCarWashExtraDescription] = useState('');
@@ -38,7 +40,7 @@ export default function JobsDetail() {
   const [inspectionDraft, setInspectionDraft] = useState({ registration: '', notes: '', photos: [] });
   const { invoke: sendInvoiceEmail, loading: emailingInvoice } = useFunction(import.meta.env.VITE_EMAIL_LOCAL_INVOICE);
   const { data: job, loading, error, run } = useFetch(() => sdk.table('jobs_c').select([
-    'Id','Name','request_c','response_c','customer_c','technician_c','agreed_price_c','original_provider_quote_c','payment_timing_c','booking_commitment_amount_c','remaining_amount_c','local_service_fee_amount_c','customer_discount_amount_c','customer_tax_amount_c','customer_payable_now_c','provider_completed_jobs_count_c','provider_commission_rate_c','provider_commission_amount_c','provider_settlement_amount_c','billing_status_c','service_mode_c','scheduled_at_c','status_c','payment_status_c','payment_method_c','payment_reference_c','pickup_photos_c','progress_photos_c','return_photos_c','pickup_confirmed_at_c','returned_at_c','completion_requested_at_c','customer_completion_confirmed_at_c','dispute_status_c','dispute_note_c','payout_status_c','admin_review_note_c','ac_diagnosis_c','ac_estimate_amount_c','ac_estimate_status_c','ac_estimate_notes_c','vehicle_condition_report_c','vehicle_condition_status_c','vehicle_condition_confirmed_at_c','original_car_wash_price_c','car_wash_extra_items_c','car_wash_revision_status_c','car_wash_revision_number_c','car_wash_customer_approval_at_c'
+    'Id','Name','request_c','response_c','customer_c','technician_c','agreed_price_c','original_provider_quote_c','payment_timing_c','booking_commitment_amount_c','remaining_amount_c','local_service_fee_amount_c','customer_discount_amount_c','customer_tax_amount_c','customer_payable_now_c','provider_completed_jobs_count_c','provider_commission_rate_c','provider_commission_amount_c','provider_settlement_amount_c','billing_status_c','service_mode_c','scheduled_at_c','status_c','payment_status_c','payment_method_c','payment_reference_c','pickup_photos_c','progress_photos_c','return_photos_c','pickup_confirmed_at_c','returned_at_c','completion_requested_at_c','customer_completion_confirmed_at_c','dispute_status_c','dispute_note_c','payout_status_c','admin_review_note_c','ac_diagnosis_c','ac_estimate_amount_c','ac_estimate_status_c','ac_estimate_notes_c','vehicle_condition_report_c','vehicle_condition_status_c','vehicle_condition_confirmed_at_c','original_car_wash_price_c','car_wash_extra_items_c','car_wash_revision_status_c','car_wash_revision_number_c','car_wash_customer_approval_at_c','provider_latitude_c','provider_longitude_c','provider_location_updated_at_c','provider_travel_status_c','service_start_otp_c','service_start_otp_verified_at_c'
   ]).get(id).then((res) => {
     if (!res.success) throw new Error(res.message);
     return res.data ?? null;
@@ -106,6 +108,10 @@ export default function JobsDetail() {
 
   async function updateJob(values, successMessage) {
     if (working) return;
+    if (values.status_c === 'In Progress' && isProvider && !job.service_start_otp_verified_at_c && !values.service_start_otp_verified_at_c) {
+      toast.error('Service start is locked. The customer must share the service-start OTP first.');
+      return;
+    }
     setWorking(true);
     let refreshAfterSave = false;
     try {
@@ -467,6 +473,66 @@ export default function JobsDetail() {
   async function setStatus(status) {
     await updateJob({ status_c: status }, 'Job status changed to ' + status + '.');
   }
+
+  async function startProviderTravel() {
+    if (!isProvider || job.status_c !== 'Assigned') return;
+    await updateJob({ provider_travel_status_c: 'On The Way' }, 'Live tracking started. Your location will be shared with the customer for this active job.');
+  }
+
+  async function markProviderArrived() {
+    if (!isProvider || job.provider_travel_status_c !== 'On The Way') return;
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    await updateJob({ provider_travel_status_c: 'Arrived', service_start_otp_c: otp, service_start_otp_verified_at_c: null }, 'Arrival recorded. Ask the customer to open LOCAL and share the service-start OTP.');
+  }
+
+  async function verifyServiceStartOtp() {
+    if (!isProvider || job.provider_travel_status_c !== 'Arrived') return;
+    if (!/^\\d{6}$/.test(providerOtpDraft)) {
+      toast.error('Enter the six-digit OTP shown in the customer’s LOCAL app.');
+      return;
+    }
+    if (providerOtpDraft !== String(job.service_start_otp_c ?? '')) {
+      toast.error('Incorrect OTP. Ask the customer to read the code from their LOCAL app.');
+      return;
+    }
+    await updateJob({ service_start_otp_verified_at_c: new Date().toISOString(), status_c: 'In Progress' }, 'OTP verified. Service start recorded.');
+    setProviderOtpDraft('');
+  }
+
+  useEffect(() => {
+    if (!job?.Id || job.status_c === 'Completed' || job.status_c === 'Cancelled') return;
+    let active = true;
+    let locationBusy = false;
+    const readLatestLocation = async () => {
+      try {
+        const result = await sdk.table('jobs_c').select(['Id','provider_latitude_c','provider_longitude_c','provider_location_updated_at_c','provider_travel_status_c','service_start_otp_verified_at_c','status_c']).get(job.Id);
+        if (active && result.success && result.data) setLiveLocation(result.data);
+      } catch { /* Keep the last known location visible if a refresh fails. */ }
+    };
+    const publishProviderLocation = () => {
+      if (!active || !isProvider || job.provider_travel_status_c !== 'On The Way' || locationBusy || !navigator.geolocation) return;
+      locationBusy = true;
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+          const now = new Date().toISOString();
+          const result = await sdk.table('jobs_c').update({ Id: job.Id, provider_latitude_c: position.coords.latitude, provider_longitude_c: position.coords.longitude, provider_location_updated_at_c: now });
+          if (active && result.data?.length) setLiveLocation((current) => ({ ...(current ?? job), provider_latitude_c: position.coords.latitude, provider_longitude_c: position.coords.longitude, provider_location_updated_at_c: now, provider_travel_status_c: 'On The Way' }));
+        } catch { /* Location can retry on the next interval. */ }
+        finally { locationBusy = false; }
+      }, () => { locationBusy = false; }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 });
+    };
+    readLatestLocation();
+    if (isCustomer || isAdmin) {
+      const poll = window.setInterval(readLatestLocation, 5000);
+      return () => { active = false; window.clearInterval(poll); };
+    }
+    if (isProvider && job.provider_travel_status_c === 'On The Way') {
+      publishProviderLocation();
+      const poll = window.setInterval(publishProviderLocation, 10000);
+      return () => { active = false; window.clearInterval(poll); };
+    }
+    return () => { active = false; };
+  }, [job?.Id, job?.status_c, job?.provider_travel_status_c, isProvider, isCustomer, isAdmin]);
 
   async function recordProviderSettlement() {
     if (!isAdmin || !isPaid || job.status_c !== 'Completed' || !job.customer_completion_confirmed_at_c) {
