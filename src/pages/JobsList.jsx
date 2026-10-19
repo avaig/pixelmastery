@@ -45,6 +45,19 @@ export default function JobsList() {
     return { rows: res.data, total: res.total, hasMore: res.hasMore };
   }, [user?.profile, user?.emailAddress, user?.email, search, status, page]);
 
+  // Refresh the job list itself; detail-page polling alone cannot update these cards.
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    const interval = setInterval(refreshWhenVisible, 5000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [run]);
+
   const rows = data?.rows ?? [];
   return (
     <div>
