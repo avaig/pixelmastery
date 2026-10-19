@@ -106,16 +106,14 @@ export default function OwnerLayout() {
                 end={item.to === homeRoute || item.to === '/admin' || item.to === '/admin/provider-onboarding'}
                 onClick={() => {
                   setMobileOpen(false);
-                  // Central Dispatch must return to its overview heading, not just reset the browser window.
-                  scrollPageToTop();
+                  // On the active dispatch route, target its own anchor directly. When entering it from
+                  // another route, CentralDispatch also scrolls to this anchor after mounting.
                   if (item.to === '/admin/dispatch') {
-                    requestAnimationFrame(() => {
-                      requestAnimationFrame(() => {
-                        const heading = document.querySelector('main h1');
-                        if (heading) heading.scrollIntoView({ block: 'start', behavior: 'auto' });
-                        else scrollPageToTop();
-                      });
-                    });
+                    const top = document.getElementById('central-dispatch-page-top');
+                    if (top) top.scrollIntoView({ block: 'start', behavior: 'auto' });
+                    else scrollPageToTop();
+                  } else {
+                    scrollPageToTop();
                   }
                 }}
                 className={({ isActive }) => cn(

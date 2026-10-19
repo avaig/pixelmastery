@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { sdk } from '@/services/sdk';
 import { useFetch } from '@/hooks/useFetch';
 import ApperIcon from '@/components/ApperIcon';
@@ -31,6 +31,15 @@ const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'requi
 const PROVIDER_FIELDS = ['Id', 'Name', 'email_c', 'phone_c', 'status_c', 'verification_status_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c'];
 
 export default function CentralDispatch() {
+  useEffect(() => {
+    // The app shell can retain a nested scroll position; explicitly focus the dispatch page top after mount.
+    const frame = requestAnimationFrame(() => {
+      const top = document.getElementById('central-dispatch-page-top');
+      if (top) top.scrollIntoView({ block: 'start', behavior: 'auto' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   const [search, setSearch] = useState('');
   const [requestFilter, setRequestFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
@@ -439,7 +448,7 @@ export default function CentralDispatch() {
   }
 
   return (
-    <div className="min-w-0 space-y-5 text-slate-900">
+    <div id="central-dispatch-page-top" className="min-w-0 space-y-5 text-slate-900 scroll-mt-20">
       <PageHeader eyebrow="" title="Central Dispatch" description="Manage and assign customer service requests" />
       {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
         <>
