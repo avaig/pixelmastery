@@ -106,8 +106,16 @@ export default function OwnerLayout() {
                 end={item.to === homeRoute || item.to === '/admin' || item.to === '/admin/provider-onboarding'}
                 onClick={() => {
                   setMobileOpen(false);
-                  // Also reset when the clicked link is already active.
+                  // Central Dispatch must return to its overview heading, not just reset the browser window.
                   scrollPageToTop();
+                  if (item.to === '/admin/dispatch') {
+                    requestAnimationFrame(() => {
+                      const heading = document.querySelector('main h1');
+                      if (heading) heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+                      scrollPageToTop();
+                      if (heading) heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+                    });
+                  }
                 }}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
