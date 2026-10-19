@@ -77,7 +77,7 @@ export default function CarCareAssistance() {
             onClick={() => navigate(service.href)}
             className="group flex min-w-0 w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <Card className="flex min-h-[96px] w-full min-w-0 items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[104px] sm:gap-5 sm:p-5">
+            <Card className="flex h-[100px] w-full min-w-0 items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:h-[104px] sm:gap-5 sm:p-5">
               <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-[#132F55] text-white">
                 <ApperIcon name={service.icon} size={32} />
               </div>
