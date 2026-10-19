@@ -77,19 +77,16 @@ export default function CarCareAssistance() {
             onClick={() => navigate(service.href)}
             className="group flex min-w-0 w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <Card className="flex min-h-[76px] w-full min-w-0 items-center gap-3 rounded-xl border-2 p-2.5 transition-all hover:border-primary hover:shadow-md sm:min-h-[88px] sm:gap-3 sm:p-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-11">
-                <ApperIcon name={service.icon} size={23} />
+            <Card className="flex min-h-[96px] w-full min-w-0 items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[104px] sm:gap-5 sm:p-5">
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-[#132F55] text-white">
+                <ApperIcon name={service.icon} size={32} />
               </div>
-              <div className="min-w-0 flex-1 py-1">
-                <div className="font-heading text-[15px] font-semibold leading-snug sm:text-base">
+              <div className="min-w-0 flex-1">
+                <div className="font-heading text-base font-bold leading-snug text-foreground sm:text-lg">
                   {tr(service.title, language)}
                 </div>
-                <p className="mt-0.5 text-xs leading-snug text-muted-foreground sm:text-sm sm:leading-snug">
-                  {tr(service.description, language)}
-                </p>
               </div>
-              <ApperIcon name="ArrowUpRight" size={17} className="ml-auto shrink-0 self-center text-muted-foreground transition-colors group-hover:text-primary" />
+              <ApperIcon name="ArrowRight" size={25} className="ml-auto shrink-0 text-[#132F55] transition-transform group-hover:translate-x-1" />
             </Card>
           </button>
         ))}
