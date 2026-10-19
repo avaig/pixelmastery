@@ -110,10 +110,11 @@ export default function OwnerLayout() {
                   scrollPageToTop();
                   if (item.to === '/admin/dispatch') {
                     requestAnimationFrame(() => {
-                      const heading = document.querySelector('main h1');
-                      if (heading) heading.scrollIntoView({ block: 'start', behavior: 'auto' });
-                      scrollPageToTop();
-                      if (heading) heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+                      requestAnimationFrame(() => {
+                        const heading = document.querySelector('main h1');
+                        if (heading) heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+                        else scrollPageToTop();
+                      });
                     });
                   }
                 }}
