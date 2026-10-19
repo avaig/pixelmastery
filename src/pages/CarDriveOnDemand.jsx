@@ -31,29 +31,29 @@ export default function CarDriveOnDemand() {
   const [selectedService, setSelectedService] = useState('');
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
       <button
         type="button"
         onClick={() => navigate('/customer/car-care')}
-        className="mb-5 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        className="mb-1 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary sm:mb-3"
         aria-label="Back to Car Care and Assistance"
       >
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
-      <div className="mb-7 text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ApperIcon name="CarTaxiFront" size={34} />
+      <div className="mb-3 text-center sm:mb-5">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
+          <ApperIcon name="CarTaxiFront" size={28} />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           Car Driver on Demand
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
           Choose a driver service for your own car.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4">
         {driverServices.map((service) => {
           const selected = selectedService === service.title;
           return (
@@ -64,7 +64,7 @@ export default function CarDriveOnDemand() {
               aria-pressed={selected}
               className="flex h-full w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <Card className={'flex h-full min-h-[360px] w-full flex-col border-2 p-5 text-left transition-all sm:min-h-[380px] sm:p-6 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:-translate-y-1 hover:border-primary hover:shadow-md')}>
+              <Card className={'flex h-full min-h-[190px] w-full flex-col border-2 p-4 text-left transition-all sm:min-h-[300px] sm:p-6 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:-translate-y-1 hover:border-primary hover:shadow-md')}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">

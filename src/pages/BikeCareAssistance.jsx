@@ -29,40 +29,37 @@ export default function BikeCareAssistance() {
   const language = getLanguage();
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
       <button
         type="button"
         aria-label="Back"
         onClick={() => navigate('/')}
-        className="mb-5 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        className="mb-1 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary sm:mb-3"
       >
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
-      <div className="mb-7 text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ApperIcon name="Bike" size={34} />
+      <div className="mb-3 text-center sm:mb-5">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
+          <ApperIcon name="Bike" size={28} />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {tr('Bike Care & Assistance', language)}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
           {tr('What Does Your Bike Need?', language)}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4">
         {services.map((service) => (
           <button key={service.title} type="button" onClick={() => navigate(service.href)} className="w-full text-left">
-            <Card className="flex min-h-[170px] flex-col border-2 p-5 transition-all hover:-translate-y-1 hover:border-primary hover:shadow-md sm:min-h-[190px] sm:p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <ApperIcon name={service.icon} size={30} />
+            <Card className="flex min-h-[88px] flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[96px] sm:gap-4 sm:p-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white sm:size-14">
+                <ApperIcon name={service.icon} size={27} />
                 </div>
-                <ApperIcon name="ArrowUpRight" size={20} className="text-muted-foreground" />
-              </div>
-              <div className="mt-5 font-heading text-lg font-semibold leading-snug">{tr(service.title, language)}</div>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{tr(service.description, language)}</p>
+                <div className="min-w-0 flex-1 font-heading text-base font-bold leading-snug sm:text-lg">{tr(service.title, language)}</div>
+                <ApperIcon name="ArrowRight" size={22} className="ml-auto shrink-0 text-[#132F55]" />
             </Card>
           </button>
         ))}

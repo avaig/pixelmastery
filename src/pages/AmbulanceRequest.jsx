@@ -101,8 +101,8 @@ export default function AmbulanceRequest() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-4 flex justify-start">
+    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
+      <div className="mb-1 flex justify-start sm:mb-3">
         <button
           type="button"
           aria-label="Back"
@@ -112,28 +112,28 @@ export default function AmbulanceRequest() {
           <ApperIcon name="ArrowLeft" size={19} />
         </button>
       </div>
-      <div className="mb-6 text-center">
+      <div className="mb-3 text-center sm:mb-5">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {tr('Emergency', language)}
         </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           🚑 {tr('Emergency Medical Help', language)}
         </h1>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+        <p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">
           {tr('Share your location to find nearby ambulance assistance.', language)}
         </p>
       </div>
-      <Card className="mx-auto max-w-2xl border-2 border-destructive/30 p-7">
+      <Card className="mx-auto max-w-2xl border-2 border-destructive/30 p-4 sm:p-6">
         <div className="flex items-start gap-4">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
-            <ApperIcon name="Ambulance" size={36} />
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive sm:size-14">
+            <ApperIcon name="Ambulance" size={28} />
           </div>
           <div>
             <div className="text-lg font-semibold">{tr('Emergency Medical Help', language)}</div>
             <div className="mt-1 text-sm text-muted-foreground">{tr('We will use your location to show available ambulance assistance.', language)}</div>
           </div>
         </div>
-        <div className="mt-6 grid gap-3">
+        <div className="mt-4 grid gap-3">
           <Button size="lg" variant="destructive" onClick={useCurrentLocation} disabled={loadingLocation}>
             <ApperIcon name="LocateFixed" size={18} />
             {loadingLocation ? tr('Getting location…', language) : tr('Share current location', language)}

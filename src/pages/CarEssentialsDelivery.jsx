@@ -90,18 +90,18 @@ export default function CarEssentialsDelivery() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <Button type="button" variant="outline" onClick={() => navigate('/customer/car-care')}>
+    <div className="mx-auto -mt-3 max-w-5xl space-y-4 sm:mt-0 sm:space-y-6">
+      <Button type="button" variant="outline" className="mb-1" onClick={() => navigate('/customer/car-care')}>
         <ApperIcon name="ArrowLeft" size={17} />
         Back to Car Care & Assistance
       </Button>
 
-      <header className="text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <ApperIcon name="PackageCheck" size={34} />
+      <header className="-mt-1 text-center sm:mt-0">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
+          <ApperIcon name="PackageCheck" size={28} />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Car Essentials at Your Doorstep</h1>
-        <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Car Essentials at Your Doorstep</h1>
+        <p className="mx-auto mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           Essential Car Fluids Delivered to Your Location
         </p>
       </header>

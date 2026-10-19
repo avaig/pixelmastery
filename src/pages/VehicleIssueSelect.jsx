@@ -63,8 +63,8 @@ export default function VehicleIssueSelect() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-4 flex justify-start">
+    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
+      <div className="mb-1 flex justify-start sm:mb-3">
         <button
           type="button"
           aria-label="Back"
@@ -74,17 +74,17 @@ export default function VehicleIssueSelect() {
           <ApperIcon name="ArrowLeft" size={19} />
         </button>
       </div>
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+      <div className="mb-3 text-center sm:mb-5">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {tr(config.title, language)}
         </h1>
       </div>
-      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {config.issues.filter(([label]) => label !== 'Accident / Recovery' && !(vehicle === 'bike' && label === 'Out of Fuel')).map(([label, icon]) => {
           const cardTitle = vehicle === 'car' && label === 'Out of Fuel' ? 'Diesel on Demand' : label;
           return (
           <button key={label} type="button" onClick={() => handleIssue(label)} className="w-full text-left">
-            <Card className="flex h-full min-h-[180px] flex-col items-start border-2 p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md active:translate-y-0 sm:min-h-[190px] sm:p-5">
+            <Card className="flex h-full min-h-[80px] flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[100px] sm:p-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <ApperIcon name={icon} size={27} />
               </div>
@@ -113,7 +113,7 @@ export default function VehicleIssueSelect() {
           onClick={() => handleIssue('Emergency Car Rental')}
           className="w-full text-left"
         >
-          <Card className="flex min-h-[180px] h-full flex-col items-start border-2 p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md sm:min-h-[190px] sm:p-5">
+          <Card className="flex min-h-[80px] h-full flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[100px] sm:p-4">
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <ApperIcon name="CarTaxiFront" size={27} />
             </div>
