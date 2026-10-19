@@ -488,7 +488,7 @@ export default function JobsDetail() {
 
   async function verifyServiceStartOtp() {
     if (!isProvider || job.provider_travel_status_c !== 'Arrived') return;
-    if (!/^\d{6}$/.test(providerOtpDraft)) {
+    if (providerOtpDraft.length !== 6 || !Array.from(providerOtpDraft).every((digit) => digit >= '0' && digit <= '9')) {
       toast.error('Enter the six-digit OTP shown in the customer’s LOCAL app.');
       return;
     }
