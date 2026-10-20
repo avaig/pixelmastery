@@ -29,7 +29,7 @@ export default function BikeCareAssistance() {
   const language = getLanguage();
 
   return (
-    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
+    <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
       <button
         type="button"
         aria-label="Back"

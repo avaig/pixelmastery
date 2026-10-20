@@ -101,7 +101,7 @@ export default function AmbulanceRequest() {
   }
 
   return (
-    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
+    <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
       <div className="mb-1 flex justify-start sm:mb-3">
         <button
           type="button"

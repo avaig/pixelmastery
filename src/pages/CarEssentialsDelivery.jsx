@@ -91,12 +91,11 @@ export default function CarEssentialsDelivery() {
 
   return (
     <div className="mx-auto -mt-3 max-w-5xl space-y-4 sm:mt-0 sm:space-y-6">
-      <Button type="button" variant="outline" className="mb-1" onClick={() => navigate('/customer/car-care')}>
-        <ApperIcon name="ArrowLeft" size={17} />
-        Back to Car Care & Assistance
-      </Button>
+      <button type="button" aria-label="Back to Car Care & Assistance" onClick={() => navigate('/customer/car-care')} className="flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary">
+        <ApperIcon name="ArrowLeft" size={19} />
+      </button>
 
-      <header className="-mt-1 text-center sm:mt-0">
+      <header className="-mt-1 -mb-1 text-center sm:mt-0 sm:mb-0">
         <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
           <ApperIcon name="PackageCheck" size={28} />
         </div>
@@ -117,14 +116,14 @@ export default function CarEssentialsDelivery() {
               onClick={() => toggleProduct(product.id)}
               className="h-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <Card className={'flex h-full min-h-[210px] flex-col border-2 p-5 transition-all ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:border-primary/50')}>
+              <Card className={'flex h-full min-h-[164px] flex-col border-2 p-4 transition-all sm:min-h-[190px] sm:p-5 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:border-primary/50')}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <ApperIcon name={product.icon} size={26} />
                   </div>
                   <ApperIcon name={selected ? 'CircleCheck' : 'Circle'} size={21} className={selected ? 'text-primary' : 'text-muted-foreground'} />
                 </div>
-                <h2 className="mt-5 font-semibold leading-snug">{product.title}</h2>
+                <h2 className="mt-3 font-semibold leading-snug">{product.title}</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{product.detail}</p>
                 {selected && (

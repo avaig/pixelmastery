@@ -31,7 +31,7 @@ export default function CarDriveOnDemand() {
   const [selectedService, setSelectedService] = useState('');
 
   return (
-    <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
+    <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
       <button
         type="button"
         onClick={() => navigate('/customer/car-care')}
@@ -64,7 +64,7 @@ export default function CarDriveOnDemand() {
               aria-pressed={selected}
               className="flex h-full w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <Card className={'flex h-full min-h-[190px] w-full flex-col border-2 p-4 text-left transition-all sm:min-h-[300px] sm:p-6 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:-translate-y-1 hover:border-primary hover:shadow-md')}>
+              <Card className={'flex h-full min-h-[150px] w-full flex-col border-2 p-4 text-left transition-all sm:min-h-[240px] sm:p-5 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:-translate-y-1 hover:border-primary hover:shadow-md')}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
