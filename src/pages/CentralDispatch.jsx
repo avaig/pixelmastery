@@ -392,6 +392,7 @@ export default function CentralDispatch() {
               <StatusBadge value={request.status_c} />
             </div>
             <div className="space-y-5 p-5">
+              {String(request.status_c ?? '') === 'Cancelled' && <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-4"><div className="flex items-center gap-2 font-semibold text-destructive"><ApperIcon name="XCircle" size={18} /> Booking Cancelled</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Cancelled by</p><p className="mt-1 font-medium">{cancellationDetails?.actorName || cancellationDetails?.actor || 'Details not recorded'}</p><p className="text-xs text-muted-foreground">{cancellationDetails?.actor || 'Actor unknown'}</p></div><div><p className="text-xs text-muted-foreground">Cancelled on</p><p className="mt-1 font-medium">{formatCancellationTime(cancellationDetails?.cancelledAt)}</p></div><div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Reason</p><p className="mt-1 text-sm">{cancellationDetails?.reason || 'Reason not recorded'}</p></div><div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Booking stage</p><p className="mt-1 text-sm">{cancellationDetails?.stage || 'Not recorded'}</p></div></div></section>}
               <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-3 text-primary"><ApperIcon name="CarFront" size={26} /></div>
                 <div>

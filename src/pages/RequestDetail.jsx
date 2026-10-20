@@ -485,7 +485,7 @@ export default function RequestDetail() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={working}>Keep request</AlertDialogCancel>
+            <AlertDialogCancel disabled={working} onClick={() => setCancelReason('')}>Keep request</AlertDialogCancel>
             <AlertDialogAction onClick={removeRequest} disabled={working}>
               {working ? 'Cancelling…' : 'Confirm cancellation'}
             </AlertDialogAction>
