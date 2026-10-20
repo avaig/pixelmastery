@@ -291,7 +291,8 @@ export default function RequestDetail() {
   }
 
   async function submitCarEssentialsQuote(response) {
-    if (!isTechnician || !isCarEssentialsRequest || !response?.Id || !['Pending', 'Selected'].includes(response.status_c) || !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? ''))) return;\n    if (!quoteCalculated) { toast.error('Press “Press to Calculate Total Amount” before submitting the quote.'); return; }
+    if (!isTechnician || !isCarEssentialsRequest || !response?.Id || !['Pending', 'Selected'].includes(response.status_c) || !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? ''))) return;
+    if (!quoteCalculated) { toast.error('Press “Press to Calculate Total Amount” before submitting the quote.'); return; }
     const prices = requestLineItems.map((item, index) => ({ name: item.name, quantity: Number(item.quantity || 1), unitPrice: Number(quotePrices[index]), lineTotal: Number(quotePrices[index]) * Number(item.quantity || 1) }));
     const fee = Number(deliveryCharge);
     if (!prices.length || prices.some((item) => !Number.isFinite(item.unitPrice) || item.unitPrice <= 0) || !Number.isFinite(fee) || fee < 0) {
