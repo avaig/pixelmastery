@@ -524,25 +524,24 @@ export default function Home() {
         </section>
 
         <section className="mx-auto max-w-5xl px-4 pb-8 sm:px-8 sm:pb-10 lg:px-10">
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-4 py-6 shadow-sm sm:px-7 sm:py-7">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-3 py-4 shadow-sm sm:px-6 sm:py-5">
             <div className="pointer-events-none absolute -right-10 -top-12 size-36 rounded-full bg-emerald-50" />
             <div className="relative">
               <div className="text-center">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-700 sm:text-xs">{tr('Local Needs. Local Solutions.', language)}</p>
-                <h2 className="mt-1 text-xl font-black tracking-tight text-[#102c4d] sm:text-2xl">{tr('Why Choose LOCAL?', language)}</h2>
-                <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">{tr('Local help, clear information, and a simpler way to arrange a service.', language)}</p>
+                <h2 className="text-xl font-black tracking-tight text-[#102c4d] sm:text-2xl">{tr('Why Choose LOCAL?', language)}</h2>
               </div>
-              <div className="mx-auto mt-4 grid max-w-xl grid-cols-4 gap-2 sm:mt-5 sm:gap-3">
+              <div className="mx-auto mt-3 grid max-w-xl grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-4 sm:gap-3">
                 {[
                   { icon: 'MapPin', label: 'Nearby help' },
                   { icon: 'ShieldCheck', label: 'Provider verification' },
                   { icon: 'IndianRupee', label: 'Clear pricing' },
                   { icon: 'Clock3', label: 'Arrival updates' },
                 ].map((item) => (
-                  <div key={item.icon} aria-label={item.label} title={item.label} className="flex min-w-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 transition hover:border-emerald-100 hover:bg-emerald-50/50 sm:rounded-2xl sm:p-3">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-slate-100 sm:size-10 sm:rounded-xl">
-                      <ApperIcon name={item.icon} size={20} />
+                  <div key={item.icon} className="flex min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50/70 px-2 py-2 transition hover:border-emerald-100 hover:bg-emerald-50/50 sm:rounded-2xl sm:gap-3 sm:px-3 sm:py-2.5">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-slate-100 sm:size-11 sm:rounded-xl">
+                      <ApperIcon name={item.icon} size={21} />
                     </div>
+                    <span className="text-xs font-extrabold leading-tight text-[#102c4d] sm:text-sm">{tr(item.label, language)}</span>
                   </div>
                 ))}
               </div>
