@@ -142,22 +142,22 @@ export default function CarEssentialsDelivery() {
   }
 
   return (
-    <div className="mx-auto -mt-3 max-w-5xl space-y-4 sm:mt-0 sm:space-y-6">
+    <div className="mx-auto -mt-3 max-w-5xl space-y-3 sm:mt-0 sm:space-y-6">
       <button type="button" aria-label="Back to Car Care & Assistance" onClick={() => navigate('/customer/car-care')} className="flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary">
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
       <header className="-mt-1 -mb-1 text-center sm:mt-0 sm:mb-0">
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
-          <ApperIcon name="PackageCheck" size={28} />
+        <div className="mx-auto mb-1 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:mb-3 sm:size-14">
+          <ApperIcon name="PackageCheck" size={22} />
         </div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Car Essentials at Your Doorstep</h1>
-        <p className="mx-auto mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <h1 className="text-lg font-bold tracking-tight sm:text-2xl">Car Essentials at Your Doorstep</h1>
+        <p className="mx-auto mt-1 max-w-2xl text-xs leading-snug text-muted-foreground sm:text-base">
           Essential Car Fluids Delivered to Your Location
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
         {PRODUCTS.map((product) => {
           const selected = selectedProducts.includes(product.id);
           return (
@@ -168,18 +168,19 @@ export default function CarEssentialsDelivery() {
               onClick={() => toggleProduct(product.id)}
               className="h-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <Card className={'flex h-full min-h-[164px] flex-col border-2 p-4 transition-all sm:min-h-[190px] sm:p-5 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:border-primary/50')}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <ApperIcon name={product.icon} size={26} />
-                  </div>
-                  <ApperIcon name={selected ? 'CircleCheck' : 'Circle'} size={21} className={selected ? 'text-primary' : 'text-muted-foreground'} />
+              <Card className={'flex h-full flex-row items-start gap-3 border-2 p-3 transition-all sm:min-h-[190px] sm:flex-col sm:p-5 ' + (selected ? 'border-primary bg-primary/5 shadow-md' : 'hover:border-primary/50')}>
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-12 sm:rounded-xl">
+                  <ApperIcon name={product.icon} size={21} />
                 </div>
-                <h2 className="mt-3 font-semibold leading-snug">{product.title}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{product.detail}</p>
+                <div className="min-w-0 flex-1 sm:w-full">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="font-semibold leading-snug">{product.title}</h2>
+                    <ApperIcon name={selected ? 'CircleCheck' : 'Circle'} size={19} className={'shrink-0 ' + (selected ? 'text-primary' : 'text-muted-foreground')} />
+                  </div>
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground sm:mt-2 sm:text-sm sm:leading-relaxed">{product.description}</p>
+                  <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:mt-3 sm:text-xs sm:leading-relaxed">{product.detail}</p>
                 {selected && (
-                  <div className="mt-4 border-t pt-3" onClick={(event) => event.stopPropagation()}>
+                  <div className="mt-2 border-t pt-2 sm:mt-4 sm:pt-3" onClick={(event) => event.stopPropagation()}>
                     <label htmlFor={'quantity-' + product.id} className="text-sm font-medium">Quantity / pack count</label>
                     <Input
                       id={'quantity-' + product.id}
@@ -199,10 +200,10 @@ export default function CarEssentialsDelivery() {
         })}
       </div>
 
-      <Card className="border-2 border-primary/15 p-5 sm:p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ApperIcon name="MapPin" size={23} />
+      <Card className="border-2 border-primary/15 p-3 sm:p-6">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-11 sm:rounded-xl">
+            <ApperIcon name="MapPin" size={20} />
           </div>
           <div>
             <h2 className="font-semibold">Delivery details</h2>
@@ -210,7 +211,7 @@ export default function CarEssentialsDelivery() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4">
           <div>
             <label htmlFor="car-essentials-vehicle" className="text-sm font-medium">Car make and model</label>
             <Input
@@ -265,7 +266,7 @@ export default function CarEssentialsDelivery() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-xl border bg-muted/30 p-4">
+        <div className="mt-3 rounded-lg border bg-muted/30 p-3 sm:mt-5 sm:rounded-xl sm:p-4">
           <div className="flex items-start gap-3">
             <ApperIcon name="MapPinned" size={21} className="mt-0.5 text-primary" />
             <div className="space-y-1">
@@ -275,11 +276,11 @@ export default function CarEssentialsDelivery() {
           </div>
         </div>
 
-        <Button type="button" className="mt-5 w-full" onClick={checkAvailability}>
+        <Button type="button" className="mt-3 w-full sm:mt-5" onClick={checkAvailability}>
           <ApperIcon name="MapPinCheck" size={17} />
           Find a LOCAL Provider
         </Button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
+        <p className="mt-2 text-center text-[11px] leading-snug text-muted-foreground sm:mt-3 sm:text-xs">
           This checks your request; it does not confirm an order or take payment.
         </p>
       </Card>
