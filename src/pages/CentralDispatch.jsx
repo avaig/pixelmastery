@@ -269,14 +269,37 @@ export default function CentralDispatch() {
     return { type: 'Service request', title: 'Service details', items: [], total: null, offer: null, notes: getCleanRequestNotes(description), structured: false };
   }
 
+  function getCarWashMenuTotal(notes) {
+    const marker = 'CAR_WASH_DECISIONS_JSON:';
+    const markerIndex = notes.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const jsonStart = markerIndex + marker.length;
+    const jsonEnd = notes.indexOf(']', jsonStart);
+    if (jsonEnd < 0) return null;
+    try {
+      const items = JSON.parse(notes.slice(jsonStart, jsonEnd + 1));
+      if (!Array.isArray(items) || !items.length) return null;
+      const total = items.reduce((sum, item) => {
+        const price = Number(item.listedUnitPrice ?? item.unitPrice ?? item.price);
+        const quantity = Number(item.quantity ?? 1);
+        return sum + (Number.isFinite(price) && price >= 0 && Number.isFinite(quantity) && quantity > 0 ? price * quantity : 0);
+      }, 0);
+      return Number.isFinite(total) && total > 0 ? total : null;
+    } catch {
+      return null;
+    }
+  }
+
   function isFixedPriceRequest(request) {
     if (String(request?.pricing_mode_c ?? '').toLowerCase() === 'fixed price') return true;
     const notes = String(request?.problem_description_c ?? '');
-    return /(?:listed package price|menu total|customer car wash total offer|actual price of service|fixed service total|package price)\s*:/i.test(notes);
+    return getCarWashMenuTotal(notes) !== null || /(?:listed package price|menu total|customer car wash total offer|actual price of service|fixed service total|package price)\s*:/i.test(notes);
   }
 
   function getFixedPrice(request) {
     const notes = String(request?.problem_description_c ?? '');
+    const menuTotal = getCarWashMenuTotal(notes);
+    if (menuTotal !== null) return menuTotal;
     const patterns = [
       /(?:Menu Total|Customer Car Wash total offer|Actual Price of Service|Listed package price|Package price|Fixed service total|Service total)\s*:?\s*(?:₹|INR)?\s*([\d,]+(?:\.\d{1,2})?)/gi,
     ];
