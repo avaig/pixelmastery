@@ -21,7 +21,7 @@ function readCarEssentialsQuote(message) {
   const source = String(message ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Array.isArray(payload.items) ? payload : null; } catch { return null; }
+  try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && Array.isArray(payload.items) ? payload : null; } catch { return null; }
 }
 
 function readCarEssentialsApproval(description) {
@@ -35,9 +35,9 @@ function readCarEssentialsApproval(description) {
 function getRequestLineItems(request) {
   const description = String(request?.problem_description_c ?? '');
   if (/car essentials delivery/i.test(String(request?.Name ?? '') + ' ' + description)) {
-    const itemsText = description.match(/Car Essentials order details:\\s*([^.]+)/i)?.[1] ?? '';
+    const itemsText = description.match(/Car Essentials order details:\s*([^.]+)/i)?.[1] ?? '';
     const items = itemsText.split(';').map((part) => part.trim()).filter(Boolean).map((part) => {
-      const match = part.match(/^(.*?)\\s*[×x]\\s*(\\d+)/i);
+      const match = part.match(/^(.*?)\s*[×x]\s*(\d+)/i);
       return { name: match ? match[1].trim() : part, quantity: match ? Number(match[2]) : 1, price: null, fixed: false };
     });
     return items.length ? items : [{ name: 'Requested product details', quantity: 1, price: null, fixed: false }];

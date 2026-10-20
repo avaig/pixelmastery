@@ -34,7 +34,7 @@ function readCarEssentialsQuote(message) {
   const source = String(message ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Array.isArray(payload.items) && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
+  try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && Array.isArray(payload.items) && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
 }
 
 function readCarEssentialsApproval(description) {
@@ -42,7 +42,7 @@ function readCarEssentialsApproval(description) {
   const source = String(description ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+  try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
 function readCancellationDetails(description) {
@@ -335,7 +335,7 @@ export default function CentralDispatch() {
     try {
       const updatedQuote = { ...quote, status: 'Sent to Customer', reviewedAt: new Date().toISOString(), reviewedBy: 'LOCAL Admin' };
       const baseMessage = String(response.message_c ?? '').split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].trimEnd();
-      const result = await sdk.table('technician_responses_c').update({ Id: response.Id, message_c: baseMessage + '\\\\nLOCAL_CAR_ESSENTIALS_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
+      const result = await sdk.table('technician_responses_c').update({ Id: response.Id, message_c: baseMessage + '\\nLOCAL_CAR_ESSENTIALS_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
       if (!result.data?.length) throw new Error(result.messages?.[0] || 'Reviewed quote could not be sent to customer.');
       toast.success('Admin-reviewed quote sent to customer for approval.');
       await run();
