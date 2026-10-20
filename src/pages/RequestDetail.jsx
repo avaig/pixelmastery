@@ -174,7 +174,8 @@ export default function RequestDetail() {
   const [working, setWorking] = useState(false);
   const [quotePrices, setQuotePrices] = useState({});
   const [deliveryCharge, setDeliveryCharge] = useState('');
-  const [quoteTotal, setQuoteTotal] = useState(0);\n  const [quoteCalculated, setQuoteCalculated] = useState(false);
+  const [quoteTotal, setQuoteTotal] = useState(0);
+  const [quoteCalculated, setQuoteCalculated] = useState(false);
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
