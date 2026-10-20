@@ -106,7 +106,7 @@ export const entityConfig = {
       { key: 'technician_c', label: 'Technician', type: 'Lookup', targetTable: 'technician_profiles_c', required: true },
       { key: 'agreed_price_c', label: 'Agreed price', type: 'Number', required: true, placeholder: '650' },
       { key: 'scheduled_at_c', label: 'Scheduled for', type: 'DateTime', required: true },
-      { key: 'status_c', label: 'Job status', type: 'Picklist', required: true, options: ['Assigned', 'In Progress', 'Completed', 'Cancelled'] },
+      { key: 'status_c', label: 'Job status', type: 'Picklist', required: true, options: ['Assigned', 'In Progress', 'Awaiting Customer Confirmation', 'Completed', 'Cancelled'] },
     ],
   },
 };
