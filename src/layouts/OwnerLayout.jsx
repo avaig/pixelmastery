@@ -154,7 +154,7 @@ export default function OwnerLayout() {
           <Link to="/" className="block lg:hidden" aria-label="LOCAL — Happy to Help">
             <img src="/local-logo.svg" alt="LOCAL — Happy to Help" className="h-10 w-auto" />
           </Link>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex min-w-0 max-w-full items-center justify-end gap-2 sm:gap-3">
             {user?.profile === 'ServiceProvider_c' && (
               <div className="flex items-center gap-2">
                 <label htmlFor="header-provider-availability" className="hidden text-xs font-medium text-muted-foreground sm:block">Availability</label>
@@ -164,18 +164,18 @@ export default function OwnerLayout() {
                   onChange={(event) => changeProviderAvailability(event.target.value)}
                   disabled={availabilitySaving}
                   title={providerRecordId ? 'Change your service availability' : 'Complete provider onboarding to activate availability'}
-                  className="h-9 max-w-[150px] rounded-full border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm outline-none focus:ring-2 focus:ring-ring sm:max-w-[180px]"
+                  className="h-9 max-w-[112px] rounded-full border border-border bg-background px-2 text-[11px] font-semibold text-foreground shadow-sm outline-none focus:ring-2 focus:ring-ring sm:max-w-[150px] sm:px-3 sm:text-xs md:max-w-[180px]"
                 >
                   {PROVIDER_AVAILABILITY.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </div>
             )}
-            <div className="flex items-center rounded-full border border-border bg-muted/30 p-1 text-xs font-bold">
+            <div className="flex shrink-0 items-center rounded-full border border-border bg-muted/30 p-1 text-xs font-bold">
               <button type="button" onClick={() => changeLanguage('en')} className={'rounded-full px-2.5 py-1 transition ' + (language === 'en' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')} aria-pressed={language === 'en'}>EN</button>
               <button type="button" onClick={() => changeLanguage('hi')} className={'rounded-full px-2.5 py-1 transition ' + (language === 'hi' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')} aria-pressed={language === 'hi'}>हिन्दी</button>
             </div>
-            <div className="hidden text-right sm:block">
-              <div className="text-sm font-medium">{displayName}</div>
+            <div className="hidden max-w-[140px] text-right sm:block">
+              <div className="truncate text-sm font-medium">{displayName}</div>
               <div className="text-xs text-muted-foreground">{profileLabel}</div>
             </div>
             <div className="lg:hidden"><UserMenu user={user} initials={initials} displayName={displayName} logout={logout} /></div>

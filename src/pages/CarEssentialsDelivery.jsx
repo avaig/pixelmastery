@@ -42,6 +42,8 @@ export default function CarEssentialsDelivery() {
   const [quantities, setQuantities] = useState({});
   const [vehicle, setVehicle] = useState('');
   const [location, setLocation] = useState('');
+  const [coordinates, setCoordinates] = useState(null);
+  const [locating, setLocating] = useState(false);
 
   function toggleProduct(productId) {
     setSelectedProducts((current) =>
@@ -53,6 +55,28 @@ export default function CarEssentialsDelivery() {
       ...current,
       [productId]: current[productId] || '1',
     }));
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      toast.error('Current location is not supported by this browser. Please enter your address.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const next = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+        setCoordinates(next);
+        setLocation((current) => current.trim() || 'Current location (' + next.latitude.toFixed(5) + ', ' + next.longitude.toFixed(5) + ')');
+        setLocating(false);
+        toast.success('Current location captured. Add your full address or landmark for accurate delivery.');
+      },
+      () => {
+        setLocating(false);
+        toast.error('Could not access your location. Please enter your delivery address manually.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   }
 
   function checkAvailability() {
@@ -75,6 +99,7 @@ export default function CarEssentialsDelivery() {
     const orderDetails = {
       vehicle: vehicle.trim(),
       deliveryLocation: location.trim(),
+      deliveryCoordinates: coordinates,
       items: selectedProducts.map((id) => {
         const product = PRODUCTS.find((entry) => entry.id === id);
         return {
@@ -170,23 +195,46 @@ export default function CarEssentialsDelivery() {
             />
             <p className="mt-1 text-xs text-muted-foreground">Helps identify the correct product specification.</p>
           </div>
-          <div className="rounded-lg border bg-muted/20 p-3">
-            <p className="text-sm font-medium">Selected products</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {selectedProducts.length
-                ? selectedProducts.map((id) => PRODUCTS.find((product) => product.id === id)?.title).join(', ')
-                : 'Select one or more products above.'}
-            </p>
+          <div className="rounded-lg border bg-muted/20 p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Selected products</p>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{selectedProducts.reduce((sum, id) => sum + Math.max(0, Number(quantities[id]) || 0), 0)} items</span>
+            </div>
+            {selectedProducts.length ? (
+              <ul className="mt-3 space-y-2">
+                {selectedProducts.map((id) => {
+                  const product = PRODUCTS.find((entry) => entry.id === id);
+                  return (
+                    <li key={id} className="flex items-start justify-between gap-2 border-t pt-2 first:border-t-0 first:pt-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium leading-snug">{product?.title ?? id}</p>
+                        <p className="text-xs text-muted-foreground">Quantity: {quantities[id] || '1'}</p>
+                      </div>
+                      <button type="button" onClick={() => toggleProduct(id)} className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10" aria-label={'Remove ' + (product?.title ?? id)}>Remove</button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">No products selected yet. Choose one or more products above to see them here.</p>
+            )}
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="car-essentials-location" className="text-sm font-medium">Delivery location</label>
+            <label htmlFor="car-essentials-location" className="text-sm font-medium">Full delivery address</label>
             <Input
               id="car-essentials-location"
               value={location}
-              onChange={(event) => setLocation(event.target.value)}
-              placeholder="Enter your location or nearby landmark"
+              onChange={(event) => { setLocation(event.target.value); setCoordinates(null); }}
+              placeholder="House/flat, street, area and nearby landmark"
               className="mt-2"
             />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Include a landmark so the delivery partner can find you.</p>
+              <Button type="button" variant="outline" size="sm" onClick={useCurrentLocation} disabled={locating}>
+                <ApperIcon name="LocateFixed" size={15} />
+                {locating ? 'Getting location…' : 'Use current location'}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -194,20 +242,18 @@ export default function CarEssentialsDelivery() {
           <div className="flex items-start gap-3">
             <ApperIcon name="MapPinned" size={21} className="mt-0.5 text-primary" />
             <div className="space-y-1">
-              <p className="font-semibold">Delivered to your location</p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Product availability, product price, delivery charges based on distance and delivery time, and estimated arrival will need to be confirmed before you place an order.
-              </p>
+              <p className="font-semibold">Confirm before you order</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">We’ll confirm product availability, final price, delivery charges and estimated arrival before you decide whether to place the order.</p>
             </div>
           </div>
         </div>
 
         <Button type="button" className="mt-5 w-full" onClick={checkAvailability}>
           <ApperIcon name="MapPinCheck" size={17} />
-          Check Local Availability
+          Check Availability &amp; Price
         </Button>
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          No bidding. Review the product and delivery charges before confirming an order.
+          This checks your request; it does not confirm an order or take payment.
         </p>
       </Card>
     </div>
