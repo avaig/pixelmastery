@@ -412,7 +412,9 @@ export default function JobsDetail() {
       toast.success('Demo payment recorded. No real money was charged.');
       setShowDemoQr(false);
       run();
-      if (isCustomer && (isCarCare || isAcService || isFinalBalancePayment)) {
+      if (isCustomer) {
+        // Send payment/invoice details after every successful customer payment flow,
+        // regardless of service category. Delivery still depends on configured email sender.
         await emailInvoiceToCustomer(amount, reference);
       }
     } catch (err) {
@@ -729,10 +731,15 @@ export default function JobsDetail() {
           <div className="mt-7 rounded-lg border border-success-border bg-success-muted p-4">
             <div className="font-semibold text-success">Invoice available</div>
             <p className="mt-1 text-sm text-success">{isAdmin ? 'Final payment is recorded. Generate a printable invoice / payment receipt for this service.' : 'Your final payment is recorded. Generate a printable invoice / payment receipt for this service.'}</p>
-            <Button className="mt-3" onClick={printInvoice}>
-              <ApperIcon name="FileDown" size={16} /> Download Invoice / Save as PDF
-            </Button>
-            <p className="mt-2 text-xs text-success">Basic demo version. Email delivery will be enabled after backend and email service setup.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={printInvoice}>
+                <ApperIcon name="FileDown" size={16} /> Download Invoice / Save as PDF
+              </Button>
+              {isCustomer && <Button type="button" variant="outline" onClick={() => emailInvoiceToCustomer(Number(job.customer_payable_now_c ?? job.agreed_price_c ?? 0), job.payment_reference_c ?? '')} disabled={emailingInvoice}>
+                <ApperIcon name="Mail" size={16} /> {emailingInvoice ? 'Emailing invoice…' : 'Email Invoice'}
+              </Button>}
+            </div>
+            <p className="mt-2 text-xs text-success">Invoice email uses the configured LOCAL email service. If email sending is not configured, the app will show a warning rather than claim delivery.</p>
           </div>
         )}
 
