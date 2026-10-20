@@ -191,9 +191,9 @@ export default function CentralDispatch() {
   function getCleanRequestNotes(value) {
     const text = String(value ?? '').split('LOCAL_AC_REQUEST_JSON:')[0].trim();
     if (/Customer requested Car Essentials Delivery/i.test(text)) {
-      const vehicle = text.match(/Vehicle:\s*([^\.]+)\.?/i)?.[1]?.trim();
-      const location = text.match(/Requested delivery location:\s*([^\.]+(?:\([^)]*\))?)/i)?.[1]?.trim();
-      const items = text.match(/Car Essentials order details:\s*([^\.]+)\./i)?.[1]?.trim();
+      const vehicle = text.match(/Vehicle:\s*([^.]+)/i)?.[1]?.trim();
+      const location = text.match(/Requested delivery location:\s*([^.]+(?:\([^)]*\))?)/i)?.[1]?.trim();
+      const items = text.match(/Car Essentials order details:\s*([^.]+)\./i)?.[1]?.trim();
       return [vehicle ? 'Vehicle: ' + vehicle : '', items ? 'Requested items: ' + items : '', location ? 'Delivery location: ' + location : '', 'Provider to confirm compatibility, stock, final price and delivery charges before fulfilment.'].filter(Boolean).join('\n');
     }
     return text
