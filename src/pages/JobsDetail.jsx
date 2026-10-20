@@ -227,10 +227,9 @@ export default function JobsDetail() {
   function readServiceStartOtp(value) {
     try {
       const parsed = JSON.parse(String(value ?? ''));
-      if (parsed && typeof parsed === 'object' && /^\\d{6}$/.test(String(parsed.code ?? ''))) return parsed;
-    } catch { /* Older trial records stored a bare six-digit code. */ }
-    const legacy = String(value ?? '');
-    return /^\\d{6}$/.test(legacy) ? { code: legacy, expiresAt: null, attempts: 0, legacy: true } : null;
+      if (parsed && typeof parsed === 'object' && /^\d{6}$/.test(String(parsed.code ?? '')) && parsed.expiresAt) return parsed;
+    } catch { /* A missing or malformed OTP is not accepted. */ }
+    return null;
   }
 
   async function generateServiceStartOtp() {
