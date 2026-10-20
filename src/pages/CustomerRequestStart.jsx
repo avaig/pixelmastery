@@ -181,6 +181,7 @@ export default function CustomerRequestStart() {
   const requestedService = params.get('service') ?? '';
   const issue = params.get('issue') ?? '';
   const displayIssue = requestedService || issue;
+  const isCarEssentialsDelivery = requestedService === 'Car Essentials Delivery';
   const [creating, setCreating] = useState(false);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
   const isProfessionalDriverService = ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
@@ -742,6 +743,7 @@ export default function CustomerRequestStart() {
             <Button type="button" variant={serviceTiming === 'Scheduled' ? 'default' : 'outline'} onClick={() => setServiceTiming('Scheduled')}><ApperIcon name="CalendarClock" size={16} /> Schedule for Later</Button>
           </div>
           {serviceTiming === 'Scheduled' && <div className="mt-3"><label htmlFor="requested-service-time" className="text-sm font-medium">Choose date and time</label><Input id="requested-service-time" type="datetime-local" min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Your selected time is a request, not a confirmed appointment. A Service Provider must accept it.</p></div>}
+          {!isCarEssentialsDelivery && <>
           <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">Where do you need the service?</div>
           <div className="mt-2 text-sm text-muted-foreground">Choose the location for this booking. It can be different from your saved home or office address. GPS is optional.</div>
           {location && (
@@ -769,11 +771,15 @@ export default function CustomerRequestStart() {
               <ApperIcon name="Search" size={16} /> Confirm address for this booking
             </Button>
           </form>
+          </>}
           {location && (
-            <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
-              <ApperIcon name="Send" size={17} />
-              {creating ? tr('Sharing request…', language) : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
-            </Button>
+            <>
+              {isCarEssentialsDelivery && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
+              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
+                <ApperIcon name="Send" size={17} />
+                {creating ? tr('Sharing request…', language) : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
+              </Button>
+            </>
           )}
         </Card>
       </div>

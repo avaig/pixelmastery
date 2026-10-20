@@ -79,7 +79,7 @@ export default function CarEssentialsDelivery() {
     );
   }
 
-  function checkAvailability() {
+  async function checkAvailability() {
     if (!selectedProducts.length) {
       toast.error('Please select at least one product.');
       return;
@@ -96,10 +96,36 @@ export default function CarEssentialsDelivery() {
       toast.error('Enter the delivery location.');
       return;
     }
+    let confirmedCoordinates = coordinates;
+    let confirmedAddress = location.trim();
+    if (!confirmedCoordinates) {
+      setLocating(true);
+      try {
+        const query = /prayagraj|allahabad|kanpur|lucknow|varanasi|noida|ghaziabad|delhi/i.test(confirmedAddress)
+          ? confirmedAddress
+          : confirmedAddress + ', Prayagraj, Uttar Pradesh, India';
+        const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=' + encodeURIComponent(query));
+        if (!response.ok) throw new Error('Address lookup unavailable');
+        const matches = await response.json();
+        if (!matches.length) {
+          toast.error('We could not locate this address. Add your locality and city, or use current location.');
+          return;
+        }
+        confirmedCoordinates = { latitude: Number(matches[0].lat), longitude: Number(matches[0].lon) };
+        confirmedAddress = matches[0].display_name.split(',').slice(0, 4).join(', ');
+        setCoordinates(confirmedCoordinates);
+        setLocation(confirmedAddress);
+      } catch {
+        toast.error('We could not confirm this delivery address right now. Please try again or use current location.');
+        return;
+      } finally {
+        setLocating(false);
+      }
+    }
     const orderDetails = {
       vehicle: vehicle.trim(),
-      deliveryLocation: location.trim(),
-      deliveryCoordinates: coordinates,
+      deliveryLocation: confirmedAddress,
+      deliveryCoordinates: confirmedCoordinates,
       items: selectedProducts.map((id) => {
         const product = PRODUCTS.find((entry) => entry.id === id);
         return {
@@ -111,6 +137,7 @@ export default function CarEssentialsDelivery() {
       submittedAt: new Date().toISOString(),
     };
     window.sessionStorage.setItem('local_car_essentials_order_v1', JSON.stringify(orderDetails));
+    window.localStorage.setItem('local_service_location_c', JSON.stringify({ label: confirmedAddress, latitude: confirmedCoordinates.latitude, longitude: confirmedCoordinates.longitude, source: coordinates ? 'device GPS' : 'confirmed delivery address' }));
     navigate('/customer/request?vehicle=car&issue=Other%20Issue&service=Car%20Essentials%20Delivery');
   }
 
