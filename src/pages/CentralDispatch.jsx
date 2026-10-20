@@ -232,11 +232,11 @@ export default function CentralDispatch() {
       return { type: 'AC Service', title: 'Requested AC work', items, total: null, offer: null, notes: notes || 'Provider visit charge and estimate are subject to provider response and customer approval.', structured: true };
     }
     if (isCarService) {
-      const packageMatch = description.match(/(Economy Service|Normal Service|Major Service).*?Listed package price:\\s*₹\\s*([\\d,]+)/i);
-      const coveredMatch = description.match(/Covered items:\\s*(.*?)(?:\\. Customer selected|$)/i);
+      const packageMatch = description.match(/(Economy Service|Normal Service|Major Service).*?Listed package price:\s*₹\s*([\d,]+)/i);
+      const coveredMatch = description.match(/Covered items:\s*(.*?)(?:\. Customer selected|$)/i);
       const items = [];
       if (packageMatch) items.push({ name: packageMatch[1] + ' package', quantity: 1, amount: Number(packageMatch[2].replace(/,/g, '')), included: false });
-      if (coveredMatch) coveredMatch[1].split(';').map(part => part.trim()).filter(Boolean).forEach(part => items.push({ name: part.replace(/\\s*\\(Included\\)/i, ''), quantity: '—', amount: null, included: /\\(Included\\)/i.test(part) }));
+      if (coveredMatch) coveredMatch[1].split(';').map(part => part.trim()).filter(Boolean).forEach(part => items.push({ name: part.replace(/\s*\(Included\)/i, ''), quantity: '—', amount: null, included: /\(Included\)/i.test(part) }));
       return { type: 'Car Service', title: 'Package includes', items, total: packageMatch ? Number(packageMatch[2].replace(/,/g, '')) : null, offer: null, notes: /Customer selected this package/i.test(description) ? 'Customer selected this package and requests provider availability/confirmation.' : getCleanRequestNotes(description), structured: true };
     }
     return { type: 'Service request', title: 'Service details', items: [], total: null, offer: null, notes: getCleanRequestNotes(description), structured: false };
