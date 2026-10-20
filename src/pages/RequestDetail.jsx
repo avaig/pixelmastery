@@ -85,6 +85,48 @@ function writeCancellationDetails(description, payload) {
   return clean + (clean ? '\n\n' : '') + marker + JSON.stringify(payload);
 }
 
+function getCancellationReasons(request) {
+  const service = String(request?.Name ?? '') + ' ' + String(request?.service_category_c?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? '');
+  if (/pandit|puja|pooja/i.test(service)) return [
+    'Puja date or time changed', 'I selected the wrong puja/service', 'I need a different language', 'Samagri requirements changed',
+    'Pandit is delayed or not responding', 'Charges are higher than expected', 'I want to reschedule', 'I no longer need this service', 'Booked by mistake', 'Other'
+  ];
+  if (/car wash/i.test(service)) return [
+    'I no longer need the car wash', 'I selected the wrong service/package', 'Price or extra charges are higher than expected',
+    'Pickup and drop charges are higher than expected', 'Service Provider is delayed or not responding',
+    'The Service Provider asked me to cancel', 'I want to reschedule', 'Booked by mistake', 'Other'
+  ];
+  if (/car service|vehicle service|mechanic|car repair/i.test(service)) return [
+    'I no longer need the service', 'I selected the wrong service', 'Price or extra charges are higher than expected',
+    'Service Provider is delayed or not responding', 'The Service Provider asked me to cancel',
+    'The problem has been resolved', 'I want to reschedule', 'Booked by mistake', 'Other'
+  ];
+  if (/driver|car drive|professional car/i.test(service)) return [
+    'My travel plan changed', 'Pickup or destination details are incorrect', 'Driver is delayed or not responding',
+    'Fare or extra charges are higher than expected', 'I arranged another driver', 'I no longer need the service',
+    'I want to reschedule', 'Booked by mistake', 'Other'
+  ];
+  if (/ambulance/i.test(service)) return [
+    'Ambulance is no longer required', 'Pickup location was entered incorrectly', 'Help is taking too long to arrive',
+    'I arranged emergency help elsewhere', 'Booking was made by mistake', 'Other'
+  ];
+  if (/fuel|towing|battery|jump start|lockout|roadside|puncture|car assistance/i.test(service)) return [
+    'The issue has been resolved', 'Help is taking too long to arrive', 'Service Provider cannot reach my location',
+    'Price or extra charges are higher than expected', 'I arranged help elsewhere', 'Pickup location is incorrect',
+    'The Service Provider asked me to cancel', 'Booked by mistake', 'Other'
+  ];
+  if (/ac technician|air conditioner|electrician|plumber|home service|home repair/i.test(service)) return [
+    'I no longer need the service', 'I selected the wrong service', 'Price or extra charges are higher than expected',
+    'Service Provider is delayed or not responding', 'The problem has been resolved',
+    'I want to reschedule', 'The Service Provider asked me to cancel', 'Booked by mistake', 'Other'
+  ];
+  return [
+    'I no longer need the service', 'I selected the wrong service', 'Price or extra charges are higher than expected',
+    'Service Provider is delayed or not responding', 'The problem has been resolved',
+    'I want to reschedule', 'The Service Provider asked me to cancel', 'Booked by mistake', 'Other'
+  ];
+}
+
 function formatCancellationTime(value) {
   if (!value) return 'Time unavailable';
   const date = new Date(value);
@@ -104,6 +146,7 @@ export default function RequestDetail() {
   const user = useSelector((state) => state.user.user);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [cancelOtherReason, setCancelOtherReason] = useState('');
   const [working, setWorking] = useState(false);
 
   const { data, loading, error, run } = useFetch(async () => {
@@ -155,6 +198,7 @@ export default function RequestDetail() {
 
   const request = data?.request;
   const cancellationDetails = readCancellationDetails(request?.problem_description_c);
+  const cancellationReasons = getCancellationReasons(request);
   const responses = data?.responses ?? [];
   const relatedJob = data?.job;
   const vendorAcceptedOffer = responses.find((item) => item.status_c === 'Vendor Accepted' || (item.status_c === 'Pending' && item.negotiation_status_c === 'Agreed' && /Service Provider accepted customer offer/i.test(String(item.negotiation_history_c ?? ''))));
@@ -360,7 +404,8 @@ export default function RequestDetail() {
         actorName,
         actorProfile: String(user?.profile ?? 'Customer_c'),
         cancelledAt: new Date().toISOString(),
-        reason: cancelReason.trim() || 'Reason not provided',
+        reason: cancelReason === 'Other' ? (cancelOtherReason.trim() || 'Other (details not provided)') : cancelReason,
+        reasonCode: cancelReason,
         stage: String(request.status_c ?? 'Unknown'),
       };
       const result = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled', problem_description_c: writeCancellationDetails(request.problem_description_c, cancellation) });
@@ -370,6 +415,7 @@ export default function RequestDetail() {
       }
       toast.success('Request cancelled. The cancellation details and offer history have been preserved.');
       setCancelReason('');
+      setCancelOtherReason('');
       setDeleteOpen(false);
       navigate('/requests');
     } catch (err) {
@@ -483,11 +529,11 @@ export default function RequestDetail() {
                 ? 'Request cancellation for “' + request.Name + '”. The booking record and payment history will be preserved; support may need to review the cancellation.'
                 : 'Cancel “' + request.Name + '”? Provider offers and request history will be preserved. This cannot be undone from this screen.'}
             </AlertDialogDescription>
-            <div className="space-y-2"><label htmlFor="cancel-reason" className="text-sm font-medium">Reason for cancellation (optional)</label><textarea id="cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} maxLength={500} rows={3} placeholder="Tell us why you are cancelling…" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" /></div>
+            <div className="space-y-2"><label htmlFor="cancel-reason" className="text-sm font-medium">Reason for cancellation <span className="text-destructive">*</span></label><select id="cancel-reason" required value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"><option value="" disabled>Select a reason</option>{cancellationReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}</select>{cancelReason === 'Other' && <div className="space-y-1"><label htmlFor="cancel-other-reason" className="text-sm font-medium">Please tell us more <span className="text-destructive">*</span></label><textarea id="cancel-other-reason" value={cancelOtherReason} onChange={(event) => setCancelOtherReason(event.target.value)} maxLength={500} rows={3} placeholder="Enter your reason…" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" /></div>}</div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={working} onClick={() => setCancelReason('')}>Keep request</AlertDialogCancel>
-            <AlertDialogAction onClick={removeRequest} disabled={working}>
+            <AlertDialogCancel disabled={working} onClick={() => { setCancelReason(''); setCancelOtherReason(''); }}>Keep request</AlertDialogCancel>
+            <AlertDialogAction onClick={(event) => { if (!cancelReason || (cancelReason === 'Other' && !cancelOtherReason.trim())) { event.preventDefault(); toast.error('Please select a cancellation reason' + (cancelReason === 'Other' ? ' and enter details.' : '.')); return; } removeRequest(); }} disabled={working}>
               {working ? 'Cancelling…' : 'Confirm cancellation'}
             </AlertDialogAction>
           </AlertDialogFooter>
