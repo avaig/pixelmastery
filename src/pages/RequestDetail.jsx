@@ -483,6 +483,7 @@ export default function RequestDetail() {
                 ? 'Request cancellation for “' + request.Name + '”. The booking record and payment history will be preserved; support may need to review the cancellation.'
                 : 'Cancel “' + request.Name + '”? Provider offers and request history will be preserved. This cannot be undone from this screen.'}
             </AlertDialogDescription>
+            <div className="space-y-2"><label htmlFor="cancel-reason" className="text-sm font-medium">Reason for cancellation (optional)</label><textarea id="cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} maxLength={500} rows={3} placeholder="Tell us why you are cancelling…" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" /></div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={working} onClick={() => setCancelReason('')}>Keep request</AlertDialogCancel>
