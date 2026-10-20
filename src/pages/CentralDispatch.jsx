@@ -336,13 +336,16 @@ export default function CentralDispatch() {
         toast.error('Only a provider who accepted a Central LOCAL assignment can be confirmed.');
         return;
       }
-      const fixedPrice = isFixedPriceRequest(request) ? getFixedPrice(request) : null;
-      if (isFixedPriceRequest(request) && fixedPrice === null) {
+      const fixedPriceRequest = isFixedPriceRequest(request);
+      const fixedPrice = fixedPriceRequest ? getFixedPrice(request) : null;
+      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote'
+        || /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? ''));
+      if (fixedPriceRequest && fixedPrice === null) {
         toast.error('A clear, positive fixed service total could not be read. Please review the price before confirming; no job was created.');
         return;
       }
-      if (!isFixedPriceRequest(request)) {
-        toast.error('This request needs a confirmed inspection/estimate amount before booking can be finalized.');
+      if (!fixedPriceRequest && !providerQuoteRequest) {
+        toast.error('This request needs a supported pricing workflow before booking can be finalized.');
         return;
       }
       const jobName = 'LOCAL Job • ' + request.Name;
@@ -357,8 +360,10 @@ export default function CentralDispatch() {
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
         payment_status_c: 'Unpaid',
-        billing_status_c: 'Ready for Confirmation',
-        admin_review_note_c: 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
+        billing_status_c: providerQuoteRequest && !fixedPriceRequest ? 'Estimate Required' : 'Ready for Confirmation',
+        admin_review_note_c: providerQuoteRequest && !fixedPriceRequest
+          ? 'Booking assigned by LOCAL Admin after provider accepted. Provider must confirm compatibility, stock, final price and delivery charges; customer approval and final amount are still pending.'
+          : 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
       });
       if (!jobRes.data?.length) throw new Error(jobRes.messages?.[0] || 'Job creation failed; request remains unconfirmed.');
       const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
@@ -506,8 +511,8 @@ export default function CentralDispatch() {
               {acceptedAssignment && !['Cancelled', 'Completed'].includes(String(request.status_c ?? '')) && <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
                 <div className="flex items-center gap-2 font-semibold text-emerald-700"><ApperIcon name="CheckCircle2" size={17} /> Provider accepted</div>
                 <p className="mt-1 text-sm text-muted-foreground">Verify the service and total before confirming this booking.</p>
-                <Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || fixedPrice === null || !isFixedPriceRequest(request)} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>
-                {(!isFixedPriceRequest(request) || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">{isFixedPriceRequest(request) ? 'The listed fixed price could not be read. Review the request price before confirming.' : 'Estimate-based jobs remain blocked until an estimate is recorded and customer approval is implemented.'}</p>}
+                <Button className="mt-3 w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || (fixedPrice === null && String(request.pricing_mode_c ?? '').toLowerCase() !== 'provider quote' && !/car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? '')))} onClick={() => confirmBooking(request, acceptedAssignment)}>{busyKey === 'confirm:' + request.Id ? 'Confirming booking…' : 'Confirm Booking'}</Button>
+                {(!isFixedPriceRequest(request) || fixedPrice === null) && <p className="mt-2 text-xs text-amber-700">{String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? '')) ? 'Booking confirmation assigns the provider. Final price, delivery charges and customer approval must be recorded before fulfilment/payment.' : isFixedPriceRequest(request) ? 'The listed fixed price could not be read. Review the request price before confirming.' : 'This request needs a supported pricing workflow before booking can be finalized.'}</p>}
               </div>}
             </Card>
           </div>
