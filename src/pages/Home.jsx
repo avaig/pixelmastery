@@ -532,19 +532,17 @@ export default function Home() {
                 <h2 className="mt-1 text-xl font-black tracking-tight text-[#102c4d] sm:text-2xl">{tr('Why Choose LOCAL?', language)}</h2>
                 <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">{tr('Local help, clear information, and a simpler way to arrange a service.', language)}</p>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-4 sm:gap-4">
+              <div className="mx-auto mt-4 grid max-w-xl grid-cols-4 gap-2 sm:mt-5 sm:gap-3">
                 {[
-                  { icon: 'MapPin', title: 'Nearby Help', detail: 'Find services around your location' },
-                  { icon: 'ShieldCheck', title: 'Provider Checks', detail: 'Know which providers are verified' },
-                  { icon: 'IndianRupee', title: 'Clear Pricing', detail: 'Review charges before confirming' },
-                  { icon: 'Clock3', title: 'Arrival Updates', detail: 'See the expected arrival time' },
+                  { icon: 'MapPin', label: 'Nearby help' },
+                  { icon: 'ShieldCheck', label: 'Provider verification' },
+                  { icon: 'IndianRupee', label: 'Clear pricing' },
+                  { icon: 'Clock3', label: 'Arrival updates' },
                 ].map((item) => (
-                  <div key={item.title} className="flex min-w-0 flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-4 text-center transition hover:border-emerald-100 hover:bg-emerald-50/50 sm:px-3 sm:py-5">
-                    <div className="flex size-11 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm ring-1 ring-slate-100 sm:size-12">
-                      <ApperIcon name={item.icon} size={23} />
+                  <div key={item.icon} aria-label={item.label} title={item.label} className="flex min-w-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 transition hover:border-emerald-100 hover:bg-emerald-50/50 sm:rounded-2xl sm:p-3">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-slate-100 sm:size-10 sm:rounded-xl">
+                      <ApperIcon name={item.icon} size={20} />
                     </div>
-                    <h3 className="mt-3 text-sm font-extrabold leading-5 text-[#102c4d]">{tr(item.title, language)}</h3>
-                    <p className="mt-1.5 text-xs leading-5 text-slate-500">{tr(item.detail, language)}</p>
                   </div>
                 ))}
               </div>
