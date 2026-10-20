@@ -147,7 +147,7 @@ export default function OwnerLayout() {
         </div>
       </aside>
       <div className="lg:col-start-2">
-        <header className="sticky top-0 z-30 flex min-h-(--spacing-header) items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-30 flex min-h-(--spacing-header) flex-wrap items-center gap-2 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:gap-3 sm:px-4 md:flex-nowrap md:px-6">
           <button type="button" className="rounded-md border border-border p-2 lg:hidden" onClick={() => setMobileOpen((value) => !value)} aria-label="Toggle navigation">
             <ApperIcon name="Menu" size={18} />
           </button>
