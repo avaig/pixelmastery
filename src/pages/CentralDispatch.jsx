@@ -46,6 +46,27 @@ function readCarEssentialsApproval(description) {
   try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
+function readRsaQuote(message) {
+  const marker = 'LOCAL_RSA_QUOTE_JSON:';
+  const source = String(message ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
+}
+
+function readRsaApproval(description) {
+  const marker = 'LOCAL_RSA_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
+function isRsaQuoteRequest(request) {
+  const text = String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? '');
+  return !/emergency car rental/i.test(text) && /battery jump start|flat tyre|flat tire|puncture|diesel on demand|key locked|lockout|towing required/i.test(text);
+}
+
 function readCancellationDetails(description) {
   const source = String(description ?? '');
   const marker = 'LOCAL_CANCELLATION_JSON:';
@@ -329,6 +350,20 @@ export default function CentralDispatch() {
     return Number.isFinite(value) && value > 0 ? value : null;
   }
 
+  async function sendRsaQuoteToCustomer(response) {
+    const quote = readRsaQuote(response?.message_c);
+    if (!response?.Id || !quote || quote.status === 'Sent to Customer') return;
+    setBusyKey('rsa-quote:' + response.Id);
+    try {
+      const updatedQuote = { ...quote, status: 'Sent to Customer', reviewedAt: new Date().toISOString(), reviewedBy: 'LOCAL Admin' };
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_RSA_QUOTE_JSON:')[0].trimEnd();
+      const result = await sdk.table('technician_responses_c').update({ Id: response.Id, message_c: baseMessage + '\\nLOCAL_RSA_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Reviewed RSA quote could not be sent to customer.');
+      toast.success('Admin-reviewed RSA quote sent to customer for approval.'); await run();
+    } catch (err) { toast.error(err.message || 'Could not send RSA quote to customer.'); }
+    finally { setBusyKey(''); }
+  }
+
   async function sendCarEssentialsQuoteToCustomer(response) {
     const quote = readCarEssentialsQuote(response?.message_c);
     if (!response?.Id || !quote || quote.status === 'Sent to Customer') return;
@@ -360,7 +395,15 @@ export default function CentralDispatch() {
       const fixedPriceRequest = isFixedPriceRequest(request);
       const fixedPrice = fixedPriceRequest ? getFixedPrice(request) : null;
       const isCarEssentials = /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? '') + ' ' + String(request.problem_description_c ?? ''));
-      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || isCarEssentials;
+      const isRsaQuote = isRsaQuoteRequest(request) && !isCarEssentials;
+      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || isCarEssentials || isRsaQuote;
+      if (isRsaQuote) {
+        const quote = readRsaQuote(acceptedAssignment.message_c);
+        const approval = readRsaApproval(request.problem_description_c);
+        if (!quote || !approval || String(approval.quoteId ?? '') !== String(quote.quoteId ?? '') || Number(approval.total) !== Number(quote.total) || !quote.providerApproved || String(quote.providerApprovedQuoteId ?? '') !== String(quote.quoteId ?? '') || Number(quote.providerApprovedTotal) !== Number(quote.total) || quote.status !== 'Sent to Customer') {
+          toast.error('RSA booking cannot be confirmed until Admin reviews the quote, the customer approves it, and the provider confirms the exact same quote and total.'); return;
+        }
+      }
       if (isCarEssentials) {
         const quote = readCarEssentialsQuote(acceptedAssignment.message_c);
         const approval = readCarEssentialsApproval(request.problem_description_c);
@@ -385,16 +428,16 @@ export default function CentralDispatch() {
       if (!existingJobs.success) throw new Error(existingJobs.message || 'Could not check for an existing job.');
       const existingJob = (existingJobs.data ?? []).find((job) => String(job.response_c?.Id ?? job.response_c ?? '') === String(acceptedAssignment.Id));
       if (existingJob) {
-        const currentQuote = isCarEssentials ? readCarEssentialsQuote(acceptedAssignment.message_c) : null;
+        const currentQuote = isCarEssentials ? readCarEssentialsQuote(acceptedAssignment.message_c) : isRsaQuote ? readRsaQuote(acceptedAssignment.message_c) : null;
         const updateExistingJob = await sdk.table('jobs_c').update({
           Id: existingJob.Id,
-          agreed_price_c: isCarEssentials ? Number(currentQuote.total) : existingJob.agreed_price_c,
-          original_provider_quote_c: isCarEssentials ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
+          agreed_price_c: (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.agreed_price_c,
+          original_provider_quote_c: (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
           billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
           service_start_otp_c: isCarEssentials ? null : existingJob.service_start_otp_c,
           admin_review_note_c: isCarEssentials
             ? 'Booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Delivery and payment completion remain pending.'
-            : 'Booking confirmed by LOCAL Admin after validating the assigned provider and pricing workflow.',
+            : isRsaQuote ? 'RSA booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total.' : 'Booking confirmed by LOCAL Admin after validating the assigned provider and pricing workflow.',
         });
         if (!updateExistingJob.data?.length) throw new Error(updateExistingJob.messages?.[0] || 'Existing job could not be updated after approval checks.');
         const updateExistingRequest = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
@@ -410,8 +453,8 @@ export default function CentralDispatch() {
         response_c: acceptedAssignment.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
         technician_c: acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c,
-        agreed_price_c: providerQuoteRequest && !fixedPriceRequest ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total ?? fixedPrice ?? 0) : fixedPrice,
-        original_provider_quote_c: providerQuoteRequest && !fixedPriceRequest ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total ?? 0) : null,
+        agreed_price_c: providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? fixedPrice ?? 0) : fixedPrice,
+        original_provider_quote_c: providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? 0) : null,
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
         payment_status_c: 'Unpaid',
@@ -419,6 +462,7 @@ export default function CentralDispatch() {
         service_start_otp_c: null,
         admin_review_note_c: isCarEssentials
           ? 'Booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Delivery and payment completion remain pending.'
+          : isRsaQuote ? 'RSA booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Service and payment remain pending.'
           : providerQuoteRequest && !fixedPriceRequest
             ? 'Booking confirmed by LOCAL Admin after the required pricing workflow. Delivery and payment completion remain pending.'
             : 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
