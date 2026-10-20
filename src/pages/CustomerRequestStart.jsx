@@ -484,7 +484,7 @@ export default function CustomerRequestStart() {
       toast.error('LOCAL bookings are not available at this location yet. Please choose a service location within the current Naini/Prayagraj coverage area.');
       return;
     }
-    if (isOtherIssue && !problemDetails.trim()) {
+    if (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) {
       toast.error(tr('Please describe the problem before continuing.', language));
       return;
     }
@@ -714,7 +714,7 @@ export default function CustomerRequestStart() {
               <p className="mt-2 text-xs text-muted-foreground">Document upload is a demo control; secure file storage will be connected when the backend is configured.</p>
             </div>
           )}
-          {isOtherIssue && !isInsuranceClaim && (
+          {isOtherIssue && !isInsuranceClaim && !isCarEssentialsDelivery && (
             <div className="mt-6 rounded-xl border-2 border-primary/20 bg-background p-4">
               <label htmlFor="other-issue-details" className="text-sm font-semibold">
                 {tr('Tell us what happened', language)}
@@ -775,7 +775,7 @@ export default function CustomerRequestStart() {
           {location && (
             <>
               {isCarEssentialsDelivery && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
+              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
                 <ApperIcon name="Send" size={17} />
                 {creating ? tr('Sharing request…', language) : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
