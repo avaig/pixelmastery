@@ -28,6 +28,25 @@ export const nav = {
 };
 
 const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'scheduled_at_c', 'pricing_mode_c', 'pricing_mode_description_c', 'CreatedOn'];
+
+function readCancellationDetails(description) {
+  const source = String(description ?? '');
+  const marker = 'LOCAL_CANCELLATION_JSON:';
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try {
+    const payload = JSON.parse(source.slice(index + marker.length).split('\n')[0]);
+    return payload && typeof payload === 'object' ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatCancellationTime(value) {
+  if (!value) return 'Time unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Time unavailable' : date.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
+}
 const PROVIDER_FIELDS = ['Id', 'Name', 'email_c', 'phone_c', 'status_c', 'verification_status_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c'];
 
 export default function CentralDispatch() {
@@ -356,6 +375,7 @@ export default function CentralDispatch() {
     }).length;
     const customerName = request.customer_c?.Name ?? 'Customer';
     const customerPhone = request.customer_c?.phone_c ?? request.customer_c?.Phone ?? '';
+    const cancellationDetails = readCancellationDetails(request.problem_description_c);
 
     return (
       <div className="space-y-4">

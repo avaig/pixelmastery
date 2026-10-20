@@ -63,6 +63,33 @@ function getRequestLineItems(request) {
 }
 
 const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'requested_at_c', 'scheduled_at_c', 'service_mode_c', 'CreatedOn'];
+
+function readCancellationDetails(description) {
+  const marker = 'LOCAL_CANCELLATION_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try {
+    const payload = JSON.parse(source.slice(index + marker.length).split('\n')[0]);
+    return payload && typeof payload === 'object' ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCancellationDetails(description, payload) {
+  const marker = 'LOCAL_CANCELLATION_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  const clean = index >= 0 ? source.slice(0, index).trimEnd() : source.trimEnd();
+  return clean + (clean ? '\n\n' : '') + marker + JSON.stringify(payload);
+}
+
+function formatCancellationTime(value) {
+  if (!value) return 'Time unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Time unavailable' : date.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
+}
 const RESPONSE_FIELDS = ['Id', 'Name', 'request_c', 'technician_c', 'proposed_price_c', 'original_proposed_price_c', 'final_agreed_price_c', 'negotiation_status_c', 'negotiation_history_c', 'availability_c', 'message_c', 'status_c'];
 
 export const route = {
@@ -76,6 +103,7 @@ export default function RequestDetail() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [working, setWorking] = useState(false);
 
   const { data, loading, error, run } = useFetch(async () => {
@@ -126,6 +154,7 @@ export default function RequestDetail() {
   }, [id, user?.profile, user?.emailAddress, user?.email]);
 
   const request = data?.request;
+  const cancellationDetails = readCancellationDetails(request?.problem_description_c);
   const responses = data?.responses ?? [];
   const relatedJob = data?.job;
   const vendorAcceptedOffer = responses.find((item) => item.status_c === 'Vendor Accepted' || (item.status_c === 'Pending' && item.negotiation_status_c === 'Agreed' && /Service Provider accepted customer offer/i.test(String(item.negotiation_history_c ?? ''))));
@@ -325,12 +354,22 @@ export default function RequestDetail() {
     try {
       // Keep request and offer records for auditability. Deleting the request and its
       // dependent offers caused record-not-found failures in the connected marketplace.
-      const result = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled' });
+      const actorName = String(user?.fullName ?? user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(' ') ?? user?.emailAddress ?? user?.email ?? 'Customer').trim() || 'Customer';
+      const cancellation = {
+        actor: 'Customer',
+        actorName,
+        actorProfile: String(user?.profile ?? 'Customer_c'),
+        cancelledAt: new Date().toISOString(),
+        reason: cancelReason.trim() || 'Reason not provided',
+        stage: String(request.status_c ?? 'Unknown'),
+      };
+      const result = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled', problem_description_c: writeCancellationDetails(request.problem_description_c, cancellation) });
       if (!result.data?.length) {
         toast.error(result.messages?.[0] ?? 'This request could not be cancelled. Refresh the page and try again.');
         return;
       }
-      toast.success('Request cancelled. Its offers and history have been preserved.');
+      toast.success('Request cancelled. The cancellation details and offer history have been preserved.');
+      setCancelReason('');
       setDeleteOpen(false);
       navigate('/requests');
     } catch (err) {
@@ -392,6 +431,7 @@ export default function RequestDetail() {
               </div>
             </div>
           </section>}
+          {String(request?.status_c ?? '') === 'Cancelled' && <section className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4" aria-label="Cancellation details"><div className="flex items-center gap-2 font-semibold text-destructive"><ApperIcon name="XCircle" size={18} /> Booking Cancelled</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Cancelled by</p><p className="mt-1 font-medium">{cancellationDetails?.actorName || cancellationDetails?.actor || 'Cancellation details unavailable'}</p><p className="text-xs text-muted-foreground">{cancellationDetails?.actor || 'Actor not recorded'}</p></div><div><p className="text-xs text-muted-foreground">Cancelled on</p><p className="mt-1 font-medium">{formatCancellationTime(cancellationDetails?.cancelledAt)}</p></div><div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Reason</p><p className="mt-1 text-sm">{cancellationDetails?.reason || 'Reason not recorded'}</p></div><div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Booking stage at cancellation</p><p className="mt-1 text-sm">{cancellationDetails?.stage || 'Not recorded'}</p></div></div></section>}
           <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
             <div><div className="text-xs text-muted-foreground">{tr('Category', language)}</div><div className="mt-1 font-medium">{tr(request.service_category_c?.Name ?? '—', language)}</div></div>
             <div><div className="text-xs text-muted-foreground">{tr('Required capability', language)}</div><div className="mt-1 font-medium">{tr(request.required_capability_c?.Name ?? '—', language)}</div></div>
