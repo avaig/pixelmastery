@@ -523,18 +523,31 @@ export default function JobsDetail() {
       // Customer and provider may open different row IDs, so use one OTP across those siblings.
       const requestId = job.request_c?.Id ?? job.request_c;
       const responseId = job.response_c?.Id ?? job.response_c;
+      const requestResult = await sdk.table('service_requests_c').select(['Id', 'problem_description_c']).get(requestId);
+      if (!requestResult.success || !requestResult.data) throw new Error(requestResult.message || 'Could not load the customer request OTP.');
+      const description = String(requestResult.data.problem_description_c ?? '');
+      const marker = 'LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:';
+      const markerIndex = description.lastIndexOf(marker);
+      if (markerIndex < 0) throw new Error('The customer-approved quote does not contain a delivery OTP. Reopen the request and approve the quote again before delivery.');
+      let approval;
+      try { approval = JSON.parse(description.slice(markerIndex + marker.length).split('\\n')[0]); } catch { throw new Error('The customer delivery OTP record is unreadable. Please reopen the request and review the approved quote.'); }
+      if (approval?.approved !== true || !approval.quoteId || !Number.isFinite(Number(approval.total))) throw new Error('The customer-approved quote is incomplete. Do not deliver until Admin reviews the request.');
+      const otp = /^\\d{6}$/.test(String(approval.otp ?? '')) ? String(approval.otp) : String(Math.floor(100000 + Math.random() * 900000));
+      if (String(approval.otp ?? '') !== otp) {
+        const updatedApproval = { ...approval, otp };
+        const updatedDescription = description.slice(0, markerIndex) + marker + JSON.stringify(updatedApproval);
+        const requestSaved = await sdk.table('service_requests_c').update({ Id: requestId, problem_description_c: updatedDescription });
+        if (!requestSaved.success || !requestSaved.data?.length) throw new Error(requestSaved.messages?.[0] || 'Could not save the authoritative customer delivery OTP.');
+      }
       const related = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'service_start_otp_c', 'service_start_otp_verified_at_c']).where(eq('request_c', requestId)).page(1, 100).fetch();
       if (!related.success) throw new Error(related.message || 'Could not check related booking records.');
       const siblings = (related.data ?? []).filter((item) => String(item.response_c?.Id ?? item.response_c ?? '') === String(responseId));
       if (!siblings.some((item) => String(item.Id) === String(job.Id))) throw new Error('This job could not be matched to its accepted provider assignment. Refresh and try again.');
-      const activeJobOtp = String(job.service_start_otp_c ?? '');
-      const existingOtp = /^\\d{6}$/.test(activeJobOtp) ? activeJobOtp : siblings.map((item) => String(item.service_start_otp_c ?? '')).find((value) => /^\\d{6}$/.test(value));
-      const otp = existingOtp || String(Math.floor(100000 + Math.random() * 900000));
       for (const sibling of siblings) {
         const saved = await sdk.table('jobs_c').update({ Id: sibling.Id, service_start_otp_c: otp, service_start_otp_verified_at_c: sibling.service_start_otp_verified_at_c ?? null });
-        if (!saved.success || !saved.data?.length) throw new Error(saved.messages?.[0] || 'Could not synchronize the delivery OTP across this booking. Refresh before retrying.');
+        if (!saved.success || !saved.data?.length) throw new Error(saved.messages?.[0] || 'Could not synchronize the customer-approved delivery OTP across this booking. Refresh before retrying.');
       }
-      toast.success('Admin delivery OTP synchronized across the customer and provider booking records. Ask both sides to refresh the job screen.');
+      toast.success('Delivery OTP synchronized from the customer-approved request to the booking records. Refresh both screens before retrying.');
       await run();
     } catch (error) {
       toast.error(error.message || 'Could not synchronize the delivery OTP.');
