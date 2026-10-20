@@ -226,7 +226,6 @@ export default function Home() {
     if (isProvider) return '/service-provider';
     return '/customer/login';
   };
-  const providerDestination = isProvider ? '/service-provider' : '/service-provider/signup';
 
   function searchHelp() {
     const result = findHelp(helpText);
@@ -553,20 +552,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-5xl px-4 pb-5 sm:px-8 sm:pb-12 lg:px-10 lg:pb-16">
-          <div className="rounded-3xl bg-[#102c4d] px-4 py-5 text-center shadow-xl sm:px-8 sm:py-9">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f4b61a] sm:text-xs">
-              {tr('For Professionals', language)}
-            </p>
-            <Link
-              to={providerDestination}
-              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#f4b61a] px-6 py-3 text-sm font-extrabold text-[#102c4d] transition hover:-translate-y-0.5 hover:bg-[#ffc52e] sm:mt-5 sm:gap-3 sm:px-7 sm:py-3.5 sm:text-sm"
-            >
-              {isProvider ? tr('Open Service Provider Dashboard', language) : tr('Join LOCAL As Service Provider', language)}
-              <ApperIcon name="ArrowRight" size={18} />
-            </Link>
-          </div>
-        </section>
       </main>
 
       <footer className="border-t border-slate-200 bg-white">
