@@ -399,7 +399,7 @@ export default function CentralDispatch() {
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
         payment_status_c: 'Unpaid',
-        billing_status_c: providerQuoteRequest && !fixedPriceRequest ? 'Estimate Required' : 'Ready for Confirmation',
+        billing_status_c: 'Ready for Confirmation',
         admin_review_note_c: providerQuoteRequest && !fixedPriceRequest
           ? 'Booking assigned by LOCAL Admin after provider accepted. Provider must confirm compatibility, stock, final price and delivery charges; customer approval and final amount are still pending.'
           : 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
