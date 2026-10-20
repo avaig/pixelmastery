@@ -32,6 +32,27 @@ function readCarEssentialsApproval(description) {
   try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
+function readRsaQuote(message) {
+  const marker = 'LOCAL_RSA_QUOTE_JSON:';
+  const source = String(message ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
+}
+
+function readRsaApproval(description) {
+  const marker = 'LOCAL_RSA_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
+function isRsaQuoteRequest(request) {
+  const text = String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? '');
+  return !/emergency car rental/i.test(text) && /battery jump start|flat tyre|flat tire|puncture|diesel on demand|key locked|lockout|towing required/i.test(text);
+}
+
 function getRequestLineItems(request) {
   const description = String(request?.problem_description_c ?? '');
   if (/car essentials delivery/i.test(String(request?.Name ?? '') + ' ' + description)) {
@@ -176,6 +197,11 @@ export default function RequestDetail() {
   const [deliveryCharge, setDeliveryCharge] = useState('');
   const [quoteTotal, setQuoteTotal] = useState(0);
   const [quoteCalculated, setQuoteCalculated] = useState(false);
+  const [rsaServiceCharge, setRsaServiceCharge] = useState('');
+  const [rsaTravelCharge, setRsaTravelCharge] = useState('');
+  const [rsaExtraCharge, setRsaExtraCharge] = useState('0');
+  const [rsaQuoteNotes, setRsaQuoteNotes] = useState('');
+  const [rsaEta, setRsaEta] = useState('');
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -244,6 +270,9 @@ export default function RequestDetail() {
   const centralAssignment = responses.find((item) => /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')) && item.status_c === 'Selected');
   const carQuote = readCarEssentialsQuote(centralAssignment?.message_c);
   const carApproval = readCarEssentialsApproval(request?.problem_description_c);
+  const isRsaQuote = isRsaQuoteRequest(request) && !isCarEssentialsRequest;
+  const rsaQuote = readRsaQuote(centralAssignment?.message_c);
+  const rsaApproval = readRsaApproval(request?.problem_description_c);
 
   async function acceptDriverRequest() {
     if (!request?.Id || !isFixedRateDriverRequest || !isTechnician) return;
@@ -310,6 +339,55 @@ export default function RequestDetail() {
       toast.success('Itemized quote sent to Admin Central Dispatch for review.');
       await run();
     } catch (err) { toast.error(err.message || 'Could not submit quote.'); }
+    finally { setWorking(false); }
+  }
+
+  async function submitRsaQuote(response) {
+    if (!isTechnician || !isRsaQuote || !response?.Id || !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? ''))) return;
+    const service = Number(rsaServiceCharge);
+    const travel = Number(rsaTravelCharge);
+    const extra = Number(rsaExtraCharge || 0);
+    if (!Number.isFinite(service) || service <= 0 || !Number.isFinite(travel) || travel < 0 || !Number.isFinite(extra) || extra < 0) {
+      toast.error('Enter a positive service charge and valid non-negative travel and additional charges.'); return;
+    }
+    const quoteId = 'RSA-' + Date.now().toString(36).toUpperCase();
+    const total = service + travel + extra;
+    const quote = { quoteId, version: 1, serviceCharge: service, travelCharge: travel, extraCharge: extra, notes: rsaQuoteNotes.trim(), eta: rsaEta.trim(), total, submittedAt: new Date().toISOString(), status: 'Submitted to Admin', providerApproved: false, providerApprovedAt: null, providerApprovedQuoteId: null, providerApprovedTotal: null };
+    setWorking(true);
+    try {
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_RSA_QUOTE_JSON:')[0].trimEnd();
+      const updated = await sdk.table('technician_responses_c').update({ Id: response.Id, status_c: 'Selected', proposed_price_c: total, original_proposed_price_c: total, final_agreed_price_c: null, message_c: baseMessage + '\\nLOCAL_RSA_QUOTE_JSON:' + JSON.stringify(quote) });
+      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'RSA quotation could not be saved.');
+      toast.success('Quotation submitted to LOCAL Admin for review.'); await run();
+    } catch (err) { toast.error(err.message || 'Could not submit the quotation.'); }
+    finally { setWorking(false); }
+  }
+
+  async function approveRsaQuote() {
+    if (!isCustomer || !rsaQuote || !request?.Id || rsaQuote.status !== 'Sent to Customer' || (rsaApproval?.quoteId === rsaQuote.quoteId && Number(rsaApproval.total) === Number(rsaQuote.total))) return;
+    setWorking(true);
+    try {
+      const clean = String(request.problem_description_c ?? '').split('LOCAL_RSA_APPROVAL_JSON:')[0].trimEnd();
+      const approval = { approved: true, quoteId: rsaQuote.quoteId, total: Number(rsaQuote.total), approvedAt: new Date().toISOString() };
+      const updated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\\nLOCAL_RSA_APPROVAL_JSON:' + JSON.stringify(approval) });
+      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Customer approval could not be saved.');
+      toast.success('Quotation approved. Waiting for the Service Provider to confirm the same amount.'); await run();
+    } catch (err) { toast.error(err.message || 'Could not approve the quotation.'); }
+    finally { setWorking(false); }
+  }
+
+  async function confirmCustomerApprovedRsaQuote() {
+    if (!isTechnician || !centralAssignment || !rsaQuote || !rsaApproval || rsaQuote.status !== 'Sent to Customer' || String(rsaApproval.quoteId) !== String(rsaQuote.quoteId) || Number(rsaApproval.total) !== Number(rsaQuote.total) || rsaQuote.providerApproved) {
+      toast.error('The customer must approve the exact Admin-reviewed quotation before provider confirmation.'); return;
+    }
+    setWorking(true);
+    try {
+      const updatedQuote = { ...rsaQuote, providerApproved: true, providerApprovedAt: new Date().toISOString(), providerApprovedQuoteId: rsaQuote.quoteId, providerApprovedTotal: Number(rsaQuote.total) };
+      const baseMessage = String(centralAssignment.message_c ?? '').split('LOCAL_RSA_QUOTE_JSON:')[0].trimEnd();
+      const updated = await sdk.table('technician_responses_c').update({ Id: centralAssignment.Id, message_c: baseMessage + '\\nLOCAL_RSA_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
+      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Provider quote confirmation could not be saved.');
+      toast.success('Customer-approved quotation confirmed. Admin can now confirm the booking.'); await run();
+    } catch (err) { toast.error(err.message || 'Could not confirm the quotation.'); }
     finally { setWorking(false); }
   }
 
