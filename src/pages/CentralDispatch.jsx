@@ -390,7 +390,7 @@ export default function CentralDispatch() {
           agreed_price_c: isCarEssentials ? Number(currentQuote.total) : existingJob.agreed_price_c,
           original_provider_quote_c: isCarEssentials ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
           billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
-          service_start_otp_c: isCarEssentials ? (existingJob.service_start_otp_c || String(Math.floor(100000 + Math.random() * 900000))) : existingJob.service_start_otp_c,
+          service_start_otp_c: isCarEssentials ? null : existingJob.service_start_otp_c,
           admin_review_note_c: isCarEssentials
             ? 'Booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Delivery and payment completion remain pending.'
             : 'Booking confirmed by LOCAL Admin after validating the assigned provider and pricing workflow.',
@@ -415,7 +415,7 @@ export default function CentralDispatch() {
         status_c: 'Assigned',
         payment_status_c: 'Unpaid',
         billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
-        service_start_otp_c: isCarEssentials ? String(Math.floor(100000 + Math.random() * 900000)) : null,
+        service_start_otp_c: null,
         admin_review_note_c: isCarEssentials
           ? 'Booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Delivery and payment completion remain pending.'
           : providerQuoteRequest && !fixedPriceRequest
