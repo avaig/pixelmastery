@@ -189,11 +189,19 @@ export default function CentralDispatch() {
   }
 
   function getCleanRequestNotes(value) {
-    return String(value ?? '')
+    const text = String(value ?? '').split('LOCAL_AC_REQUEST_JSON:')[0].trim();
+    if (/Customer requested Car Essentials Delivery/i.test(text)) {
+      const vehicle = text.match(/Vehicle:\s*([^\.]+)\.?/i)?.[1]?.trim();
+      const location = text.match(/Requested delivery location:\s*([^\.]+(?:\([^)]*\))?)/i)?.[1]?.trim();
+      const items = text.match(/Car Essentials order details:\s*([^\.]+)\./i)?.[1]?.trim();
+      return [vehicle ? 'Vehicle: ' + vehicle : '', items ? 'Requested items: ' + items : '', location ? 'Delivery location: ' + location : '', 'Provider to confirm compatibility, stock, final price and delivery charges before fulfilment.'].filter(Boolean).join('\n');
+    }
+    return text
       .replace(/CUSTOMER_CAR_WASH_OFFER_JSON:[\s\S]*$/i, '')
       .replace(/CAR_WASH_DECISIONS_JSON:[\s\S]*$/i, '')
       .replace(/^Customer requested these Car Wash services:[\s\S]*?(?:Prices are indicative demo menu prices\.?|$)/i, '')
       .replace(/^Customer selected\s*/i, '')
+      .replace(/^Customer requested\s*/i, '')
       .trim();
   }
 
@@ -393,9 +401,9 @@ export default function CentralDispatch() {
               </section>}
               <section className="rounded-xl border border-border bg-card p-4 md:p-5">
                 {(() => { const details = getStructuredServiceDetails(request); return <>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="ClipboardList" size={22} /></div>
-                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-lg font-semibold">Service details and customer notes</h3><span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">{details.type}</span></div><p className="mt-1 text-sm text-muted-foreground">Review the selected service, included work, and customer instructions before assigning a provider.</p></div>
+                  <div className="flex items-center gap-3 border-b border-border pb-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="ClipboardList" size={18} /></div>
+                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-base font-semibold">Service summary</h3><span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">{details.type}</span></div></div>
                   </div>
                   {details.structured && <div className="mt-5 space-y-4">
                     <div className="rounded-xl border border-border bg-muted/10 p-4">
@@ -404,8 +412,9 @@ export default function CentralDispatch() {
                     {details.items.length > 0 ? <div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold">{details.type === 'Car Wash' ? 'Selected services' : details.type === 'AC Service' ? 'Requested AC work' : 'Package includes'}</h4><span className="text-xs text-muted-foreground">{details.type === 'AC Service' ? 'Quote pending provider response' : 'Quantity and price details'}</span></div><div className="grid gap-2 sm:grid-cols-2">{details.items.map((item,index) => <div key={item.name + index} className="flex min-w-0 items-start gap-3 rounded-lg border border-border/80 bg-background p-3"><span className={'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' + (item.included ? 'bg-success/10 text-success' : 'bg-primary/5 text-primary')}><ApperIcon name={item.included ? 'Check' : details.type === 'AC Service' ? 'Wind' : 'Wrench'} size={16} /></span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{item.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.included ? 'Included in package price' : item.amount == null ? (details.type === 'AC Service' ? 'Provider estimate required' : 'If required / confirm with provider') : 'Qty: ' + item.quantity}</p></div><div className="shrink-0 text-right text-sm font-semibold tabular-nums">{item.amount == null ? (details.type === 'AC Service' ? 'Quote' : '—') : '₹' + item.amount.toLocaleString('en-IN')}</div></div>)}</div></div> : <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Detailed service items were not included in the request. Review the customer notes below before assigning.</div>}
                     {details.type === 'Car Wash' && <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-xs font-medium text-muted-foreground">Menu total</p><p className="mt-1 text-xl font-bold tabular-nums">{details.total == null ? '—' : '₹' + details.total.toLocaleString('en-IN')}</p></div><div className="rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs font-medium text-muted-foreground">Customer offer</p><p className="mt-1 text-xl font-bold tabular-nums">{details.offer == null ? 'No separate offer recorded' : '₹' + details.offer.toLocaleString('en-IN')}</p></div></div>}
                   </div>}
-                  <div className="mt-4 rounded-xl border border-blue-200/70 bg-blue-50/70 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"><ApperIcon name="MessageSquareText" size={17} /></div><div className="min-w-0 flex-1"><h4 className="font-semibold">Customer request / notes</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{details.notes || 'No separate customer notes were provided for this booking.'}</p></div></div>
+                  <div className="mt-4 rounded-lg border border-border bg-muted/20 px-3 py-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer instructions</h4>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-5 text-foreground">{details.notes || 'No additional instructions provided.'}</p>
                   </div>
                 </>; })()}
               </section>
