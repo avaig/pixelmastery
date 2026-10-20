@@ -53,7 +53,7 @@ export default function JobsDetail() {
   }), [id]);
   const requestId = job?.request_c?.Id ?? job?.request_c ?? '';
   const { data: serviceRequest } = useFetch(() => requestId
-    ? sdk.table('service_requests_c').select(['Id', 'Name', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c']).get(requestId).then((res) => res.data ?? null)
+    ? sdk.table('service_requests_c').select(['Id', 'Name', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'customer_c']).get(requestId).then((res) => res.data ?? null)
     : Promise.resolve(null), [requestId]);
 
   const isProvider = user?.profile === 'ServiceProvider_c';
@@ -865,7 +865,7 @@ export default function JobsDetail() {
           </div>
         )}
 
-        {isCarCare && isCustomer && (
+        {isProvider && ['Assigned', 'In Progress'].includes(job.status_c) && (() => { const customerRecord = serviceRequest?.customer_c && typeof serviceRequest.customer_c === 'object' ? serviceRequest.customer_c : job.customer_c && typeof job.customer_c === 'object' ? job.customer_c : null; const customerPhone = String(customerRecord?.phone_c ?? customerRecord?.Phone ?? customerRecord?.mobile_c ?? '').trim(); const customerName = customerRecord?.Name ?? displayLookup(job.customer_c) ?? 'Customer'; return <section className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-5"><div className="flex items-start gap-3"><div className="rounded-xl bg-primary/10 p-3 text-primary"><ApperIcon name="PhoneCall" size={22} /></div><div className="min-w-0 flex-1"><h2 className="font-heading text-lg font-semibold">Coordinate your confirmed booking</h2><p className="mt-1 text-sm text-muted-foreground">Contact the customer to coordinate arrival and service details. Customer contact information is shown only for the assigned booking.</p><div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3"><div><p className="font-semibold">{customerName}</p><p className="text-sm text-muted-foreground">{customerPhone ? 'Phone number available for this booking' : 'Contact number is not available in the linked profile yet.'}</p></div>{customerPhone ? <Button asChild><a href={'tel:' + customerPhone.replace(/[^+\\d]/g, '')}><ApperIcon name="Phone" size={16} /> Call Customer</a></Button> : <Button variant="outline" disabled><ApperIcon name="PhoneOff" size={16} /> Call unavailable</Button>}</div><p className="mt-3 text-xs text-muted-foreground">Calls use the number stored in the customer profile. This is not masked calling.</p></div></div></section>; })()}\n\n        {isCarCare && isCustomer && (
           <div className="mt-7 space-y-5 border-t border-border pt-5">
             <section className="space-y-4 rounded-lg border border-border p-4">
               <div><h2 className="font-heading text-xl font-semibold">Vehicle photo evidence</h2><p className="mt-1 text-sm text-muted-foreground">Review the six photos taken before and after the service. These records help both sides resolve condition or damage disputes. Completion confirmation and post-service payment remain locked if either set is incomplete.</p></div>
