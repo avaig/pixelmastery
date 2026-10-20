@@ -525,23 +525,30 @@ export default function Home() {
         </section>
 
         <section className="mx-auto max-w-5xl px-4 pb-8 sm:px-8 sm:pb-10 lg:px-10">
-          <div className="rounded-3xl border border-slate-100 bg-slate-50 px-4 py-6 sm:px-8 sm:py-8">
-            <h2 className="text-center text-xl font-black tracking-tight text-[#102c4d] sm:text-2xl">{tr('Why LOCAL?', language)}</h2>
-            <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">
-              {[
-                { icon: 'MapPin', title: 'Nearby Service Providers', detail: 'Help around your location' },
-                { icon: 'ShieldCheck', title: 'Verified Professionals', detail: 'Provider checks matter' },
-                { icon: 'IndianRupee', title: 'Transparent Pricing', detail: 'Know the price clearly' },
-                { icon: 'Clock3', title: 'On-Time Service', detail: 'See expected arrival' },
-              ].map((item) => (
-                <div key={item.title} className="flex flex-col items-center gap-2 text-center">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
-                    <ApperIcon name={item.icon} size={24} />
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-4 py-6 shadow-sm sm:px-7 sm:py-7">
+            <div className="pointer-events-none absolute -right-10 -top-12 size-36 rounded-full bg-emerald-50" />
+            <div className="relative">
+              <div className="text-center">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-700 sm:text-xs">{tr('Local Needs. Local Solutions.', language)}</p>
+                <h2 className="mt-1 text-xl font-black tracking-tight text-[#102c4d] sm:text-2xl">{tr('Why Choose LOCAL?', language)}</h2>
+                <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">{tr('Local help, clear information, and a simpler way to arrange a service.', language)}</p>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-4 sm:gap-4">
+                {[
+                  { icon: 'MapPin', title: 'Nearby Help', detail: 'Find services around your location' },
+                  { icon: 'ShieldCheck', title: 'Provider Checks', detail: 'Know which providers are verified' },
+                  { icon: 'IndianRupee', title: 'Clear Pricing', detail: 'Review charges before confirming' },
+                  { icon: 'Clock3', title: 'Arrival Updates', detail: 'See the expected arrival time' },
+                ].map((item) => (
+                  <div key={item.title} className="flex min-w-0 flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-4 text-center transition hover:border-emerald-100 hover:bg-emerald-50/50 sm:px-3 sm:py-5">
+                    <div className="flex size-11 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm ring-1 ring-slate-100 sm:size-12">
+                      <ApperIcon name={item.icon} size={23} />
+                    </div>
+                    <h3 className="mt-3 text-sm font-extrabold leading-5 text-[#102c4d]">{tr(item.title, language)}</h3>
+                    <p className="mt-1.5 text-xs leading-5 text-slate-500">{tr(item.detail, language)}</p>
                   </div>
-                  <div className="text-sm font-extrabold text-[#102c4d]">{tr(item.title, language)}</div>
-                  <div className="text-xs leading-5 text-slate-500">{tr(item.detail, language)}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>
