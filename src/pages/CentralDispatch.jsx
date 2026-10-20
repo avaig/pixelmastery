@@ -29,6 +29,22 @@ export const nav = {
 
 const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'scheduled_at_c', 'pricing_mode_c', 'pricing_mode_description_c', 'CreatedOn'];
 
+function readCarEssentialsQuote(message) {
+  const marker = 'LOCAL_CAR_ESSENTIALS_QUOTE_JSON:';
+  const source = String(message ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Array.isArray(payload.items) && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
+}
+
+function readCarEssentialsApproval(description) {
+  const marker = 'LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
 function readCancellationDetails(description) {
   const source = String(description ?? '');
   const marker = 'LOCAL_CANCELLATION_JSON:';
@@ -338,8 +354,16 @@ export default function CentralDispatch() {
       }
       const fixedPriceRequest = isFixedPriceRequest(request);
       const fixedPrice = fixedPriceRequest ? getFixedPrice(request) : null;
-      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote'
-        || /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? ''));
+      const isCarEssentials = /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? '') + ' ' + String(request.problem_description_c ?? ''));
+      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || isCarEssentials;
+      if (isCarEssentials) {
+        const quote = readCarEssentialsQuote(acceptedAssignment.message_c);
+        const approval = readCarEssentialsApproval(request.problem_description_c);
+        if (!quote || !approval || String(approval.quoteId ?? '') !== String(quote.quoteId ?? '') || Number(approval.total) !== Number(quote.total)) {
+          toast.error('Car Essentials Delivery cannot be confirmed yet. The provider quote must be reviewed by Admin and approved by the customer first.');
+          return;
+        }
+      }
       if (fixedPriceRequest && fixedPrice === null) {
         toast.error('A clear, positive fixed service total could not be read. Please review the price before confirming; no job was created.');
         return;
@@ -355,8 +379,8 @@ export default function CentralDispatch() {
         response_c: acceptedAssignment.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
         technician_c: acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c,
-        agreed_price_c: fixedPrice,
-        original_provider_quote_c: null,
+        agreed_price_c: providerQuoteRequest && !fixedPriceRequest ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total ?? fixedPrice ?? 0) : fixedPrice,
+        original_provider_quote_c: providerQuoteRequest && !fixedPriceRequest ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total ?? 0) : null,
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
         payment_status_c: 'Unpaid',
