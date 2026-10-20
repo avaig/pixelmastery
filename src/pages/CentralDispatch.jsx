@@ -335,7 +335,7 @@ export default function CentralDispatch() {
     try {
       const updatedQuote = { ...quote, status: 'Sent to Customer', reviewedAt: new Date().toISOString(), reviewedBy: 'LOCAL Admin' };
       const baseMessage = String(response.message_c ?? '').split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].trimEnd();
-      const result = await sdk.table('technician_responses_c').update({ Id: response.Id, message_c: baseMessage + '\\nLOCAL_CAR_ESSENTIALS_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
+      const result = await sdk.table('technician_responses_c').update({ Id: response.Id, message_c: baseMessage + '\nLOCAL_CAR_ESSENTIALS_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
       if (!result.data?.length) throw new Error(result.messages?.[0] || 'Reviewed quote could not be sent to customer.');
       toast.success('Admin-reviewed quote sent to customer for approval.');
       await run();
