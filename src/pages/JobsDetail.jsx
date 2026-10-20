@@ -545,17 +545,54 @@ export default function JobsDetail() {
 
   async function verifyCarEssentialsDeliveryOtp() {
     if (!isProvider || !isCarEssentialsDelivery || job.status_c !== 'Assigned' || job.provider_travel_status_c !== 'Out for Delivery') return;
-    if (!job.service_start_otp_c) { toast.error('LOCAL Admin has not generated the delivery OTP yet. Ask Admin to generate it for this job.'); return; }
     if (providerOtpDraft.length !== 6 || !Array.from(providerOtpDraft).every((digit) => digit >= '0' && digit <= '9')) {
       toast.error('Enter the six-digit delivery OTP shared by the customer.');
       return;
     }
-    if (providerOtpDraft !== String(job.service_start_otp_c ?? '')) {
-      toast.error('Incorrect delivery OTP. Ask the customer to open LOCAL and read the code shown for this order.');
-      return;
+    setWorking(true);
+    try {
+      // Always validate against the latest database values. Older test bookings can
+      // have duplicate job rows, so the customer may see a different row's OTP.
+      const requestId = job.request_c?.Id ?? job.request_c;
+      const responseId = job.response_c?.Id ?? job.response_c;
+      const technicianId = job.technician_c?.Id ?? job.technician_c;
+      const related = await sdk.table('jobs_c')
+        .select(['Id', 'request_c', 'response_c', 'technician_c', 'service_start_otp_c', 'service_start_otp_verified_at_c'])
+        .where(eq('request_c', requestId)).page(1, 100).fetch();
+      if (!related.success) throw new Error(related.message || 'Could not refresh the delivery OTP. Please retry.');
+      const sameProviderJobs = (related.data ?? []).filter((item) => {
+        const itemResponseId = item.response_c?.Id ?? item.response_c;
+        const itemTechnicianId = item.technician_c?.Id ?? item.technician_c;
+        return String(item.Id) === String(job.Id) ||
+          (String(itemTechnicianId ?? '') === String(technicianId ?? '') &&
+            (String(itemResponseId ?? '') === String(responseId ?? '') || !itemResponseId || !responseId));
+      });
+      const currentRecord = sameProviderJobs.find((item) => String(item.Id) === String(job.Id));
+      if (!currentRecord) throw new Error('This job could not be matched to the current provider assignment. Refresh and try again.');
+      const matchingRecord = sameProviderJobs.find((item) => String(item.service_start_otp_c ?? '') === providerOtpDraft);
+      if (!matchingRecord) {
+        toast.error('This code does not match the latest OTP saved for this booking. Ask Admin to synchronize the delivery OTP, then refresh both screens.');
+        return;
+      }
+      const now = new Date().toISOString();
+      // Reconcile this provider row to the exact code the customer has, then mark delivery.
+      const result = await sdk.table('jobs_c').update({
+        Id: job.Id,
+        service_start_otp_c: providerOtpDraft,
+        service_start_otp_verified_at_c: now,
+        provider_travel_status_c: 'Delivered — Awaiting Customer Confirmation',
+        completion_requested_at_c: now,
+        billing_status_c: 'Delivered — Awaiting Customer Confirmation',
+      });
+      if (!result?.success || !result.data?.length) throw new Error(result?.messages?.[0] || result?.message || 'Delivery could not be recorded. Refresh the job and retry.');
+      toast.success('Delivery OTP verified. Order marked delivered; waiting for customer receipt confirmation.');
+      setProviderOtpDraft('');
+      await run();
+    } catch (error) {
+      toast.error(error.message || 'Could not verify the delivery OTP. Please refresh and retry.');
+    } finally {
+      setWorking(false);
     }
-    await updateJob({ service_start_otp_verified_at_c: new Date().toISOString(), provider_travel_status_c: 'Delivered — Awaiting Customer Confirmation', completion_requested_at_c: new Date().toISOString(), billing_status_c: 'Delivered — Awaiting Customer Confirmation' }, 'Delivery OTP verified. Order marked delivered; waiting for customer receipt confirmation.');
-    setProviderOtpDraft('');
   }
 
   async function verifyServiceStartOtp() {
