@@ -194,6 +194,7 @@ export default function CarEssentialsDelivery() {
                     />
                   </div>
                 )}
+                </div>
               </Card>
             </button>
           );
