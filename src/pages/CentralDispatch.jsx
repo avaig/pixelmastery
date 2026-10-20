@@ -213,6 +213,35 @@ export default function CentralDispatch() {
     return { items, menuTotal: totalMatch ? Number(totalMatch[1].replace(/,/g, '')) : null, customerOffer: offerMatch ? Number(offerMatch[1].replace(/,/g, '')) : null };
   }
 
+  function getStructuredServiceDetails(request) {
+    const description = String(request?.problem_description_c ?? '');
+    const name = String(request?.Name ?? '');
+    const isCarWash = /car wash/i.test(name) || /Car Wash services/i.test(description);
+    const isAC = /AC Technician/i.test(name) || description.includes('LOCAL_AC_REQUEST_JSON:');
+    const isCarService = /economy service|normal service|major service|point checkup|covered items:/i.test(name + ' ' + description);
+    if (isCarWash) {
+      const summary = getCarWashAdminSummary(description);
+      return { type: 'Car Wash', title: 'Selected services', items: summary.items.map(item => ({ name: item.name, quantity: item.quantity, amount: item.amount, included: false })), total: summary.menuTotal, offer: summary.customerOffer, notes: getCleanRequestNotes(description), structured: true };
+    }
+    if (isAC) {
+      let payload = null;
+      try { const marker = 'LOCAL_AC_REQUEST_JSON:'; const index = description.indexOf(marker); if (index >= 0) payload = JSON.parse(description.slice(index + marker.length)); } catch { payload = null; }
+      const groups = Array.isArray(payload?.groups) ? payload.groups : [];
+      const items = groups.map(group => ({ name: [group.acType, group.serviceType].filter(Boolean).join(' — ') + (group.notes ? ' — ' + group.notes : ''), quantity: Number(group.quantity || 1), amount: null, included: false }));
+      const notes = [payload?.serviceAddress ? 'Address: ' + payload.serviceAddress : '', payload?.accessInstructions ? 'Access instructions: ' + payload.accessInstructions : ''].filter(Boolean).join('\n');
+      return { type: 'AC Service', title: 'Requested AC work', items, total: null, offer: null, notes: notes || 'Provider visit charge and estimate are subject to provider response and customer approval.', structured: true };
+    }
+    if (isCarService) {
+      const packageMatch = description.match(/(Economy Service|Normal Service|Major Service).*?Listed package price:\\s*₹\\s*([\\d,]+)/i);
+      const coveredMatch = description.match(/Covered items:\\s*(.*?)(?:\\. Customer selected|$)/i);
+      const items = [];
+      if (packageMatch) items.push({ name: packageMatch[1] + ' package', quantity: 1, amount: Number(packageMatch[2].replace(/,/g, '')), included: false });
+      if (coveredMatch) coveredMatch[1].split(';').map(part => part.trim()).filter(Boolean).forEach(part => items.push({ name: part.replace(/\\s*\\(Included\\)/i, ''), quantity: '—', amount: null, included: /\\(Included\\)/i.test(part) }));
+      return { type: 'Car Service', title: 'Package includes', items, total: packageMatch ? Number(packageMatch[2].replace(/,/g, '')) : null, offer: null, notes: /Customer selected this package/i.test(description) ? 'Customer selected this package and requests provider availability/confirmation.' : getCleanRequestNotes(description), structured: true };
+    }
+    return { type: 'Service request', title: 'Service details', items: [], total: null, offer: null, notes: getCleanRequestNotes(description), structured: false };
+  }
+
   function isFixedPriceRequest(request) {
     if (String(request?.pricing_mode_c ?? '').toLowerCase() === 'fixed price') return true;
     const notes = String(request?.problem_description_c ?? '');
@@ -362,9 +391,23 @@ export default function CentralDispatch() {
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">Request status and job status are tracked separately. This panel reads the job linked to this service request.</p>
               </section>}
-              <section className="rounded-xl border border-border p-4 md:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">Service details and customer notes</h3><p className="mt-1 text-sm text-muted-foreground">Structured booking information for Admin review.</p></div>{(/car wash/i.test(String(request.Name ?? '')) || /Car Wash services/i.test(String(request.problem_description_c ?? ''))) && <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">Car Wash</span>}</div>
-                {(/car wash/i.test(String(request.Name ?? '')) || /Car Wash services/i.test(String(request.problem_description_c ?? ''))) ? (() => { const summary = getCarWashAdminSummary(request.problem_description_c); const notes = getCleanRequestNotes(request.problem_description_c); return <div className="mt-4 space-y-4"><div className="overflow-hidden rounded-lg border border-border"><div className="grid grid-cols-[minmax(0,1fr)_64px_100px] gap-2 bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><span>Selected service</span><span className="text-center">Qty.</span><span className="text-right">Amount</span></div>{summary.items.length ? summary.items.map((item, index) => <div key={item.name + index} className="grid grid-cols-[minmax(0,1fr)_64px_100px] items-start gap-2 border-t border-border px-3 py-3 text-sm"><span className="break-words font-medium">{item.name}</span><span className="text-center text-muted-foreground">{item.quantity}</span><span className="text-right font-semibold tabular-nums">{item.amount == null ? '—' : '₹' + item.amount.toLocaleString('en-IN')}</span></div>) : <p className="p-3 text-sm text-muted-foreground">Service item details could not be parsed from this request.</p>}</div><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg bg-muted/30 p-3"><p className="text-xs font-medium text-muted-foreground">Menu total</p><p className="mt-1 text-xl font-bold tabular-nums">{summary.menuTotal == null ? '—' : '₹' + summary.menuTotal.toLocaleString('en-IN')}</p></div><div className="rounded-lg bg-primary/5 p-3"><p className="text-xs font-medium text-muted-foreground">Customer offer</p><p className="mt-1 text-xl font-bold tabular-nums">{summary.customerOffer == null ? '—' : '₹' + summary.customerOffer.toLocaleString('en-IN')}</p></div></div><div className="rounded-lg border border-border bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer notes / instructions</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{notes || 'No separate customer notes were provided for this booking.'}</p></div></div>; })() : <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-muted/40 p-4 text-sm leading-6">{getCleanRequestNotes(request.problem_description_c) || 'No additional problem details were provided.'}</p>}
+              <section className="rounded-xl border border-border bg-card p-4 md:p-5">
+                {(() => { const details = getStructuredServiceDetails(request); return <>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="ClipboardList" size={22} /></div>
+                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-lg font-semibold">Service details and customer notes</h3><span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">{details.type}</span></div><p className="mt-1 text-sm text-muted-foreground">Review the selected service, included work, and customer instructions before assigning a provider.</p></div>
+                  </div>
+                  {details.structured && <div className="mt-5 space-y-4">
+                    <div className="rounded-xl border border-border bg-muted/10 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{details.title}</p><h4 className="mt-1 font-heading text-lg font-bold">{request.Name || details.type}</h4><p className="mt-1 text-sm text-muted-foreground">{details.type === 'AC Service' ? 'Service requested for the customer’s AC unit(s)' : details.type === 'Car Service' ? 'Vehicle service package and covered work' : 'Customer-selected wash services and add-ons'}</p></div>{details.total != null && <div className="min-w-[135px] rounded-lg bg-primary/5 px-4 py-3"><p className="text-xs text-muted-foreground">{details.type === 'Car Wash' ? 'Menu total' : 'Listed package price'}</p><p className="mt-1 text-2xl font-bold tabular-nums">₹{details.total.toLocaleString('en-IN')}</p></div>}</div>
+                    </div>
+                    {details.items.length > 0 ? <div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold">{details.type === 'Car Wash' ? 'Selected services' : details.type === 'AC Service' ? 'Requested AC work' : 'Package includes'}</h4><span className="text-xs text-muted-foreground">{details.type === 'AC Service' ? 'Quote pending provider response' : 'Quantity and price details'}</span></div><div className="grid gap-2 sm:grid-cols-2">{details.items.map((item,index) => <div key={item.name + index} className="flex min-w-0 items-start gap-3 rounded-lg border border-border/80 bg-background p-3"><span className={'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' + (item.included ? 'bg-success/10 text-success' : 'bg-primary/5 text-primary')}><ApperIcon name={item.included ? 'Check' : details.type === 'AC Service' ? 'Wind' : 'Wrench'} size={16} /></span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{item.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.included ? 'Included in package price' : item.amount == null ? (details.type === 'AC Service' ? 'Provider estimate required' : 'If required / confirm with provider') : 'Qty: ' + item.quantity}</p></div><div className="shrink-0 text-right text-sm font-semibold tabular-nums">{item.amount == null ? (details.type === 'AC Service' ? 'Quote' : '—') : '₹' + item.amount.toLocaleString('en-IN')}</div></div>)}</div></div> : <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Detailed service items were not included in the request. Review the customer notes below before assigning.</div>}
+                    {details.type === 'Car Wash' && <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-xs font-medium text-muted-foreground">Menu total</p><p className="mt-1 text-xl font-bold tabular-nums">{details.total == null ? '—' : '₹' + details.total.toLocaleString('en-IN')}</p></div><div className="rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs font-medium text-muted-foreground">Customer offer</p><p className="mt-1 text-xl font-bold tabular-nums">{details.offer == null ? 'No separate offer recorded' : '₹' + details.offer.toLocaleString('en-IN')}</p></div></div>}
+                  </div>}
+                  <div className="mt-4 rounded-xl border border-blue-200/70 bg-blue-50/70 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+                    <div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"><ApperIcon name="MessageSquareText" size={17} /></div><div className="min-w-0 flex-1"><h4 className="font-semibold">Customer request / notes</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{details.notes || 'No separate customer notes were provided for this booking.'}</p></div></div>
+                  </div>
+                </>; })()}
               </section>
               <section className="rounded-lg border p-4">
                 <h3 className="font-semibold">Price review</h3>
