@@ -147,7 +147,7 @@ export default function CarEssentialsDelivery() {
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
-      <header className="-mt-2 -mb-1 text-center sm:mt-0 sm:mb-0">
+      <header className="relative -top-2 mb-2 text-center sm:static sm:mb-0">
         <div className="mx-auto mb-1 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:mb-3 sm:size-14">
           <ApperIcon name="PackageCheck" size={22} />
         </div>
@@ -157,7 +157,7 @@ export default function CarEssentialsDelivery() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:mt-0 sm:grid-cols-3 sm:gap-4">
         {PRODUCTS.map((product) => {
           const selected = selectedProducts.includes(product.id);
           return (
