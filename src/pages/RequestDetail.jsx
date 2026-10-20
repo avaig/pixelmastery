@@ -16,8 +16,32 @@ import { getLanguage, tr } from '@/services/i18n';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
+function readCarEssentialsQuote(message) {
+  const marker = 'LOCAL_CAR_ESSENTIALS_QUOTE_JSON:';
+  const source = String(message ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Array.isArray(payload.items) ? payload : null; } catch { return null; }
+}
+
+function readCarEssentialsApproval(description) {
+  const marker = 'LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
 function getRequestLineItems(request) {
   const description = String(request?.problem_description_c ?? '');
+  if (/car essentials delivery/i.test(String(request?.Name ?? '') + ' ' + description)) {
+    const itemsText = description.match(/Car Essentials order details:\\s*([^.]+)/i)?.[1] ?? '';
+    const items = itemsText.split(';').map((part) => part.trim()).filter(Boolean).map((part) => {
+      const match = part.match(/^(.*?)\\s*[×x]\\s*(\\d+)/i);
+      return { name: match ? match[1].trim() : part, quantity: match ? Number(match[2]) : 1, price: null, fixed: false };
+    });
+    return items.length ? items : [{ name: 'Requested product details', quantity: 1, price: null, fixed: false }];
+  }
   const acMarker = 'LOCAL_AC_REQUEST_JSON:';
   const acMarkerIndex = description.indexOf(acMarker);
   if (acMarkerIndex >= 0) {
@@ -148,6 +172,8 @@ export default function RequestDetail() {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelOtherReason, setCancelOtherReason] = useState('');
   const [working, setWorking] = useState(false);
+  const [quotePrices, setQuotePrices] = useState({});
+  const [deliveryCharge, setDeliveryCharge] = useState('');
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -212,6 +238,10 @@ export default function RequestDetail() {
   const isDriverRequest = /hourly driver|full-day driver|full day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
   const isFixedRateDriverRequest = /hourly driver|full-day driver|full day driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
   const carWashMenuTotal = requestLineItems.reduce((sum, item) => sum + (Number(item.price ?? 0)), 0);
+  const isCarEssentialsRequest = /car essentials delivery/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+  const centralAssignment = responses.find((item) => /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')) && item.status_c === 'Selected');
+  const carQuote = readCarEssentialsQuote(centralAssignment?.message_c);
+  const carApproval = readCarEssentialsApproval(request?.problem_description_c);
 
   async function acceptDriverRequest() {
     if (!request?.Id || !isFixedRateDriverRequest || !isTechnician) return;
@@ -256,6 +286,45 @@ export default function RequestDetail() {
     } finally {
       setWorking(false);
     }
+  }
+
+  async function submitCarEssentialsQuote(response) {
+    if (!isTechnician || !isCarEssentialsRequest || !response?.Id || response.status_c !== 'Selected') return;
+    const prices = requestLineItems.map((item, index) => ({ name: item.name, quantity: Number(item.quantity || 1), unitPrice: Number(quotePrices[index]), lineTotal: Number(quotePrices[index]) * Number(item.quantity || 1) }));
+    const fee = Number(deliveryCharge);
+    if (!prices.length || prices.some((item) => !Number.isFinite(item.unitPrice) || item.unitPrice <= 0) || !Number.isFinite(fee) || fee < 0) {
+      toast.error('Enter a positive unit price for every requested product and a valid delivery charge.');
+      return;
+    }
+    const quoteId = 'CE-' + Date.now().toString(36).toUpperCase();
+    const total = prices.reduce((sum, item) => sum + item.lineTotal, 0) + fee;
+    const quote = { quoteId, version: 1, items: prices, deliveryCharge: fee, total, submittedAt: new Date().toISOString(), status: 'Submitted to Admin' };
+    setWorking(true);
+    try {
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].trimEnd();
+      const updated = await sdk.table('technician_responses_c').update({ Id: response.Id, proposed_price_c: total, original_proposed_price_c: total, final_agreed_price_c: null, message_c: baseMessage + '\\nLOCAL_CAR_ESSENTIALS_QUOTE_JSON:' + JSON.stringify(quote) });
+      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Quote could not be saved.');
+      toast.success('Itemized quote sent to Admin Central Dispatch for review.');
+      await run();
+    } catch (err) { toast.error(err.message || 'Could not submit quote.'); }
+    finally { setWorking(false); }
+  }
+
+  async function approveCarEssentialsQuote() {
+    if (!isCustomer || !carQuote || !request?.Id || carApproval?.quoteId === carQuote.quoteId) return;
+    setWorking(true);
+    try {
+      const otpArray = new Uint32Array(1);
+      window.crypto.getRandomValues(otpArray);
+      const otp = String(100000 + (otpArray[0] % 900000));
+      const clean = String(request.problem_description_c ?? '').split('LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:')[0].trimEnd();
+      const approval = { approved: true, quoteId: carQuote.quoteId, total: Number(carQuote.total), approvedAt: new Date().toISOString(), otp, otpExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), otpUsed: false };
+      const updated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\\nLOCAL_CAR_ESSENTIALS_APPROVAL_JSON:' + JSON.stringify(approval) });
+      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Approval could not be saved.');
+      toast.success('Quote approved. Delivery OTP generated and Admin Central Dispatch notified.');
+      await run();
+    } catch (err) { toast.error(err.message || 'Could not approve quote.'); }
+    finally { setWorking(false); }
   }
 
   async function acceptCentralAssignment(response) {
@@ -460,6 +529,7 @@ export default function RequestDetail() {
           <h2 className="font-heading text-xl font-semibold">{isAcRequest ? 'AC SERVICE REQUIRED' : /car wash/i.test(String(request.Name ?? '')) ? 'CAR WASH REQUIRED' : /car service|service package|economy service|normal service|major service/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'CAR SERVICE REQUIRED' : /bike/i.test(String(request.Name ?? '')) ? 'BIKE SERVICE REQUIRED' : /ambulance|emergency/i.test(String(request.Name ?? '')) ? 'EMERGENCY SERVICE REQUIRED' : 'SERVICE REQUIRED'}</h2>
           <div className="mt-3 rounded-md border border-border"><table className="w-full table-fixed text-left text-sm"><thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="w-[58%] px-2 py-2 sm:px-3">Service item</th><th className="w-[12%] px-1 py-2 text-center sm:px-2">Qty.</th><th className="w-[30%] px-2 py-2 text-right sm:px-3">{isAcRequest ? 'Provider quote' : 'Menu price'}</th></tr></thead><tbody>{requestLineItems.map((item, index) => <tr key={item.name + '-' + index} className="border-t border-border"><td className="break-words px-2 py-2.5 font-medium sm:px-3">{item.name}</td><td className="px-1 py-2.5 text-center text-muted-foreground sm:px-2">{item.quantity}</td><td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums sm:px-3">{item.price == null ? '—' : '₹' + Number(item.price).toLocaleString('en-IN')}</td></tr>)}{isCarWashRequest && <tr className="border-t bg-muted/40"><td colSpan={2} className="px-2 py-3 font-semibold sm:px-3">Actual Price of Service</td><td className="whitespace-nowrap px-2 py-3 text-right text-base font-bold tabular-nums sm:px-3">₹{carWashMenuTotal.toLocaleString('en-IN')}</td></tr>}</tbody></table></div>
           {isCarWashRequest && <p className="mt-2 text-xs text-muted-foreground">Car Wash services, quantities and menu prices are shown together in a compact horizontal table. The Service Provider submits one final total. The customer can confirm the provider directly; Pickup &amp; Drop is included in the total.</p>}
+          {isCarEssentialsRequest && <section className="mt-4 rounded-xl border p-4 space-y-3"><h3 className="font-semibold">Car Essentials itemized quote</h3>{carQuote ? <><div className="space-y-2">{carQuote.items.map((item, index) => <div key={index} className="flex justify-between gap-3 text-sm"><span>{item.name} × {item.quantity}</span><span>₹{Number(item.lineTotal).toLocaleString('en-IN')}</span></div>)}<div className="flex justify-between border-t pt-2 text-sm"><span>Home delivery charges</span><span>₹{Number(carQuote.deliveryCharge).toLocaleString('en-IN')}</span></div><div className="flex justify-between font-bold"><span>Total payable</span><span>₹{Number(carQuote.total).toLocaleString('en-IN')}</span></div></div><p className="text-xs text-muted-foreground">Quote status: {carApproval?.quoteId === carQuote.quoteId ? 'Customer approved — awaiting Admin confirmation' : 'Submitted to Admin for review'}</p>{isCustomer && !carApproval && <Button className="w-full" onClick={approveCarEssentialsQuote} disabled={working}>Approve Quote &amp; Generate Delivery OTP</Button>}{isCustomer && carApproval?.quoteId === carQuote.quoteId && <p className="rounded-lg bg-muted p-3 text-sm">Quote approved. Your delivery OTP is ready for handover. Share it only after checking the products.</p>}</> : isTechnician && centralAssignment && <><p className="text-sm text-muted-foreground">Enter a unit price for every requested product and the home-delivery charge. The total is calculated automatically and sent to Admin for review.</p>{requestLineItems.map((item, index) => <div key={index} className="grid grid-cols-[1fr_110px] items-center gap-3"><label className="text-sm">{item.name} × {item.quantity}</label><Input type="number" min="0.01" step="0.01" value={quotePrices[index] ?? ''} onChange={(event) => setQuotePrices((current) => ({ ...current, [index]: event.target.value }))} placeholder="Unit ₹" /></div>)}<div className="grid grid-cols-[1fr_110px] items-center gap-3"><label className="text-sm font-medium">Home delivery charge (₹)</label><Input type="number" min="0" step="0.01" value={deliveryCharge} onChange={(event) => setDeliveryCharge(event.target.value)} placeholder="₹" /></div><p className="text-sm font-semibold">Calculated total: ₹{(requestLineItems.reduce((sum, item, index) => sum + Number(quotePrices[index] || 0) * Number(item.quantity || 1), 0) + Number(deliveryCharge || 0)).toLocaleString('en-IN')}</p><Button className="w-full" onClick={() => submitCarEssentialsQuote(centralAssignment)} disabled={working}>{working ? 'Submitting quote…' : 'Submit Itemized Quote to Admin'}</Button></> : <p className="text-sm text-muted-foreground">Waiting for the assigned provider to accept and submit an itemized quote.</p>}</section>}
           {user?.profile === 'Admin_c' && <section className="mt-4 rounded-xl border border-border bg-card p-4 md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="ClipboardList" size={20} /></div>
