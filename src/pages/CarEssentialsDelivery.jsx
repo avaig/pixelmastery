@@ -277,7 +277,7 @@ export default function CarEssentialsDelivery() {
 
         <Button type="button" className="mt-5 w-full" onClick={checkAvailability}>
           <ApperIcon name="MapPinCheck" size={17} />
-          Check Availability &amp; Price
+          Find a LOCAL Provider
         </Button>
         <p className="mt-3 text-center text-xs text-muted-foreground">
           This checks your request; it does not confirm an order or take payment.
