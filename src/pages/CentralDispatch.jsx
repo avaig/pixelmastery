@@ -328,6 +328,21 @@ export default function CentralDispatch() {
     return Number.isFinite(value) && value > 0 ? value : null;
   }
 
+  async function sendCarEssentialsQuoteToCustomer(response) {
+    const quote = readCarEssentialsQuote(response?.message_c);
+    if (!response?.Id || !quote || quote.status === 'Sent to Customer') return;
+    setBusyKey('quote:' + response.Id);
+    try {
+      const updatedQuote = { ...quote, status: 'Sent to Customer', reviewedAt: new Date().toISOString(), reviewedBy: 'LOCAL Admin' };
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].trimEnd();
+      const result = await sdk.table('technician_responses_c').update({ Id: response.Id, message_c: baseMessage + '\\\\nLOCAL_CAR_ESSENTIALS_QUOTE_JSON:' + JSON.stringify(updatedQuote) });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Reviewed quote could not be sent to customer.');
+      toast.success('Admin-reviewed quote sent to customer for approval.');
+      await run();
+    } catch (err) { toast.error(err.message || 'Could not send quote to customer.'); }
+    finally { setBusyKey(''); }
+  }
+
   async function confirmBooking(request, acceptedAssignment) {
     if (!request?.Id || !acceptedAssignment?.Id) return;
     const key = 'confirm:' + request.Id;
