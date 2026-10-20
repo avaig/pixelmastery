@@ -516,8 +516,9 @@ export default function JobsDetail() {
   }
 
   async function startProviderTravel() {
-    if (!isProvider || job.status_c !== 'Assigned') return;
-    await updateJob({ provider_travel_status_c: 'On The Way' }, 'Live tracking started. Your location will be shared with the customer for this active job.');
+    if ((!isProvider && !isAdmin) || job.status_c !== 'Assigned') return;
+    if (!navigator.geolocation) { toast.error('This browser does not support location sharing.'); return; }
+    await updateJob({ provider_travel_status_c: 'On The Way' }, 'Travel started. Allow location access so the customer can track your latest position.');
   }
 
   async function markProviderArrived() {
@@ -640,7 +641,7 @@ export default function JobsDetail() {
   }
 
   useEffect(() => {
-    if (!job?.Id || job.status_c === 'Completed' || job.status_c === 'Cancelled' || !isPickupDrop) return;
+    if (!job?.Id || job.status_c === 'Completed' || job.status_c === 'Cancelled' || isCarEssentialsDelivery) return;
     let active = true;
     let locationBusy = false;
     const readLatestLocation = async () => {
@@ -672,7 +673,7 @@ export default function JobsDetail() {
       return () => { active = false; window.clearInterval(poll); };
     }
     return () => { active = false; };
-  }, [job?.Id, job?.status_c, job?.provider_travel_status_c, isProvider, isCustomer, isAdmin, isPickupDrop]);
+  }, [job?.Id, job?.status_c, job?.provider_travel_status_c, isProvider, isCustomer, isAdmin, isCarEssentialsDelivery]);
 
   async function recordProviderSettlement() {
     if (!isAdmin || !isPaid || job.status_c !== 'Completed' || !job.customer_completion_confirmed_at_c) {
