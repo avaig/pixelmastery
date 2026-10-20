@@ -352,17 +352,6 @@ export default function CentralDispatch() {
         toast.info('This request is already finalized or closed.');
         return;
       }
-      const existingJobs = await sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 20).fetch();
-      if (!existingJobs.success) throw new Error(existingJobs.message || 'Could not check for an existing job.');
-      if ((existingJobs.data ?? []).length) {
-        if (request.status_c !== 'Confirmed') {
-          const updateExisting = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
-          if (!updateExisting.data?.length) throw new Error(updateExisting.messages?.[0] || 'Existing job found, but request status could not be updated.');
-        }
-        toast.info('A job already exists for this request; no duplicate was created.');
-        await run();
-        return;
-      }
       if (acceptedAssignment.status_c !== 'Selected' || !/Central LOCAL assignment invitation/i.test(String(acceptedAssignment.message_c ?? ''))) {
         toast.error('Only a provider who accepted a Central LOCAL assignment can be confirmed.');
         return;
@@ -387,6 +376,31 @@ export default function CentralDispatch() {
         toast.error('This request needs a supported pricing workflow before booking can be finalized.');
         return;
       }
+
+      // Idempotency must be checked only AFTER every required approval gate.
+      // Older test data may already have a job record from the previous flow; it
+      // must never let Admin bypass the customer/provider quote approvals.
+      const existingJobs = await sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'response_c', 'technician_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 20).fetch();
+      if (!existingJobs.success) throw new Error(existingJobs.message || 'Could not check for an existing job.');
+      const existingJob = (existingJobs.data ?? []).find((job) => String(job.response_c?.Id ?? job.response_c ?? '') === String(acceptedAssignment.Id));
+      if (existingJob) {
+        const currentQuote = isCarEssentials ? readCarEssentialsQuote(acceptedAssignment.message_c) : null;
+        const updateExistingJob = await sdk.table('jobs_c').update({
+          Id: existingJob.Id,
+          agreed_price_c: isCarEssentials ? Number(currentQuote.total) : existingJob.agreed_price_c,
+          original_provider_quote_c: isCarEssentials ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
+          billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
+          admin_review_note_c: isCarEssentials
+            ? 'Booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Delivery and payment completion remain pending.'
+            : 'Booking confirmed by LOCAL Admin after validating the assigned provider and pricing workflow.',
+        });
+        if (!updateExistingJob.data?.length) throw new Error(updateExistingJob.messages?.[0] || 'Existing job could not be updated after approval checks.');
+        const updateExistingRequest = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+        if (!updateExistingRequest.data?.length) throw new Error(updateExistingRequest.messages?.[0] || 'Existing job is ready, but request status could not be confirmed.');
+        toast.success('Booking confirmed. Existing job updated; no duplicate job was created.');
+        await run();
+        return;
+      }
       const jobName = 'LOCAL Job • ' + request.Name;
       const jobRes = await sdk.table('jobs_c').create({
         Name: jobName,
@@ -399,10 +413,12 @@ export default function CentralDispatch() {
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
         payment_status_c: 'Unpaid',
-        billing_status_c: 'Ready for Confirmation',
-        admin_review_note_c: providerQuoteRequest && !fixedPriceRequest
-          ? 'Booking assigned by LOCAL Admin after provider accepted. Provider must confirm compatibility, stock, final price and delivery charges; customer approval and final amount are still pending.'
-          : 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
+        billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
+        admin_review_note_c: isCarEssentials
+          ? 'Booking confirmed by LOCAL Admin after Admin review, customer approval, and Service Provider confirmation of the same quote ID and total. Delivery and payment completion remain pending.'
+          : providerQuoteRequest && !fixedPriceRequest
+            ? 'Booking confirmed by LOCAL Admin after the required pricing workflow. Delivery and payment completion remain pending.'
+            : 'Confirmed by LOCAL Admin after provider accepted central assignment. Fixed price: ₹' + fixedPrice.toLocaleString('en-IN') + '.',
       });
       if (!jobRes.data?.length) throw new Error(jobRes.messages?.[0] || 'Job creation failed; request remains unconfirmed.');
       const requestRes = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
