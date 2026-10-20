@@ -60,9 +60,10 @@ export default function JobsDetail() {
   const isCarWash = /car\s*wash/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? ''));
   const isCarService = /car service|service package|economy service|normal service|major service|point checkup/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? ''));
   const isCarCare = isCarWash || isCarService;
+  const isCarEssentialsDelivery = /car essentials delivery|car essentials/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
-  const isPayAfterCompletion = isCarWash || isCarService || isAcService;
+  const isPayAfterCompletion = isCarWash || isCarService || isAcService || isCarEssentialsDelivery;
   const language = getLanguage();
   const completedJobsBeforeThisBooking = Number(job?.provider_completed_jobs_count_c ?? 0);
   const billing = getBillingBreakdown(job?.agreed_price_c ?? 0, job?.service_mode_c ?? 'Normal', completedJobsBeforeThisBooking, job?.customer_discount_amount_c ?? 0, job?.customer_tax_amount_c ?? 0);
@@ -328,8 +329,8 @@ export default function JobsDetail() {
       toast.error('This job has an open dispute. Admin review is required before completion.');
       return;
     }
-    const alreadyPaidAtConfirmation = isCarCare && isPaid;
-    await updateJob({ customer_completion_confirmed_at_c: new Date().toISOString(), status_c: 'Completed', payment_status_c: alreadyPaidAtConfirmation ? 'Final Payment Paid' : 'Balance Pending', billing_status_c: alreadyPaidAtConfirmation ? 'Final Paid' : 'Ready for Confirmation', payout_status_c: alreadyPaidAtConfirmation ? 'Pending Release' : 'Not Eligible' }, alreadyPaidAtConfirmation ? 'Completion confirmed. Your full payment was already recorded.' : 'Completion confirmed. The full final payment is now due.');
+    const alreadyPaidAtConfirmation = isPaid;
+    await updateJob({ customer_completion_confirmed_at_c: new Date().toISOString(), status_c: 'Completed', payment_status_c: alreadyPaidAtConfirmation ? 'Final Payment Paid' : 'Balance Pending', billing_status_c: alreadyPaidAtConfirmation ? 'Final Paid' : (isCarEssentialsDelivery ? 'Payment Due After Delivery' : 'Ready for Confirmation'), payout_status_c: alreadyPaidAtConfirmation ? 'Pending Release' : 'Not Eligible' }, alreadyPaidAtConfirmation ? 'Completion confirmed. Your full payment was already recorded.' : 'Completion confirmed. The full final payment is now due.');
   }
 
   async function reportIssue() {
@@ -505,6 +506,20 @@ export default function JobsDetail() {
     if (!isProvider || job.provider_travel_status_c !== 'On The Way') return;
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     await updateJob({ provider_travel_status_c: 'Arrived' }, 'Arrival recorded. Ask the customer to open LOCAL and share the service-start OTP.');
+  }
+
+  async function verifyCarEssentialsDeliveryOtp() {
+    if (!isProvider || !isCarEssentialsDelivery || job.status_c !== 'Out for Delivery') return;
+    if (providerOtpDraft.length !== 6 || !Array.from(providerOtpDraft).every((digit) => digit >= '0' && digit <= '9')) {
+      toast.error('Enter the six-digit delivery OTP shared by the customer.');
+      return;
+    }
+    if (providerOtpDraft !== String(job.service_start_otp_c ?? '')) {
+      toast.error('Incorrect delivery OTP. Ask the customer to open LOCAL and read the code shown for this order.');
+      return;
+    }
+    await updateJob({ service_start_otp_verified_at_c: new Date().toISOString(), provider_travel_status_c: 'Delivered', status_c: 'Awaiting Customer Confirmation', completion_requested_at_c: new Date().toISOString(), billing_status_c: 'Delivered — Awaiting Customer Confirmation' }, 'Delivery OTP verified. Order marked delivered; waiting for customer receipt confirmation.');
+    setProviderOtpDraft('');
   }
 
   async function verifyServiceStartOtp() {
@@ -696,6 +711,29 @@ export default function JobsDetail() {
             {isPaid && <div className="rounded-md border border-success-border bg-success-muted p-4"><p className="font-semibold text-success">Payment recorded</p><p className="mt-1 text-sm text-success">No real money was charged or transferred in this demo.</p><div className="mt-3 flex flex-wrap gap-2"><Button onClick={printInvoice}><ApperIcon name="FileDown" size={16} /> Download Invoice / Save as PDF</Button><Button type="button" variant="outline" onClick={() => emailInvoiceToCustomer(Number(job.agreed_price_c ?? 0), job.payment_reference_c ?? '')} disabled={emailingInvoice}><ApperIcon name="Mail" size={16} /> {emailingInvoice ? 'Emailing invoice…' : 'Email invoice details'}</Button></div><p className="mt-2 text-xs text-success">Invoice email delivery requires a configured email sender. The PDF can be saved locally.</p></div>}
           </section>
         )}
+        {isCarEssentialsDelivery && (isProvider || isCustomer || isAdmin) && (
+          <section className="mt-7 space-y-4 border-t border-border pt-5">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-primary/10 p-2 text-primary"><ApperIcon name="PackageCheck" size={22} /></div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-heading text-xl font-semibold">Car Essentials Delivery — Order Progress</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Follow each step in order. The approved quote remains fixed at {displayMoney(job.agreed_price_c)} unless the customer approves a separate change.</p>
+              </div>
+              <StatusBadge value={job.status_c} />
+            </div>
+            <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[['1', 'Booking confirmed', ['Assigned', 'Ready for Delivery', 'Out for Delivery', 'Awaiting Customer Confirmation', 'Completed'].includes(job.status_c)], ['2', 'Order prepared', ['Ready for Delivery', 'Out for Delivery', 'Awaiting Customer Confirmation', 'Completed'].includes(job.status_c)], ['3', 'Out for delivery', ['Out for Delivery', 'Awaiting Customer Confirmation', 'Completed'].includes(job.status_c)], ['4', 'Customer confirms receipt', job.status_c === 'Completed']].map(([number, label, complete]) => <li key={number} className={'rounded-lg border p-3 ' + (complete ? 'border-success-border bg-success-muted' : 'border-border bg-muted/20')}><div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full border text-sm font-bold">{complete ? <ApperIcon name="Check" size={15} /> : number}</span><span className="text-sm font-semibold">{label}</span></div></li>)}
+            </ol>
+            {isProvider && job.status_c === 'Assigned' && <div className="rounded-lg border border-border bg-muted/20 p-4"><h3 className="font-semibold">Next action: prepare the order</h3><p className="mt-1 text-sm text-muted-foreground">Check the vehicle compatibility, confirm all approved items are in stock, and pack the exact items listed in the approved quote. Do not change the agreed price or substitute products without customer approval.</p><Button className="mt-3" onClick={() => updateJob({ status_c: 'Ready for Delivery', billing_status_c: 'Order Ready for Delivery' }, 'Order marked ready for delivery. The customer can see the updated status.')} disabled={working}><ApperIcon name="PackageCheck" size={16} /> {working ? 'Saving…' : 'Mark Order Ready for Delivery'}</Button></div>}
+            {isProvider && job.status_c === 'Ready for Delivery' && <div className="rounded-lg border border-border bg-muted/20 p-4"><h3 className="font-semibold">Next action: begin delivery</h3><p className="mt-1 text-sm text-muted-foreground">Take the order to the customer’s saved delivery location. Ask the customer to keep the LOCAL delivery OTP private until the items are physically handed over.</p><Button className="mt-3" onClick={() => updateJob({ status_c: 'Out for Delivery', provider_travel_status_c: 'On The Way', billing_status_c: 'Out for Delivery' }, 'Delivery started. The customer can see that the order is on its way.')} disabled={working}><ApperIcon name="Truck" size={16} /> {working ? 'Saving…' : 'Start Delivery'}</Button></div>}
+            {isProvider && job.status_c === 'Out for Delivery' && <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4"><h3 className="font-semibold">Next action: verify delivery OTP</h3><p className="mt-1 text-sm text-muted-foreground">Enter the six-digit code only after you have handed the approved items to the customer. Successful verification records delivery and asks the customer to confirm receipt.</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={providerOtpDraft} onChange={(event) => setProviderOtpDraft(event.target.value.replace(/\D/g, '').slice(0, 6))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-center text-lg tracking-[0.3em] sm:max-w-48" placeholder="6-digit delivery OTP" aria-label="Customer delivery OTP" /><Button onClick={verifyCarEssentialsDeliveryOtp} disabled={working || providerOtpDraft.length !== 6}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Verifying…' : 'Verify OTP & Mark Delivered'}</Button></div></div>}
+            {isCustomer && job.status_c !== 'Completed' && job.status_c !== 'Cancelled' && <div className="rounded-lg border border-success-border bg-success-muted p-4"><h3 className="font-semibold text-success">Your delivery OTP</h3><p className="mt-1 text-sm">Share this code with the Service Provider only when your order has physically arrived and you have checked the items.</p>{job.service_start_otp_c ? <p className="my-3 text-center text-3xl font-bold tracking-[0.35em] text-success">{job.service_start_otp_c}</p> : <p className="mt-2 text-sm text-highlight">The delivery code is being prepared. Refresh this job screen in a moment.</p>}<p className="text-xs text-muted-foreground">This OTP is shown in the LOCAL app for testing. SMS/WhatsApp delivery is not connected yet.</p></div>}
+            {job.status_c === 'Awaiting Customer Confirmation' && (isCustomer || isAdmin) && <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4"><h3 className="font-semibold">Delivery recorded — customer confirmation required</h3><p className="mt-1 text-sm text-muted-foreground">The Service Provider verified the delivery OTP. Check that all approved items and quantities were received before confirming.</p>{isCustomer && <div className="mt-3 flex flex-wrap gap-2"><Button onClick={confirmCustomerCompletion} disabled={working || job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review'}><ApperIcon name="CheckCircle2" size={16} /> Confirm Delivery Received</Button><Button variant="destructive" onClick={reportIssue} disabled={working}>Report Missing / Incorrect Items</Button></div>}</div>}
+            {job.status_c === 'Completed' && <div className="rounded-lg border border-success-border bg-success-muted p-4"><h3 className="font-semibold text-success">Delivery confirmed</h3><p className="mt-1 text-sm text-success">The customer confirmed receipt. Final payment of {displayMoney(job.agreed_price_c)} is now due.</p></div>}
+            {job.status_c === 'Cancelled' && <p className="rounded-lg border border-destructive/30 p-3 text-sm">This delivery job is cancelled. Contact LOCAL Admin if the order needs to be restored.</p>}
+          </section>
+        )}
+
         {isCarCare && (isProvider || isAdmin) && (
           <div className="mt-7 space-y-5 border-t border-border pt-5">
             <section>
