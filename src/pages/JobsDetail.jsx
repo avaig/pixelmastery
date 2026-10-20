@@ -525,7 +525,8 @@ export default function JobsDetail() {
       if (!related.success) throw new Error(related.message || 'Could not check related booking records.');
       const siblings = (related.data ?? []).filter((item) => String(item.response_c?.Id ?? item.response_c ?? '') === String(responseId));
       if (!siblings.some((item) => String(item.Id) === String(job.Id))) throw new Error('This job could not be matched to its accepted provider assignment. Refresh and try again.');
-      const existingOtp = siblings.map((item) => String(item.service_start_otp_c ?? '')).find((value) => /^\\d{6}$/.test(value));
+      const activeJobOtp = String(job.service_start_otp_c ?? '');
+      const existingOtp = /^\\d{6}$/.test(activeJobOtp) ? activeJobOtp : siblings.map((item) => String(item.service_start_otp_c ?? '')).find((value) => /^\\d{6}$/.test(value));
       const otp = existingOtp || String(Math.floor(100000 + Math.random() * 900000));
       for (const sibling of siblings) {
         const saved = await sdk.table('jobs_c').update({ Id: sibling.Id, service_start_otp_c: otp, service_start_otp_verified_at_c: sibling.service_start_otp_verified_at_c ?? null });
