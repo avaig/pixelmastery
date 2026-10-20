@@ -142,12 +142,12 @@ export default function CarEssentialsDelivery() {
   }
 
   return (
-    <div className="mx-auto -mt-3 max-w-5xl space-y-3 sm:mt-0 sm:space-y-6">
-      <button type="button" aria-label="Back to Car Care & Assistance" onClick={() => navigate('/customer/car-care')} className="flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary">
+    <div className="mx-auto -mt-5 max-w-5xl space-y-3 sm:mt-0 sm:space-y-6">
+      <button type="button" aria-label="Back to Car Care & Assistance" onClick={() => navigate('/customer/car-care')} className="-mt-1 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary sm:mt-0">
         <ApperIcon name="ArrowLeft" size={19} />
       </button>
 
-      <header className="-mt-1 -mb-1 text-center sm:mt-0 sm:mb-0">
+      <header className="-mt-2 -mb-1 text-center sm:mt-0 sm:mb-0">
         <div className="mx-auto mb-1 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:mb-3 sm:size-14">
           <ApperIcon name="PackageCheck" size={22} />
         </div>
