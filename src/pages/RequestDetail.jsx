@@ -453,18 +453,21 @@ export default function RequestDetail() {
   }
 
   async function acceptCentralAssignment(response) {
-    if (!isTechnician || !response?.Id || !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) || response.status_c !== 'Pending') return;
+    const isPunctureDispatch = /flat tyre|flat tire|puncture/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+    const isCentralInvitation = /Central LOCAL assignment invitation/i.test(String(response?.message_c ?? ''));
+    if (!isTechnician || !response?.Id || !isCentralInvitation || (response.status_c !== 'Pending' && !(isPunctureDispatch && response.status_c === 'Selected'))) return;
     setWorking(true);
     try {
       const acceptedAt = new Date().toLocaleString('en-IN');
-      const isPunctureDispatch = /flat tyre|flat tire|puncture/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
-      const updated = await sdk.table('technician_responses_c').update({
-        Id: response.Id,
-        status_c: 'Selected',
-        availability_c: request.preferred_time_c === 'Scheduled' ? 'Within 1 hour' : 'Available Now',
-        message_c: String(response.message_c ?? '') + '\nProvider accepted assignment at ' + acceptedAt + '. No price negotiation is involved.' + (isPunctureDispatch ? '\nLOCAL_PUNCTURE_PROVIDER_ACCEPTED_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), dispatchStatus: 'Confirmed — Provider En Route' }) : ''),
-      });
-      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Your acceptance could not be saved.');
+      if (response.status_c === 'Pending') {
+        const updated = await sdk.table('technician_responses_c').update({
+          Id: response.Id,
+          status_c: 'Selected',
+          availability_c: request.preferred_time_c === 'Scheduled' ? 'Within 1 hour' : 'Available Now',
+          message_c: String(response.message_c ?? '') + '\nProvider accepted assignment at ' + acceptedAt + '. No price negotiation is involved.' + (isPunctureDispatch ? '\nLOCAL_PUNCTURE_PROVIDER_ACCEPTED_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), dispatchStatus: 'Confirmed — Provider En Route' }) : ''),
+        });
+        if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Your acceptance could not be saved.');
+      }
       if (isPunctureDispatch) {
         const jobsResult = await sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'response_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 20).fetch();
         if (!jobsResult.success) throw new Error(jobsResult.message || 'Assignment accepted, but LOCAL could not check the dispatch job. Please contact Admin.');
@@ -481,7 +484,7 @@ export default function RequestDetail() {
             scheduled_at_c: request.scheduled_at_c || null,
             status_c: 'Assigned',
             payment_status_c: 'Unpaid',
-            billing_status_c: 'Inspection pending — customer approval required before repair',
+            billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
             service_start_otp_c: null,
             admin_review_note_c: 'Flat Tyre / Puncture dispatch auto-confirmed after the assigned provider accepted. Provider may travel and inspect; no repair is authorized until customer approves the final itemized quote. No advance or partial payment.',
           });
