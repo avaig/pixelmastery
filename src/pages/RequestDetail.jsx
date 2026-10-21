@@ -588,6 +588,9 @@ export default function RequestDetail() {
       // Keep request and offer records for auditability. Deleting the request and its
       // dependent offers caused record-not-found failures in the connected marketplace.
       const actorName = String(user?.fullName ?? user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(' ') ?? user?.emailAddress ?? user?.email ?? 'Customer').trim() || 'Customer';
+      const isPunctureCancellation = /flat tyre|flat tire|puncture/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+      const priorCancellation = readCancellationDetails(request.problem_description_c);
+      const providerArrivalRecorded = Boolean(priorCancellation?.providerArrivedAt || priorCancellation?.arrivalConfirmedAt);
       const cancellation = {
         actor: 'Customer',
         actorName,
@@ -596,13 +599,14 @@ export default function RequestDetail() {
         reason: cancelReason === 'Other' ? (cancelOtherReason.trim() || 'Other (details not provided)') : cancelReason,
         reasonCode: cancelReason,
         stage: String(request.status_c ?? 'Unknown'),
+        cancellationFeePolicy: isPunctureCancellation ? { currency: 'INR', amount: providerArrivalRecorded ? 200 : 0, reason: providerArrivalRecorded ? 'Provider arrival recorded; same visit charge applies' : 'No provider arrival record available; no cancellation fee assessed', providerArrivalRecorded, feeStatus: providerArrivalRecorded ? 'Due — collection not automated' : 'No fee' } : null,
       };
       const result = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Cancelled', problem_description_c: writeCancellationDetails(request.problem_description_c, cancellation) });
       if (!result.data?.length) {
         toast.error(result.messages?.[0] ?? 'This request could not be cancelled. Refresh the page and try again.');
         return;
       }
-      toast.success('Request cancelled. The cancellation details and offer history have been preserved.');
+      toast.success(isPunctureCancellation ? (providerArrivalRecorded ? 'Request cancelled. ₹200 visit/cancellation fee recorded as due; collection is not automated.' : 'Request cancelled. No cancellation fee applied because provider arrival was not recorded.') : 'Request cancelled. The cancellation details and offer history have been preserved.');
       setCancelReason('');
       setCancelOtherReason('');
       setDeleteOpen(false);

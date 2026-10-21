@@ -185,6 +185,7 @@ export default function CustomerRequestStart() {
   const isCarFlatPuncture = vehicle === 'car' && /flat tyre \/ puncture/i.test(issue || requestedService);
   const [creating, setCreating] = useState(false);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
+  const [punctureDispatchConsent, setPunctureDispatchConsent] = useState(false);
   const isProfessionalDriverService = ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
   const [location, setLocation] = useState(() => {
     try {
@@ -449,6 +450,10 @@ export default function CustomerRequestStart() {
   }
 
   async function createRequest() {
+    if (isCarFlatPuncture && !punctureDispatchConsent) {
+      toast.error('Please accept the puncture pricing and cancellation policy before dispatch.');
+      return;
+    }
     if (isProfessionalDriverService && !driverDisclaimerAccepted) {
       toast.error('Please read and accept the Safety & Liability Disclaimer before continuing.');
       return;
@@ -510,7 +515,7 @@ export default function CustomerRequestStart() {
           ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + washCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Customer Car Wash total offer: ₹' + customerWashOffer.toLocaleString('en-IN') + '. The offer covers all selected items; Pickup & Drop is included if selected and cannot be negotiated separately. Prices are indicative demo menu prices. CUSTOMER_CAR_WASH_OFFER_JSON:' + JSON.stringify({ menuTotal: estimatedTotalValue, customerOffer: customerWashOffer }) + ' CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
           : isOtherIssue
             ? problemDetails.trim()
-            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
+            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
         location_c: location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
@@ -702,7 +707,12 @@ export default function CustomerRequestStart() {
               </div>
               <div className="mt-3 border-t border-primary/15 pt-3 text-sm font-medium">Total = (₹150 × actual punctures repaired) + ₹200 visit charge + ₹25 Platform Fee.</div>
               <p className="mt-2 text-sm text-muted-foreground">The provider will inspect your tyre(s) on arrival and confirm the number of punctures. You will see the final itemized quote and must approve it before any repair begins. The ₹200 visit charge applies within 10 km; if your location is beyond 10 km, the applicable visit charge must be confirmed and shown before booking confirmation.</p>
-              <p className="mt-2 text-xs text-muted-foreground">No advance or partial payment. Pay the approved final amount after the work is completed.</p>
+              <p className="mt-2 text-sm">Cancellation policy: ₹0 before provider acceptance, before travel starts, or if the provider is at fault. If the provider has arrived and you cancel or decline the inspected quote, the ₹200 visit charge applies within 10 km. This is the same visit charge, not an extra fee. No charge is applied merely because the provider has started travelling in this initial version.</p>
+              <p className="mt-2 text-xs text-muted-foreground">No advance or partial payment. Pay the approved final repair amount after the work is completed. Beyond 10 km, LOCAL must disclose and obtain acceptance of the applicable visit charge before dispatch.</p>
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm">
+                <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" checked={punctureDispatchConsent} onChange={(event) => setPunctureDispatchConsent(event.target.checked)} />
+                <span>I agree to the displayed puncture pricing and cancellation policy. I authorize LOCAL to find and notify a service provider. I understand that repair work can begin only after I approve the final itemized quote.</span>
+              </label>
             </section>
           )}
           {isProfessionalDriverService && (
@@ -791,9 +801,9 @@ export default function CustomerRequestStart() {
           {location && (
             <>
               {isCarEssentialsDelivery && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted)}>
+              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
-                {creating ? tr('Sharing request…', language) : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
+                {creating ? tr('Sharing request…', language) : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
             </>
           )}
