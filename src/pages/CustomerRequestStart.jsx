@@ -228,11 +228,13 @@ export default function CustomerRequestStart() {
   // Only classify Car Wash as fixed-price here because this screen currently has an explicit package rate card.
   // Driver rates must be configured before those services can honestly be presented as fixed-price bookings.
   const pricingMode = isUrgentService ? 'Urgent Dispatch' : (isCarWash ? 'Fixed Price' : 'Provider Quote');
-  const pricingModeDescription = pricingMode === 'Fixed Price'
-    ? 'See the listed price and book without waiting for bids.'
-    : pricingMode === 'Urgent Dispatch'
-      ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
-      : 'Nearby eligible providers can send an estimate and arrival time. Choose an offer; negotiation is optional.';
+  const pricingModeDescription = isCarFlatPuncture
+    ? 'Prioritize nearby available help for faster assistance. No bidding.'
+    : pricingMode === 'Fixed Price'
+      ? 'See the listed price and book without waiting for bids.'
+      : pricingMode === 'Urgent Dispatch'
+        ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
+        : 'Nearby eligible providers can send an estimate and arrival time. Choose an offer; negotiation is optional.';
   const language = getLanguage();
   // Keep all cart calculations based on the same normalized item list.
   const normalizedWashCart = normalizeWashCart(washCart);
