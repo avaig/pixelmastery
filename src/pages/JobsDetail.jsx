@@ -465,14 +465,15 @@ export default function JobsDetail() {
     // The booking commitment is part of the agreed service price.
     const bookingPaid = bookingCommitment;
     const finalPaid = Number(job.remaining_amount_c === 0 ? job.customer_payable_now_c ?? 0 : 0);
-    const totalPayable = Math.max(0, servicePrice - discount + tax + (isCarWash ? 25 : 0));
+    const platformFee = 25;
+    const totalPayable = Math.max(0, servicePrice - discount + tax + platformFee);
     const totalPaid = Math.min(totalPayable, bookingPaid + finalPaid);
     const balance = Math.max(0, totalPayable - totalPaid);
     const money = (value) => '₹' + Number(value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const safe = (value) => String(value ?? '—').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
     const acServiceRows = acGroups.map((group) => `<tr><td>${safe(group.acType + ' — ' + group.serviceType + (group.notes ? ': ' + group.notes : ''))} × ${safe(group.quantity)}</td><td>Included in agreed total</td></tr>`).join('');
-    const carWashInvoiceRows = isCarWash ? `<tr><td>Original fixed Car Wash package</td><td>${money(carWashBasePrice)}</td></tr>${carWashApprovedExtras.map((item) => `<tr><td>Additional service / part — ${safe(item.description)} × ${safe(item.quantity)}</td><td>${money(Number(item.unitPrice) * Number(item.quantity))}</td></tr>`).join('')}<tr><td>LOCAL Platform Fee</td><td>${money(25)}</td></tr>` : '';
-    const serviceRows = isCarWash ? carWashInvoiceRows : isAcService && acServiceRows ? `${acServiceRows}<tr><td>Agreed AC service total</td><td>${money(servicePrice)}</td></tr>` : `<tr><td>Service Offered — ${safe(serviceName)}</td><td>${money(servicePrice)}</td></tr>`;
+    const carWashInvoiceRows = isCarWash ? `<tr><td>Original fixed Car Wash package</td><td>${money(carWashBasePrice)}</td></tr>${carWashApprovedExtras.map((item) => `<tr><td>Additional service / part — ${safe(item.description)} × ${safe(item.quantity)}</td><td>${money(Number(item.unitPrice) * Number(item.quantity))}</td></tr>`).join('')}` : '';
+    const serviceRows = (isCarWash ? carWashInvoiceRows : isAcService && acServiceRows ? `${acServiceRows}<tr><td>Agreed AC service total</td><td>${money(servicePrice)}</td></tr>` : `<tr><td>Service Offered — ${safe(serviceName)}</td><td>${money(servicePrice)}</td></tr>`) + `<tr><td>LOCAL Platform Fee</td><td>${money(platformFee)}</td></tr>`;
     const invoiceWindow = window.open('', '_blank', 'width=900,height=700');
     if (!invoiceWindow) {
       toast.error('Please allow pop-ups to generate your invoice.');
@@ -504,7 +505,7 @@ export default function JobsDetail() {
       ${discount > 0 ? `<tr><td>Discount</td><td>−${money(discount)}</td></tr>` : ''}
       ${tax > 0 ? `<tr><td>Applicable taxes</td><td>${money(tax)}</td></tr>` : ''}
       <tr class="total"><td>Total Bill</td><td>${money(totalPayable)}</td></tr>
-      <tr><td>Booking Payment</td><td>${money(bookingPaid)}</td></tr>
+      <tr><td>Platform Fee</td><td>${money(platformFee)}</td></tr>
       <tr><td>Final Payment</td><td>${money(finalPaid)}</td></tr>
       <tr class="paid"><td>Total Paid</td><td>${money(totalPaid)}</td></tr>
       <tr class="total"><td>Balance Due</td><td>${money(balance)}</td></tr>
