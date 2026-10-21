@@ -482,19 +482,19 @@ export default function JobsDetail() {
       return;
     }
     invoiceWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(invoiceNumber)} - LOCAL Invoice</title><style>
-      body{font-family:Arial,sans-serif;color:#21152f;margin:0;padding:32px;background:#fff}
-      .wrap{max-width:760px;margin:auto}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #5b21b6;padding-bottom:18px}
-      .brand-logo{display:block;width:170px;max-height:64px;height:auto;object-fit:contain;object-position:left center}.muted{color:#666174;font-size:12px;line-height:1.6}
-      h1{font-size:22px;margin:24px 0 8px}.meta,.parties{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;background:#f8f5fc;padding:16px;margin:18px 0}
-      .parties{grid-template-columns:1fr 1fr}.label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#777;margin-bottom:5px}
-      table{width:100%;border-collapse:collapse;margin:18px 0}th{background:#4b1a78;color:white;text-align:left}td,th{padding:11px;border:1px solid #e2d8eb;font-size:13px}td:last-child,th:last-child{text-align:right}
+      body{font-family:Arial,sans-serif;color:#21152f;margin:0;padding:28px;background:#fff}
+      .wrap{max-width:760px;margin:auto}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #5b21b6;padding-bottom:14px}
+      .brand-logo{display:block;width:160px;max-height:58px;height:auto;object-fit:contain;object-position:left center}.muted{color:#666174;font-size:12px;line-height:1.5}
+      h1{font-size:20px;margin:20px 0 8px}.meta,.parties{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;background:#f8f5fc;padding:13px 15px;margin:14px 0;border-radius:6px}
+      .parties{grid-template-columns:1fr 1fr}.label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#777;margin-bottom:4px}
+      table{width:100%;border-collapse:collapse;margin:12px 0 16px}th{background:#4b1a78;color:white;text-align:left}td,th{padding:10px;border:1px solid #e2d8eb;font-size:13px}td:last-child,th:last-child{text-align:right}
       .total{font-weight:bold;background:#f1eaf9}.paid{font-weight:bold;background:#eaf7ee}.notice{margin-top:22px;padding:12px;background:#fff8e7;border:1px solid #e7c66b;font-size:11px;line-height:1.6}
       .actions{margin:18px 0}.actions button{background:#4b1a78;color:white;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
       @media print{body{padding:0}.actions{display:none}.wrap{max-width:none}}
     </style></head><body><div class="wrap">
       <div class="top"><div><img class="brand-logo" src="${window.location.origin}/local-logo.svg" alt="LOCAL — Happy to Help"></div><div style="text-align:right"><strong>INVOICE &amp; PAYMENT RECEIPT</strong><div class="muted">Status: ${safe(job.payment_status_c === 'Final Payment Paid' ? 'PAID (DEMO)' : 'PAYMENT PENDING')}</div></div></div>
       <div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
-      <h1>Invoice details</h1><div class="meta">
+      <h1>Invoice &amp; booking details</h1><div class="meta">
       <div><div class="label">Invoice number</div><strong>${safe(invoiceNumber)}</strong></div>
       <div><div class="label">Invoice date</div><strong>${safe(new Date().toLocaleDateString('en-IN'))}</strong></div>
       <div><div class="label">Payment method</div><strong>${safe(job.payment_method_c ?? '—')}</strong></div>
@@ -502,15 +502,14 @@ export default function JobsDetail() {
       <div><div class="label">Payment reference</div><strong>${safe(job.payment_reference_c ?? '—')}</strong></div>
       <div><div class="label">Service status</div><strong>${safe(job.status_c ?? 'Completed')}</strong></div></div>
       <div class="parties"><div><div class="label">Customer</div><strong>${safe(customerName)}</strong><div class="muted">${safe(customerEmail)}</div></div><div><div class="label">Service provider</div><strong>${safe(providerName)}</strong><div class="muted">LOCAL service provider</div></div></div>
-      <h1>Charges &amp; payment summary</h1><table><thead><tr><th>Description</th><th>Amount</th></tr></thead><tbody>
+      <h1>Payment summary</h1><table><thead><tr><th>Description</th><th>Amount</th></tr></thead><tbody>
       ${serviceRows}
       ${discount > 0 ? `<tr><td>Discount</td><td>−${money(discount)}</td></tr>` : ''}
       ${tax > 0 ? `<tr><td>Applicable taxes</td><td>${money(tax)}</td></tr>` : ''}
-      <tr class="total"><td>Total Bill</td><td>${money(totalPayable)}</td></tr>
-      <tr><td>Platform Fee</td><td>${money(platformFee)}</td></tr>
-      <tr><td>Final Payment</td><td>${money(finalPaid)}</td></tr>
-      <tr class="paid"><td>Total Paid</td><td>${money(totalPaid)}</td></tr>
-      <tr class="total"><td>Balance Due</td><td>${money(balance)}</td></tr>
+      <tr><td>LOCAL Platform Fee</td><td>${money(platformFee)}</td></tr>
+      <tr class="total"><td>Total payable</td><td>${money(totalPayable)}</td></tr>
+      <tr class="paid"><td>Payment received</td><td>${money(totalPaid)}</td></tr>
+      <tr class="total"><td>Balance due</td><td>${money(balance)}</td></tr>
       </tbody></table>
       <div class="notice"><strong>DEMO RECEIPT — NOT A TAX INVOICE.</strong><br>Demo transaction only; no real money was charged. Tax treatment and legal supplier details must be confirmed before live billing.</div>
       <p class="muted" style="margin-top:22px">LOCAL — Happy To Help · Generated from the completed job record.</p>
