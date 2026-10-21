@@ -198,7 +198,8 @@ export default function RequestDetail() {
   const [quoteTotal, setQuoteTotal] = useState(0);
   const [quoteCalculated, setQuoteCalculated] = useState(false);
   const [rsaServiceCharge, setRsaServiceCharge] = useState('');
-  const [rsaTravelCharge, setRsaTravelCharge] = useState('');
+  const [rsaPunctureCount, setRsaPunctureCount] = useState('1');
+  const [rsaTravelCharge, setRsaTravelCharge] = useState('200');
   const [rsaExtraCharge, setRsaExtraCharge] = useState('0');
   const [rsaQuoteNotes, setRsaQuoteNotes] = useState('');
   const [rsaEta, setRsaEta] = useState('');
@@ -272,9 +273,12 @@ export default function RequestDetail() {
   const carQuote = readCarEssentialsQuote(centralAssignment?.message_c);
   const carApproval = readCarEssentialsApproval(request?.problem_description_c);
   const isRsaQuote = isRsaQuoteRequest(request) && !isCarEssentialsRequest;
+  const isFlatPunctureRequest = /flat tyre|flat tire|puncture/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
   const rsaQuote = readRsaQuote(centralAssignment?.message_c);
   const rsaApproval = readRsaApproval(request?.problem_description_c);
-  const rsaCurrentTotal = Number(rsaServiceCharge || 0) + Number(rsaTravelCharge || 0) + Number(rsaExtraCharge || 0);
+  const rsaServiceChargeValue = isFlatPunctureRequest ? Math.max(0, Number.parseInt(rsaPunctureCount, 10) || 0) * 150 : Number(rsaServiceCharge || 0);
+  const rsaExtraChargeValue = isFlatPunctureRequest ? 25 : Number(rsaExtraCharge || 0);
+  const rsaCurrentTotal = rsaServiceChargeValue + Number(rsaTravelCharge || 0) + rsaExtraChargeValue;
 
   async function acceptDriverRequest() {
     if (!request?.Id || !isFixedRateDriverRequest || !isTechnician) return;
@@ -346,15 +350,15 @@ export default function RequestDetail() {
 
   async function submitRsaQuote(response) {
     if (!isTechnician || !isRsaQuote || !response?.Id || !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? ''))) return;
-    const service = Number(rsaServiceCharge);
+    const service = rsaServiceChargeValue;
     const travel = Number(rsaTravelCharge);
-    const extra = Number(rsaExtraCharge || 0);
-    if (!Number.isFinite(service) || service <= 0 || !Number.isFinite(travel) || travel < 0 || !Number.isFinite(extra) || extra < 0) {
-      toast.error('Enter a positive service charge and valid non-negative travel and additional charges.'); return;
+    const extra = rsaExtraChargeValue;
+    if (!Number.isFinite(service) || service <= 0 || !Number.isFinite(travel) || travel < 0 || !Number.isFinite(extra) || extra < 0 || (isFlatPunctureRequest && (!Number.isInteger(Number(rsaPunctureCount)) || Number(rsaPunctureCount) < 1))) {
+      toast.error(isFlatPunctureRequest ? 'Enter the number of punctures found and a valid travel charge.' : 'Enter a positive service charge and valid non-negative travel and additional charges.'); return;
     }
     const quoteId = 'RSA-' + Date.now().toString(36).toUpperCase();
     const total = service + travel + extra;
-    const quote = { quoteId, version: 1, serviceCharge: service, travelCharge: travel, extraCharge: extra, notes: rsaQuoteNotes.trim(), eta: rsaEta.trim(), total, submittedAt: new Date().toISOString(), status: 'Submitted to Admin', providerApproved: false, providerApprovedAt: null, providerApprovedQuoteId: null, providerApprovedTotal: null };
+    const quote = { quoteId, version: 1, serviceCharge: service, travelCharge: travel, extraCharge: extra, punctureCount: isFlatPunctureRequest ? Number(rsaPunctureCount) : null, pricePerPuncture: isFlatPunctureRequest ? 150 : null, platformFee: isFlatPunctureRequest ? 25 : 0, notes: rsaQuoteNotes.trim(), eta: rsaEta.trim(), total, submittedAt: new Date().toISOString(), status: 'Submitted to Admin', providerApproved: false, providerApprovedAt: null, providerApprovedQuoteId: null, providerApprovedTotal: null };
     setWorking(true);
     try {
       const baseMessage = String(response.message_c ?? '').split('LOCAL_RSA_QUOTE_JSON:')[0].trimEnd();
