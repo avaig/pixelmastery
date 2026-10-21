@@ -473,7 +473,7 @@ export default function JobsDetail() {
     const safe = (value) => String(value ?? '—').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
     const acServiceRows = acGroups.map((group) => `<tr><td>${safe(group.acType + ' — ' + group.serviceType + (group.notes ? ': ' + group.notes : ''))} × ${safe(group.quantity)}</td><td>Included in agreed total</td></tr>`).join('');
     const carWashInvoiceRows = isCarWash ? `<tr><td>Original fixed Car Wash package</td><td>${money(carWashBasePrice)}</td></tr>${carWashApprovedExtras.map((item) => `<tr><td>Additional service / part — ${safe(item.description)} × ${safe(item.quantity)}</td><td>${money(Number(item.unitPrice) * Number(item.quantity))}</td></tr>`).join('')}` : '';
-    const serviceRows = (isCarWash ? carWashInvoiceRows : isAcService && acServiceRows ? `${acServiceRows}<tr><td>Agreed AC service total</td><td>${money(servicePrice)}</td></tr>` : `<tr><td>Service Offered — ${safe(serviceName)}</td><td>${money(servicePrice)}</td></tr>`) + `<tr><td>LOCAL Platform Fee</td><td>${money(platformFee)}</td></tr>`;
+    const serviceRows = isCarWash ? carWashInvoiceRows : isAcService && acServiceRows ? `${acServiceRows}<tr><td>Agreed AC service total</td><td>${money(servicePrice)}</td></tr>` : `<tr><td>Service Offered — ${safe(serviceName)}</td><td>${money(servicePrice)}</td></tr>`;
     const invoiceWindow = window.open('', '_blank', 'width=900,height=700');
     if (!invoiceWindow) {
       toast.error('Please allow pop-ups to generate your invoice.');
