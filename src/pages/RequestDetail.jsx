@@ -457,14 +457,42 @@ export default function RequestDetail() {
     setWorking(true);
     try {
       const acceptedAt = new Date().toLocaleString('en-IN');
+      const isPunctureDispatch = /flat tyre|flat tire|puncture/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
       const updated = await sdk.table('technician_responses_c').update({
         Id: response.Id,
         status_c: 'Selected',
         availability_c: request.preferred_time_c === 'Scheduled' ? 'Within 1 hour' : 'Available Now',
-        message_c: String(response.message_c ?? '') + '\nProvider accepted assignment at ' + acceptedAt + '. No price negotiation is involved.',
+        message_c: String(response.message_c ?? '') + '\nProvider accepted assignment at ' + acceptedAt + '. No price negotiation is involved.' + (isPunctureDispatch ? '\nLOCAL_PUNCTURE_PROVIDER_ACCEPTED_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), dispatchStatus: 'Confirmed — Provider En Route' }) : ''),
       });
       if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Your acceptance could not be saved.');
-      toast.success('Assignment accepted. Central LOCAL has been notified; wait for booking confirmation.');
+      if (isPunctureDispatch) {
+        const jobsResult = await sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'response_c', 'status_c']).where(eq('request_c', request.Id)).page(1, 20).fetch();
+        if (!jobsResult.success) throw new Error(jobsResult.message || 'Assignment accepted, but LOCAL could not check the dispatch job. Please contact Admin.');
+        const existing = (jobsResult.data ?? []).find((job) => String(job.response_c?.Id ?? job.response_c ?? '') === String(response.Id));
+        if (!existing) {
+          const created = await sdk.table('jobs_c').create({
+            Name: 'LOCAL Job • ' + String(request.Name ?? 'Flat Tyre / Puncture'),
+            request_c: request.Id,
+            response_c: response.Id,
+            customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
+            technician_c: response.technician_c?.Id ?? response.technician_c ?? null,
+            agreed_price_c: 0,
+            original_provider_quote_c: null,
+            scheduled_at_c: request.scheduled_at_c || null,
+            status_c: 'Assigned',
+            payment_status_c: 'Unpaid',
+            billing_status_c: 'Inspection pending — customer approval required before repair',
+            service_start_otp_c: null,
+            admin_review_note_c: 'Flat Tyre / Puncture dispatch auto-confirmed after the assigned provider accepted. Provider may travel and inspect; no repair is authorized until customer approves the final itemized quote. No advance or partial payment.',
+          });
+          if (!created.data?.length) throw new Error(created.messages?.[0] || 'Provider accepted, but the dispatch job could not be created. Admin must review this request.');
+        }
+        const requestUpdated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
+        if (!requestUpdated.data?.length) throw new Error(requestUpdated.messages?.[0] || 'Job is ready, but customer request status could not be confirmed. Admin must review.');
+        toast.success('Puncture booking confirmed automatically. Customer and provider can coordinate; provider may travel for inspection. Repair still requires customer quote approval.');
+      } else {
+        toast.success('Assignment accepted. Central LOCAL has been notified; wait for booking confirmation.');
+      }
       await run();
     } catch (err) {
       toast.error(err.message || 'Could not accept assignment.');
