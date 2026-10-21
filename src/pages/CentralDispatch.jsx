@@ -246,7 +246,15 @@ export default function CentralDispatch() {
   }
 
   function getCleanRequestNotes(value) {
-    const text = String(value ?? '').split('LOCAL_AC_REQUEST_JSON:')[0].trim();
+    const text = String(value ?? '')
+      .split('LOCAL_AC_REQUEST_JSON:')[0]
+      .split('LOCAL_RSA_APPROVAL_JSON:')[0]
+      .split('LOCAL_RSA_QUOTE_JSON:')[0]
+      .split('LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:')[0]
+      .split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0]
+      .split('LOCAL_CANCELLATION_JSON:')[0]
+      .replace(/\\n/g, '\n')
+      .trim();
     if (/Customer requested Car Essentials Delivery/i.test(text)) {
       const vehicle = text.match(/Vehicle:\s*([^.]+)/i)?.[1]?.trim();
       const location = text.match(/Requested delivery location:\s*([^.]+(?:\([^)]*\))?)/i)?.[1]?.trim();
