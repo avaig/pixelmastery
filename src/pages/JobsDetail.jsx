@@ -376,7 +376,7 @@ export default function JobsDetail() {
     }
     const invoiceNumber = 'LOCAL-' + String(job.Id ?? '').replace(/[^a-zA-Z0-9]/g, '').slice(-10).toUpperCase();
     try {
-      await sendInvoiceEmail({
+      const result = await sendInvoiceEmail({
         email,
         invoiceNumber,
         customerName: displayLookup(job.customer_c),
@@ -385,10 +385,20 @@ export default function JobsDetail() {
         paymentReference,
         paidAt: new Date().toLocaleString('en-IN'),
       });
-      toast.success('Invoice details emailed to the customer.');
-      return true;
+      if (result?.success === true) {
+        toast.success('Invoice details emailed to the customer.');
+        return true;
+      }
+      // useFunction can return undefined after showing its own error toast. Never claim delivery without an explicit success response.
+      toast.warning('Payment is recorded, but invoice delivery was not confirmed. Check the email service configuration.');
+      return false;
     } catch (err) {
-      toast.warning('Payment is recorded. Automatic email needs email-service configuration before it can be delivered.');
+      const message = String(err?.message ?? '');
+      if (/not configured|RESEND_API_KEY|LOCAL_INVOICE_FROM/i.test(message)) {
+        toast.warning('Payment is recorded, but invoice email is not configured. Configure RESEND_API_KEY and LOCAL_INVOICE_FROM to enable delivery.');
+      } else {
+        toast.warning('Payment is recorded, but invoice email could not be sent. Check the email service configuration and try again.');
+      }
       return false;
     }
   }
