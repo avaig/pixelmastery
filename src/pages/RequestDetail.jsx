@@ -103,7 +103,7 @@ function getRequestLineItems(request) {
     if (coveredMatch) coveredMatch[1].split(';').map((part) => part.trim()).filter(Boolean).forEach((part) => items.push({ name: part, quantity: 'Included / if required', price: null, fixed: true }));
     if (items.length) return items;
   }
-  const cleaned = description.replace(/^Customer (?:requested|selected)\s*/i, '').replace(/\s+for their car\.?$/i, '').trim();
+  const cleaned = description.split('LOCAL_RSA_APPROVAL_JSON:')[0].split('LOCAL_RSA_QUOTE_JSON:')[0].split('LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:')[0].split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].split('LOCAL_CANCELLATION_JSON:')[0].replace(/\\n/g, ' ').replace(/^Customer (?:requested|selected)\s*/i, '').replace(/\s+for their car\.?$/i, '').trim();
   return [{ name: cleaned || request?.Name || 'Service requested', quantity: 1, price: null, fixed: /ambulance|emergency/i.test(String(request?.Name ?? '')) }];
 }
 
