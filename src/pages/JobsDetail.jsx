@@ -369,7 +369,7 @@ export default function JobsDetail() {
   }
 
   async function emailInvoiceToCustomer(paymentAmount = Number(job?.agreed_price_c ?? 0), paymentReference = job?.payment_reference_c ?? '') {
-    const email = user?.email ?? user?.Email ?? user?.email_c ?? '';
+    const email = String(user?.emailAddress ?? user?.email ?? user?.Email ?? user?.email_c ?? '').trim();
     if (!email) {
       toast.warning('Payment is recorded, but the customer email address is not available in this session.');
       return false;
@@ -445,7 +445,7 @@ export default function JobsDetail() {
     const invoiceNumber = 'LOCAL-' + String(job.Id ?? '').replace(/[^a-zA-Z0-9]/g, '').slice(-10).toUpperCase();
     const customerName = displayLookup(job.customer_c);
     const providerName = displayLookup(job.technician_c);
-    const customerEmail = user?.email ?? user?.Email ?? user?.email_c ?? 'Registered email on customer account';
+    const customerEmail = user?.emailAddress ?? user?.email ?? user?.Email ?? user?.email_c ?? 'Registered email on customer account';
     const serviceName = String(job.Name ?? 'LOCAL Service');
     const servicePrice = Number(job.agreed_price_c ?? 0);
     let acGroups = [];
