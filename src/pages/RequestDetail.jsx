@@ -479,7 +479,8 @@ export default function RequestDetail() {
             Name: 'LOCAL Job • ' + String(request.Name ?? 'Flat Tyre / Puncture'),
             request_c: request.Id,
             response_c: response.Id,
-            customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
+            // The legacy request's customer lookup can point to a deleted customer_profiles_c record.
+            // request_c remains the authoritative link; do not pass a stale lookup ID that makes the database reject job creation.
             technician_c: response.technician_c?.Id ?? response.technician_c ?? null,
             agreed_price_c: 0,
             original_provider_quote_c: null,
