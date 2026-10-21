@@ -493,9 +493,9 @@ export default function RequestDetail() {
           });
           if (!created.data?.length) throw new Error(created.messages?.[0] || 'Provider accepted, but the dispatch job could not be created. Admin must review this request.');
         }
-        const requestUpdated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Confirmed' });
-        if (!requestUpdated.data?.length) throw new Error(requestUpdated.messages?.[0] || 'Job is ready, but customer request status could not be confirmed. Admin must review.');
-        toast.success('Puncture booking confirmed automatically. Customer and provider can coordinate; provider may travel for inspection. Repair still requires customer quote approval.');
+        // Service Providers must not change the admin-controlled request status.
+        // Creating/recovering the job is the provider-side handoff; Admin confirmation remains a separate step.
+        toast.success('Provider acceptance saved and dispatch job is ready. Booking confirmation is pending LOCAL Admin review; repair still requires customer quote approval.');
       } else {
         toast.success('Assignment accepted. Central LOCAL has been notified; wait for booking confirmation.');
       }
