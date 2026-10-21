@@ -65,6 +65,8 @@ export default function JobsDetail() {
   const isCarEssentialsDelivery = /car essentials delivery|car essentials/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
+  const isBatteryJumpStart = /battery jump start/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
+  const batteryJumpStartTotal = Math.max(0, Number(job?.agreed_price_c ?? 0)) + 25;
   const isPayAfterCompletion = isCarWash || isCarService || isAcService;
   const language = getLanguage();
   const completedJobsBeforeThisBooking = Number(job?.provider_completed_jobs_count_c ?? 0);
@@ -395,12 +397,12 @@ export default function JobsDetail() {
     setWorking(true);
     try {
       const isFinalBalancePayment = !isCarCare && !isAcService && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid';
-      const amount = isCarWash ? Number(job.agreed_price_c ?? job.original_car_wash_price_c ?? 0) + 25 : isCarCare || isAcService || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
+      const amount = isCarWash ? Number(job.agreed_price_c ?? job.original_car_wash_price_c ?? 0) + 25 : isBatteryJumpStart && isFinalBalancePayment ? Number(job.agreed_price_c ?? 0) + 25 : isCarCare || isAcService || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
       const calculated = getBillingBreakdown(job.agreed_price_c, job.service_mode_c ?? 'Normal', Number(job.provider_completed_jobs_count_c ?? 0), Number(job.customer_discount_amount_c ?? 0), 0);
       const reference = 'DEMO-' + paymentMethod.toUpperCase().replace(' ', '-') + '-' + String(Date.now()).slice(-6);
       const values = (isCarCare || isAcService || isFinalBalancePayment) ? {
         remaining_amount_c: 0,
-        local_service_fee_amount_c: isCarWash ? 25 : Number(job.local_service_fee_amount_c ?? 0),
+        local_service_fee_amount_c: isCarWash || isBatteryJumpStart ? 25 : Number(job.local_service_fee_amount_c ?? 0),
         customer_payable_now_c: amount,
         billing_status_c: 'Final Paid',
         payment_status_c: 'Final Payment Paid',
@@ -462,8 +464,8 @@ export default function JobsDetail() {
     const discount = Number(job.customer_discount_amount_c ?? 0);
     const tax = Number(job.customer_tax_amount_c ?? 0);
     const bookingCommitment = Number(job.booking_commitment_amount_c ?? 0);
-    // The booking commitment is part of the agreed service price.
-    const bookingPaid = bookingCommitment;
+    // Battery Jump Start follows the no-advance policy; ignore legacy calculated commitment fields unless a real payment was recorded.
+    const bookingPaid = isBatteryJumpStart ? 0 : bookingCommitment;
     const finalPaid = Number(job.remaining_amount_c === 0 ? job.customer_payable_now_c ?? 0 : 0);
     const platformFee = 25;
     const totalPayable = Math.max(0, servicePrice - discount + tax + platformFee);
@@ -721,7 +723,7 @@ export default function JobsDetail() {
             [tr('Service Provider', language), displayLookup(job.technician_c)],
             [tr('Original provider quote', language), displayMoney(job.original_provider_quote_c ?? job.agreed_price_c)],
             [tr('Final agreed price', language), displayMoney(job.agreed_price_c)],
-            ...(isPayAfterCompletion ? [[tr('Amount due after customer confirmation', language), displayMoney(job.remaining_amount_c ?? job.agreed_price_c)]] : [[tr('Remaining amount', language), displayMoney(job.remaining_amount_c ?? billing.remainingServiceAmount)], [tr('Convenience Fee', language), displayMoney(job.local_service_fee_amount_c ?? billing.localServiceFee)], [tr('Customer discount', language), displayMoney(job.customer_discount_amount_c ?? billing.discount)], [tr('Applicable tax', language), job.customer_tax_amount_c == null ? tr('To be calculated as applicable', language) : displayMoney(job.customer_tax_amount_c)]]),
+            ...(isBatteryJumpStart ? [[tr('Service amount due after completion', language), displayMoney(job.agreed_price_c)], [tr('LOCAL Platform Fee', language), displayMoney(25)], [tr('Total due after completion', language), displayMoney(batteryJumpStartTotal)]] : isPayAfterCompletion ? [[tr('Amount due after customer confirmation', language), displayMoney(job.remaining_amount_c ?? job.agreed_price_c)]] : [[tr('Remaining amount', language), displayMoney(job.remaining_amount_c ?? billing.remainingServiceAmount)], [tr('Convenience Fee', language), displayMoney(job.local_service_fee_amount_c ?? billing.localServiceFee)], [tr('Customer discount', language), displayMoney(job.customer_discount_amount_c ?? billing.discount)], [tr('Applicable tax', language), job.customer_tax_amount_c == null ? tr('To be calculated as applicable', language) : displayMoney(job.customer_tax_amount_c)]]),
             ...(isProvider || isAdmin ? [[tr('Provider completed jobs before booking', language), String(job.provider_completed_jobs_count_c ?? 0)], [tr('LOCAL provider commission', language), displayMoney(job.provider_commission_amount_c ?? billing.providerCommission)], [tr('Provider settlement', language), displayMoney(job.provider_settlement_amount_c ?? billing.providerSettlement)]] : []),
             [tr('Billing status', language), <StatusBadge value={job.billing_status_c ?? 'Ready for Confirmation'} />],
             [tr('Scheduled for', language), formatTimestamp(job.scheduled_at_c)],
@@ -915,11 +917,11 @@ export default function JobsDetail() {
           <div className="mt-7 border-t border-border pt-5">
             <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4">
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name="CreditCard" size={18} /> Final service payment due</div>
-              <p className="mt-1 text-sm text-muted-foreground">The work has been marked completed. Pay the remaining service balance to finish the booking.</p>
-              <p className="mt-2 text-lg font-semibold">Amount due: {displayMoney(job.remaining_amount_c ?? billing.remainingServiceAmount)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">The work has been marked completed. No advance or partial payment was collected. Pay the full service amount plus the LOCAL Platform Fee to finish the booking.</p>
+              <p className="mt-2 text-lg font-semibold">Amount due: {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : job.remaining_amount_c ?? billing.remainingServiceAmount)}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">{['UPI', 'Card', 'Net Banking'].map((method) => <Button key={method} type="button" variant={paymentMethod === method ? 'default' : 'outline'} onClick={() => setPaymentMethod(method)} disabled={working}>{method}</Button>)}</div>
-              <Button className="mt-4" onClick={() => setShowDemoQr(true)} disabled={working || job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review'}><ApperIcon name="QrCode" size={16} /> Pay Now — {displayMoney(job.remaining_amount_c ?? billing.remainingServiceAmount)}</Button>
-              {showDemoQr && <div className="mt-4 rounded-lg border bg-background p-4"><div className="flex items-center gap-2 font-semibold"><ApperIcon name="QrCode" size={18} /> LOCAL UPI Payment · {displayMoney(job.remaining_amount_c ?? billing.remainingServiceAmount)}</div><p className="mt-1 text-sm text-muted-foreground">Scan this UPI QR using your UPI app. LOCAL does not automatically verify transfers; this screen records a demo payment only.</p><div className="mx-auto my-4 flex w-fit flex-col items-center rounded-md border bg-white p-3"><img src={LOCAL_PAYTM_UPI_QR} alt="LOCAL UPI payment QR code" className="h-44 w-44 object-contain" /><p className="mt-2 text-xs font-semibold text-slate-900">Scan with any UPI app</p><p className="text-xs text-slate-600">8587034884@ptsbi</p></div><div className="flex flex-col gap-2 sm:flex-row"><Button onClick={simulatePayment} disabled={working}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Recording demo…' : 'Simulate successful payment'}</Button><Button type="button" variant="outline" onClick={() => setShowDemoQr(false)} disabled={working}>Cancel</Button></div></div>}
+              <Button className="mt-4" onClick={() => setShowDemoQr(true)} disabled={working || job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review'}><ApperIcon name="QrCode" size={16} /> Pay Now — {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : job.remaining_amount_c ?? billing.remainingServiceAmount)}</Button>
+              {showDemoQr && <div className="mt-4 rounded-lg border bg-background p-4"><div className="flex items-center gap-2 font-semibold"><ApperIcon name="QrCode" size={18} /> LOCAL UPI Payment · {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : job.remaining_amount_c ?? billing.remainingServiceAmount)}</div><p className="mt-1 text-sm text-muted-foreground">Scan this UPI QR using your UPI app. LOCAL does not automatically verify transfers; this screen records a demo payment only.</p><div className="mx-auto my-4 flex w-fit flex-col items-center rounded-md border bg-white p-3"><img src={LOCAL_PAYTM_UPI_QR} alt="LOCAL UPI payment QR code" className="h-44 w-44 object-contain" /><p className="mt-2 text-xs font-semibold text-slate-900">Scan with any UPI app</p><p className="text-xs text-slate-600">8587034884@ptsbi</p></div><div className="flex flex-col gap-2 sm:flex-row"><Button onClick={simulatePayment} disabled={working}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Recording demo…' : 'Simulate successful payment'}</Button><Button type="button" variant="outline" onClick={() => setShowDemoQr(false)} disabled={working}>Cancel</Button></div></div>}
               {(job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review') && <p className="mt-2 text-sm text-destructive">Payment is unavailable while this job is under dispute review.</p>}
             </div>
           </div>
