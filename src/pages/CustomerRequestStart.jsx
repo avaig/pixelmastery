@@ -182,6 +182,7 @@ export default function CustomerRequestStart() {
   const issue = params.get('issue') ?? '';
   const displayIssue = requestedService || issue;
   const isCarEssentialsDelivery = requestedService === 'Car Essentials Delivery';
+  const isCarFlatPuncture = vehicle === 'car' && /flat tyre \/ puncture/i.test(issue || requestedService);
   const [creating, setCreating] = useState(false);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
   const isProfessionalDriverService = ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
@@ -688,6 +689,19 @@ export default function CustomerRequestStart() {
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
               <p className="mt-1 text-sm text-muted-foreground">{pricingModeDescription}</p>
             </div>
+          )}
+          {isCarFlatPuncture && (
+            <section className="mt-5 rounded-xl border border-primary/25 bg-primary/5 p-4" aria-labelledby="puncture-pricing-title">
+              <div className="flex items-center gap-2 font-semibold" id="puncture-pricing-title"><ApperIcon name="BadgeIndianRupee" size={18} /> Flat Tyre / Puncture — Transparent Pricing</div>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3"><span>Puncture repair</span><strong>₹150 per puncture</strong></div>
+                <div className="flex items-center justify-between gap-3"><span>Travel / visit charge</span><strong>₹200 within 10 km</strong></div>
+                <div className="flex items-center justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25 per booking</strong></div>
+              </div>
+              <div className="mt-3 border-t border-primary/15 pt-3 text-sm font-medium">Total = (₹150 × actual punctures repaired) + ₹200 visit charge + ₹25 Platform Fee.</div>
+              <p className="mt-2 text-sm text-muted-foreground">The provider will inspect your tyre(s) on arrival and confirm the number of punctures. You will see the final itemized quote and must approve it before any repair begins. The ₹200 visit charge applies within 10 km; if your location is beyond 10 km, the applicable visit charge must be confirmed and shown before booking confirmation.</p>
+              <p className="mt-2 text-xs text-muted-foreground">No advance or partial payment. Pay the approved final amount after the work is completed.</p>
+            </section>
           )}
           {isProfessionalDriverService && (
             <section className="mt-6 rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4" aria-labelledby="driver-safety-disclaimer-title">
