@@ -480,11 +480,11 @@ export default function Home() {
                     <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />
                   </Link>
                 ))}
-                <Link
-                  to={customerDestination('/customer/ambulance')}
-                  className="group flex min-h-[88px] items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-3 text-left shadow-xl transition hover:-translate-y-1 hover:border-red-200 hover:bg-white sm:min-h-[104px] sm:gap-4 sm:p-4"
+                <div
+                  aria-disabled="true"
+                  className="relative flex min-h-[88px] cursor-default items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-3 text-left shadow-xl sm:min-h-[104px] sm:gap-4 sm:p-4"
                 >
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition group-hover:bg-red-700 sm:size-12">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white sm:size-12">
                     <ApperIcon name="Siren" size={25} />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -494,9 +494,11 @@ export default function Home() {
                     <div className="mt-1 text-xs font-medium leading-tight text-slate-500 sm:text-sm">
                       {tr('Ambulance & immediate assistance', language)}
                     </div>
+                    <span className="mt-2 inline-flex rounded-full border border-red-200 bg-white/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-red-700 sm:text-xs">
+                      {tr('Coming Soon', language)}
+                    </span>
                   </div>
-                  <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-red-600 transition group-hover:translate-x-1" />
-                </Link>
+                </div>
               </div>
             </div>
 
