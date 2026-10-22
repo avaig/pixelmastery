@@ -495,7 +495,7 @@ export default function Home() {
                         </span>
                       )}
                       {['Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && (
-                        <span className={'absolute left-2.5 right-2.5 text-center text-xs font-semibold leading-snug text-slate-500 sm:left-4 sm:right-4 sm:text-sm ' + (option.label === 'Home Services' ? 'bottom-7 sm:bottom-7' : 'bottom-3 sm:bottom-4')}>
+                        <span className={'absolute left-2.5 right-2.5 text-center text-xs font-semibold leading-snug text-slate-500 sm:left-4 sm:right-4 sm:text-sm ' + (option.label === 'Home Services' ? 'bottom-5 sm:bottom-5' : 'bottom-3 sm:bottom-4')}>
                           {tr(option.label === 'Car Care & Assistance' ? 'Wash • Service • Insurance Help' : option.label === 'Bike Care & Assistance' ? 'Quick fixes • Smooth rides' : option.label === 'Car Driver' ? 'A trusted driver, when you need one' : 'AC Service • Electricians • Plumber • Much More', language)}
                         </span>
                       )}
