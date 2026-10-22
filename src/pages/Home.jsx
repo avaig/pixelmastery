@@ -495,7 +495,7 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />
+                    {option.label !== 'Roadside Assistance (RSA)' && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
                   </Link>
                 ))}
                 <div
