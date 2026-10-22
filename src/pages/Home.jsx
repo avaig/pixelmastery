@@ -512,26 +512,7 @@ export default function Home() {
               </div>
             </div>
 
-            <Link
-              to={customerDestination('/customer/home-services')}
-              className="group mx-auto mt-4 flex max-w-3xl items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-left transition hover:-translate-y-1 hover:border-emerald-300 hover:bg-white sm:mt-6 sm:gap-4 sm:p-4"
-            >
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white transition group-hover:bg-emerald-700 sm:size-12">
-                <ApperIcon name="House" size={25} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-sm font-extrabold text-[#102c4d] sm:text-base">
-                    {tr('Home Services', language)}
-                  </div>
-                </div>
-              </div>
-              <ApperIcon
-                name="ArrowRight"
-                size={20}
-                className="shrink-0 text-emerald-700 transition group-hover:translate-x-1"
-              />
-            </Link>
+
           </div>
         </section>
 
