@@ -484,8 +484,16 @@ export default function Home() {
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
                       <ApperIcon name={option.icon} size={21} className="sm:size-[25px]" />
                     </div>
-                    <div className="min-w-0 flex-1 text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
-                      {tr(option.label, language)}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
+                        {tr(option.label, language)}
+                      </div>
+                      {option.label === 'Roadside Assistance (RSA)' && (
+                        <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-extrabold leading-tight text-emerald-700 sm:px-2 sm:text-[11px]">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          {tr('24×7 Available', language)}
+                        </span>
+                      )}
                     </div>
                     <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />
                   </Link>
