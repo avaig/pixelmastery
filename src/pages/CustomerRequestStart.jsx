@@ -213,12 +213,6 @@ export default function CustomerRequestStart() {
   });
   const [includePickupDrop, setIncludePickupDrop] = useState(() => window.sessionStorage.getItem('local_car_wash_pickup_v1') === 'true');
   const [washDecisions, setWashDecisions] = useState({});
-  function setWashDecision(itemId, decision) {
-    setWashDecisions((current) => ({ ...current, [itemId]: { decision, proposedUnitPrice: current[itemId]?.proposedUnitPrice ?? '' } }));
-  }
-  function setWashProposedPrice(itemId, proposedUnitPrice) {
-    setWashDecisions((current) => ({ ...current, [itemId]: { decision: 'negotiate', proposedUnitPrice } }));
-  }
   const [serviceTiming, setServiceTiming] = useState('ASAP');
   const [scheduledAt, setScheduledAt] = useState('');
   const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(null);
@@ -235,7 +229,7 @@ export default function CustomerRequestStart() {
       ? 'See the listed price and book without waiting for bids.'
       : pricingMode === 'Urgent Dispatch'
         ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
-        : 'Nearby eligible providers can send an estimate and arrival time. Choose an offer; negotiation is optional.';
+        : 'LOCAL Customer Care will contact you and arrange a suitable provider. Any additional work is explained before you approve it.';
   const language = getLanguage();
   // Keep all cart calculations based on the same normalized item list.
   const normalizedWashCart = normalizeWashCart(washCart);
@@ -512,7 +506,7 @@ export default function CustomerRequestStart() {
         service_category_c: category.Id,
         required_capability_c: requiredCapability.Id,
         problem_description_c: (requestedService
-          ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + washCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Customer Car Wash total offer: ₹' + customerWashOffer.toLocaleString('en-IN') + '. The offer covers all selected items; Pickup & Drop is included if selected and cannot be negotiated separately. Prices are indicative demo menu prices. CUSTOMER_CAR_WASH_OFFER_JSON:' + JSON.stringify({ menuTotal: estimatedTotalValue, customerOffer: customerWashOffer }) + ' CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
+          ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + washCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Fixed listed price; no offers or negotiation. LOCAL Customer Care will coordinate the service. Prices shown are menu prices. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
@@ -663,10 +657,9 @@ export default function CustomerRequestStart() {
             </div>
             <div className="mt-5 border-t pt-4">
               <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-base font-semibold">Estimated Total Value</span><span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={cartSubtotal} className="text-2xl font-bold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
-              <p className="mt-2 text-xs text-muted-foreground">After adding or removing services, click Refresh Total to recalculate and confirm the final menu value. You must refresh the total before sending your offer.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Review your selected services and refresh the total after making changes. LOCAL uses the listed menu price; customers cannot submit offers or negotiate the booking price.</p>
               <Button type="button" variant={totalRefreshed ? 'secondary' : 'outline'} className="mt-3" onClick={refreshEstimatedTotal}><ApperIcon name="RefreshCw" size={16} /> {totalRefreshed ? 'Total Refreshed ✓' : 'Refresh Total (Required)'}</Button>
-              <p className="mt-2 text-xs text-muted-foreground">Indicative menu prices. You can submit the Menu Total or propose a lower or different total for the whole booking. Pickup &amp; Drop, if selected, is included and is not negotiated separately.</p>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:items-end"><div><label htmlFor="car-wash-offer" className="text-sm font-semibold">Your Offer (₹)</label><Input id="car-wash-offer" type="number" min="1" value={carWashOffer} onChange={(event) => setCarWashOffer(event.target.value)} placeholder={String(estimatedTotalValue)} className="mt-2"/><p className="mt-1 text-xs text-muted-foreground">Leave blank to submit the Menu Total.</p></div><div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Menu Total</div><div className="text-lg font-semibold">₹{estimatedTotalValue.toLocaleString('en-IN')}</div><div className="text-xs text-muted-foreground">Convenience Fee is calculated separately after agreement.</div></div></div>
+              <div className="mt-4 rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Fixed menu total</div><div className="text-lg font-semibold">₹{estimatedTotalValue.toLocaleString('en-IN')}</div><div className="text-xs text-muted-foreground">The listed price applies to the selected services. Any additional work must be approved separately before it begins.</div></div>
             </div>
           </Card>
         </section>

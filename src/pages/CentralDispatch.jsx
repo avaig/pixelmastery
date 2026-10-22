@@ -282,8 +282,7 @@ export default function CentralDispatch() {
       return { name: part, quantity: 1, amount: null };
     });
     const totalMatch = text.match(/Menu Total:\s*₹\s*([\d,]+)/i);
-    const offerMatch = text.match(/Customer Car Wash total offer:\s*₹\s*([\d,]+)/i);
-    return { items, menuTotal: totalMatch ? Number(totalMatch[1].replace(/,/g, '')) : null, customerOffer: offerMatch ? Number(offerMatch[1].replace(/,/g, '')) : null };
+    return { items, menuTotal: totalMatch ? Number(totalMatch[1].replace(/,/g, '')) : null, customerOffer: null };
   }
 
   function getStructuredServiceDetails(request) {
@@ -571,7 +570,7 @@ export default function CentralDispatch() {
                       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{details.title}</p><h4 className="mt-1 font-heading text-lg font-bold">{request.Name || details.type}</h4><p className="mt-1 text-sm text-muted-foreground">{details.type === 'AC Service' ? 'Service requested for the customer’s AC unit(s)' : details.type === 'Car Service' ? 'Vehicle service package and covered work' : 'Customer-selected wash services and add-ons'}</p></div>{details.total != null && <div className="min-w-[135px] rounded-lg bg-primary/5 px-4 py-3"><p className="text-xs text-muted-foreground">{details.type === 'Car Wash' ? 'Menu total' : 'Listed package price'}</p><p className="mt-1 text-2xl font-bold tabular-nums">₹{details.total.toLocaleString('en-IN')}</p></div>}</div>
                     </div>
                     {details.items.length > 0 ? <div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold">{details.type === 'Car Wash' ? 'Selected services' : details.type === 'AC Service' ? 'Requested AC work' : 'Package includes'}</h4><span className="text-xs text-muted-foreground">{details.type === 'AC Service' ? 'Quote pending provider response' : 'Quantity and price details'}</span></div><div className="grid gap-2 sm:grid-cols-2">{details.items.map((item,index) => <div key={item.name + index} className="flex min-w-0 items-start gap-3 rounded-lg border border-border/80 bg-background p-3"><span className={'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' + (item.included ? 'bg-success/10 text-success' : 'bg-primary/5 text-primary')}><ApperIcon name={item.included ? 'Check' : details.type === 'AC Service' ? 'Wind' : 'Wrench'} size={16} /></span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{item.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.included ? 'Included in package price' : item.amount == null ? (details.type === 'AC Service' ? 'Provider estimate required' : 'If required / confirm with provider') : 'Qty: ' + item.quantity}</p></div><div className="shrink-0 text-right text-sm font-semibold tabular-nums">{item.amount == null ? (details.type === 'AC Service' ? 'Quote' : '—') : '₹' + item.amount.toLocaleString('en-IN')}</div></div>)}</div></div> : <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Detailed service items were not included in the request. Review the customer notes below before assigning.</div>}
-                    {details.type === 'Car Wash' && <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-xs font-medium text-muted-foreground">Menu total</p><p className="mt-1 text-xl font-bold tabular-nums">{details.total == null ? '—' : '₹' + details.total.toLocaleString('en-IN')}</p></div><div className="rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs font-medium text-muted-foreground">Customer offer</p><p className="mt-1 text-xl font-bold tabular-nums">{details.offer == null ? 'No separate offer recorded' : '₹' + details.offer.toLocaleString('en-IN')}</p></div></div>}
+                    {details.type === 'Car Wash' && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-xs font-medium text-muted-foreground">Fixed menu total · no bidding</p><p className="mt-1 text-xl font-bold tabular-nums">{details.total == null ? '—' : '₹' + details.total.toLocaleString('en-IN')}</p></div>}
                   </div>}
                   <div className="mt-4 rounded-lg border border-border bg-muted/20 px-3 py-3">
                     <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer instructions</h4>
@@ -585,7 +584,7 @@ export default function CentralDispatch() {
                   <span className="text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Detected fixed service total' : 'Inspection / estimate amount'}</span>
                   <span className="text-xl font-bold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : 'Review required'}</span>
                 </div>
-                {request.pricing_mode_c !== 'Fixed Price' && <p className="mt-2 text-xs text-amber-700">Do not confirm until the estimate is recorded and the customer has approved it.</p>}
+                {request.pricing_mode_c !== 'Fixed Price' && <p className="mt-2 text-xs text-amber-700">If inspection is required, disclose the visiting charge first and obtain customer approval for any additional repair price before work begins. This is not a bidding process.</p>}
               </section>
             </div>
           </Card>
