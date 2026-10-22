@@ -186,7 +186,7 @@ export default function CustomerRequestStart() {
   const [creating, setCreating] = useState(false);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
   const [punctureDispatchConsent, setPunctureDispatchConsent] = useState(false);
-  const isProfessionalDriverService = ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
+  const isProfessionalDriverService = ['Car Driver on Demand', 'Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
   const [location, setLocation] = useState(() => {
     try {
       const saved = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null');
@@ -222,14 +222,16 @@ export default function CustomerRequestStart() {
   const isUrgentService = ['Emergency Driver', 'Ambulance'].includes(requestedService) || /jump|battery|tyre|towing|fuel|roadside|breakdown|accident/i.test(issue + ' ' + requestedService);
   // Only classify Car Wash as fixed-price here because this screen currently has an explicit package rate card.
   // Driver rates must be configured before those services can honestly be presented as fixed-price bookings.
-  const pricingMode = isUrgentService ? 'Urgent Dispatch' : (isCarWash ? 'Fixed Price' : 'Provider Quote');
+  const pricingMode = isUrgentService ? 'Urgent Dispatch' : (isCarWash ? 'Fixed Price' : (isProfessionalDriverService ? 'Driver Booking & Confirmation' : 'Provider Quote'));
   const pricingModeDescription = isCarFlatPuncture
     ? 'Prioritize nearby available help for faster assistance. No bidding.'
-    : pricingMode === 'Fixed Price'
-      ? 'See the listed price and book without waiting for bids.'
-      : pricingMode === 'Urgent Dispatch'
-        ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
-        : 'LOCAL Customer Care will contact you and arrange a suitable provider. Any additional work is explained before you approve it.';
+    : isProfessionalDriverService
+      ? 'Submit your request. LOCAL Customer Care will confirm driver availability, your schedule and the applicable charges before confirming your booking.'
+      : pricingMode === 'Fixed Price'
+        ? 'See the listed price and book without waiting for bids.'
+        : pricingMode === 'Urgent Dispatch'
+          ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
+          : 'LOCAL Customer Care will contact you and arrange a suitable provider. Any additional work is explained before you approve it.';
   const language = getLanguage();
   // Keep all cart calculations based on the same normalized item list.
   const normalizedWashCart = normalizeWashCart(washCart);
