@@ -485,7 +485,7 @@ export default function Home() {
                       <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
+                      <div className="text-sm font-extrabold leading-snug text-[#102c4d] sm:text-base">
                         {tr(option.label, language)}
                       </div>
                       {option.label === 'Roadside Assistance (RSA)' && (
@@ -509,7 +509,7 @@ export default function Home() {
                     <div className="text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
                       {tr('Emergency Help', language)}
                     </div>
-                    <div className="mt-1 text-[10px] font-medium leading-tight text-slate-500 sm:text-sm">
+                    <div className="mt-1 text-xs font-medium leading-tight text-slate-500 sm:text-sm">
                       {tr('Ambulance & immediate assistance', language)}
                     </div>
                     <span className="mt-2 inline-flex rounded-full border border-red-200 bg-white/80 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-red-700 sm:text-xs">
