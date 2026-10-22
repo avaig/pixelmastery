@@ -17,6 +17,11 @@ export const route = {
 
 const vehicleOptions = [
   {
+    icon: 'Truck',
+    label: 'Roadside Assistance (RSA)',
+    href: '/customer/vehicle/car',
+  },
+  {
     icon: 'CarFront',
     label: 'Car Care & Assistance',
     href: '/customer/car-care',
@@ -32,9 +37,9 @@ const vehicleOptions = [
     href: '/customer/car-driver',
   },
   {
-    icon: 'Truck',
-    label: 'Roadside Assistance (RSA)',
-    href: '/customer/vehicle/car',
+    icon: 'House',
+    label: 'Home Services',
+    href: '/customer/home-services',
   },
 ];
 
