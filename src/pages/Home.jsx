@@ -479,7 +479,7 @@ export default function Home() {
                   <Link
                     key={option.label}
                     to={customerDestination(option.href)}
-                    className="group flex min-h-[112px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[112px] sm:gap-4 sm:p-4"
+                    className="group relative flex min-h-[128px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 pb-12 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-4 sm:p-4 sm:pb-12"
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
                       <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
@@ -489,8 +489,8 @@ export default function Home() {
                         {tr(option.label, language)}
                       </div>
                       {option.label === 'Roadside Assistance (RSA)' && (
-                        <span className="mt-1.5 inline-flex w-max max-w-full flex-nowrap items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-extrabold leading-tight text-emerald-800 shadow-sm sm:px-2.5 sm:text-xs">
-                          <span className="size-2 rounded-full bg-emerald-500" />
+                        <span className="absolute bottom-3 left-2.5 inline-flex w-max max-w-[calc(100%-1.25rem)] flex-nowrap items-center gap-2 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-extrabold leading-tight text-emerald-800 shadow-sm sm:bottom-3 sm:left-4 sm:px-3.5 sm:py-1.5 sm:text-sm">
+                          <span className="size-2.5 shrink-0 rounded-full bg-emerald-500" />
                           {tr('24×7 Available', language)}
                         </span>
                       )}
