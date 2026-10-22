@@ -494,13 +494,13 @@ export default function Home() {
                           {tr('24×7 Available', language)}
                         </span>
                       )}
-                      {option.label === 'Car Care & Assistance' && (
+                      {['Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && (
                         <span className="absolute bottom-4 left-2.5 right-2.5 text-center text-[11px] font-bold leading-tight text-slate-500 sm:bottom-4 sm:left-4 sm:right-4 sm:text-xs">
-                          {tr('Wash • Service • Insurance Help', language)}
+                          {tr(option.label === 'Car Care & Assistance' ? 'Wash • Service • Insurance Help' : option.label === 'Bike Care & Assistance' ? 'Quick fixes • Smooth rides' : option.label === 'Car Driver' ? 'A trusted driver, when you need one' : 'Electrician • Plumber • AC Service', language)}
                         </span>
                       )}
                     </div>
-                    {!['Roadside Assistance (RSA)', 'Car Care & Assistance'].includes(option.label) && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
+                    {!['Roadside Assistance (RSA)', 'Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
                   </Link>
                 ))}
                 <div
