@@ -90,7 +90,7 @@ export default function VehicleIssueSelect() {
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="break-words font-semibold leading-snug">{tr(cardTitle, language)}</div>
+                  <div className="break-words text-[17px] font-semibold leading-snug sm:text-lg">{tr(cardTitle, language)}</div>
                   {label === 'Towing Required' && (
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                       {tr('Rates as per time, place and type of towing', language)}
@@ -119,7 +119,7 @@ export default function VehicleIssueSelect() {
             </div>
             <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="break-words font-semibold leading-snug">{tr('Emergency Car Rental', language)}</div>
+                <div className="break-words text-[17px] font-semibold leading-snug sm:text-lg">{tr('Emergency Car Rental', language)}</div>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tr('Request a rental quote from available providers and negotiate before booking.', language)}</p>
               </div>
               <ApperIcon name="ArrowRight" size={18} className="mb-0.5 shrink-0 text-muted-foreground" />
