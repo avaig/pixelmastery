@@ -87,7 +87,6 @@ export default function VehicleIssueSelect() {
       </Card>
       <div className="mb-3 sm:mb-4">
         <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">{tr('Roadside issues we can help with', language)}</h2>
-        <p className="mt-1 text-sm text-muted-foreground sm:text-base">{tr('These are examples of issues our support team can assist with. Call us to get help.', language)}</p>
       </div>
       <div className="grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {config.issues.filter(([label]) => label !== 'Accident / Recovery' && !(vehicle === 'bike' && label === 'Out of Fuel')).map(([label, icon]) => {
