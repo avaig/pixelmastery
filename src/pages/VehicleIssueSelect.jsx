@@ -54,14 +54,6 @@ export default function VehicleIssueSelect() {
     );
   }
 
-  function handleIssue(issue) {
-    const params = new URLSearchParams({
-      vehicle,
-      issue,
-    });
-    navigate('/customer/request?' + params.toString());
-  }
-
   return (
     <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
       <div className="mb-1 flex justify-start sm:mb-3">
@@ -74,58 +66,70 @@ export default function VehicleIssueSelect() {
           <ApperIcon name="ArrowLeft" size={19} />
         </button>
       </div>
-      <div className="mb-3 text-center sm:mb-5">
-        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-          {tr(config.title, language)}
-        </h1>
+      <Card className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-[#F4F8FC] p-4 shadow-sm sm:mb-7 sm:p-6">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#132F55] text-white sm:size-16">
+            <ApperIcon name="Headset" size={30} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold leading-tight tracking-tight text-[#102C4D] sm:text-2xl">{tr('LOCAL 24×7 Roadside Support', language)}</h1>
+            <div className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-emerald-700 sm:text-base">
+              <span className="size-2.5 rounded-full bg-emerald-500" />
+              {tr('Available Day & Night', language)}
+            </div>
+          </div>
+        </div>
+        <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
+          {tr('Flat tyre, battery trouble, fuel shortage or breakdown? One call connects you to LOCAL support.', language)}
+        </p>
+        <a href="tel:9235559696" className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-center text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:text-lg">
+          <ApperIcon name="PhoneCall" size={22} />
+          <span>{tr('CALL LOCAL SUPPORT', language)} · 9235559696</span>
+        </a>
+        <p className="mt-2 text-center text-xs text-slate-500 sm:text-sm">{tr('One call. Help on the way.', language)}</p>
+      </Card>
+      <div className="mb-3 sm:mb-4">
+        <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">{tr('Roadside issues we can help with', language)}</h2>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">{tr('These are examples of issues our support team can assist with. Call us to get help.', language)}</p>
       </div>
       <div className="grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {config.issues.filter(([label]) => label !== 'Accident / Recovery' && !(vehicle === 'bike' && label === 'Out of Fuel')).map(([label, icon]) => {
           const cardTitle = vehicle === 'car' && label === 'Out of Fuel' ? 'Diesel on Demand' : label;
           return (
-          <button key={label} type="button" onClick={() => handleIssue(label)} className="w-full text-left">
-            <Card className="flex h-full min-h-[80px] flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[100px] sm:p-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white">
-                <ApperIcon name={icon} size={25} />
-              </div>
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <div key={label} className="min-w-0">
+              <Card className="flex h-full min-h-[80px] flex-row items-center gap-3 rounded-2xl border border-border/70 bg-white p-3 shadow-sm sm:min-h-[100px] sm:p-4">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white">
+                  <ApperIcon name={icon} size={25} />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="break-words text-[17px] font-semibold leading-snug sm:text-lg">{tr(cardTitle, language)}</div>
+                  <div className="break-words text-[17px] font-semibold leading-snug text-foreground sm:text-lg">{tr(cardTitle, language)}</div>
                   {label === 'Towing Required' && (
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                       {tr('Rates as per time, place and type of towing', language)}
                     </p>
                   )}
                   {label === 'Out of Fuel' && (
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                       {tr(vehicle === 'car' ? 'Diesel Assistance At Your Location' : 'Fuel cost plus delivery fee', language)}
                     </p>
                   )}
                 </div>
-                <ApperIcon name="ArrowRight" size={18} className="mb-0.5 shrink-0 text-muted-foreground" />
-              </div>
-            </Card>
-          </button>
+              </Card>
+            </div>
           );
         })}
-        <button
-          type="button"
-          onClick={() => handleIssue('Emergency Car Rental')}
-          className="w-full text-left"
-        >
-          <Card className="flex min-h-[80px] h-full flex-row items-center gap-3 rounded-2xl border border-border/70 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:min-h-[100px] sm:p-4">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white">
-              <ApperIcon name="CarTaxiFront" size={25} />
-            </div>
-            <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="break-words text-[17px] font-semibold leading-snug sm:text-lg">{tr('Emergency Car Rental', language)}</div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tr('Request a rental quote from available providers and negotiate before booking.', language)}</p>
+        {vehicle === 'car' && (
+          <div className="min-w-0">
+            <Card className="flex h-full min-h-[80px] flex-row items-center gap-3 rounded-2xl border border-border/70 bg-white p-3 shadow-sm sm:min-h-[100px] sm:p-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#132F55] text-white">
+                <ApperIcon name="Wrench" size={25} />
               </div>
-              <ApperIcon name="ArrowRight" size={18} className="mb-0.5 shrink-0 text-muted-foreground" />
-            </div>
-          </Card>
-        </button>
+              <div className="min-w-0 flex-1">
+                <div className="break-words text-[17px] font-semibold leading-snug text-foreground sm:text-lg">{tr('Mechanical issues', language)}</div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
