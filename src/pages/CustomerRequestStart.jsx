@@ -261,7 +261,7 @@ export default function CustomerRequestStart() {
 
   useEffect(() => {
     const currentCart = normalizeWashCart(washCart);
-    const nextSubtotal = currentCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
+    const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * Math.max(0, Number.parseInt(item.qty, 10) || 0)), 0);
     setEstimatedTotalValue(nextSubtotal + (includePickupDrop ? 100 : 0));
   }, [washCart, includePickupDrop]);
 
@@ -657,7 +657,7 @@ export default function CustomerRequestStart() {
             <div className="mt-5 border-t pt-4">
               <button type="button" onClick={refreshEstimatedTotal} aria-label={'Update estimated total to ₹' + estimatedTotalValue.toLocaleString('en-IN')} className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border-2 border-[#f4b61a] bg-[#fff7d6] px-4 py-4 text-left shadow-sm transition hover:bg-[#ffefad] focus:outline-none focus:ring-2 focus:ring-[#f4b61a] focus:ring-offset-2">
                 <span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#f4b61a] text-[#102c4d]"><ApperIcon name="RefreshCw" size={19} /></span><span><span className="block text-sm font-bold text-[#102c4d]">Estimated Total Value</span><span className="mt-0.5 block text-xs text-[#52677f]">Tap to update after changing your cart</span></span></span>
-                <span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={normalizedWashCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0)} className="shrink-0 text-2xl font-extrabold text-[#102c4d]">₹{(normalizedWashCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0) + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span>
+                <span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={cartSubtotal} className="shrink-0 text-2xl font-extrabold text-[#102c4d]">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span>
               </button>
               <p className="mt-2 text-xs text-muted-foreground">LOCAL uses the listed menu price. No offers or negotiation. Any additional work must be approved separately before it begins.</p>
             </div>
