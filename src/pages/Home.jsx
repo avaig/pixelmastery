@@ -479,7 +479,7 @@ export default function Home() {
                   <Link
                     key={option.label}
                     to={customerDestination(option.href)}
-                    className={'group relative flex min-h-[128px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 pb-12 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-4 sm:p-4 sm:pb-12 ' + (option.label === 'Roadside Assistance (RSA)' ? 'pr-2.5 sm:pr-4' : '')}
+                    className={'group relative flex min-h-[128px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 pb-12 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-4 sm:p-4 sm:pb-12 ' + (['Roadside Assistance (RSA)', 'Car Care & Assistance'].includes(option.label) ? 'pr-2.5 sm:pr-4' : '')}
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
                       <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
@@ -494,8 +494,13 @@ export default function Home() {
                           {tr('24×7 Available', language)}
                         </span>
                       )}
+                      {option.label === 'Car Care & Assistance' && (
+                        <span className="absolute bottom-4 left-2.5 right-2.5 text-center text-[11px] font-bold leading-tight text-slate-500 sm:bottom-4 sm:left-4 sm:right-4 sm:text-xs">
+                          {tr('Wash • Service • Insurance Help', language)}
+                        </span>
+                      )}
                     </div>
-                    {option.label !== 'Roadside Assistance (RSA)' && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
+                    {!['Roadside Assistance (RSA)', 'Car Care & Assistance'].includes(option.label) && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
                   </Link>
                 ))}
                 <div
