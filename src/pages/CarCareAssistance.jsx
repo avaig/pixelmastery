@@ -29,12 +29,6 @@ const services = [
     href: '/customer/car-essentials',
   },
   {
-    title: 'Roadside Assistance (RSA)',
-    description: 'Breakdown, battery, puncture, fuel and towing help',
-    icon: 'Truck',
-    href: '/customer/vehicle/car',
-  },
-  {
     title: 'Insurance Claim',
     description: 'Get help with the next steps after car damage or an accident',
     icon: 'FileCheck',
