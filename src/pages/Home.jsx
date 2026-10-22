@@ -479,12 +479,12 @@ export default function Home() {
                   <Link
                     key={option.label}
                     to={customerDestination(option.href)}
-                    className="group relative flex min-h-[128px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 pb-12 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-4 sm:p-4 sm:pb-12"
+                    className={'group relative flex min-h-[128px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 pb-12 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-4 sm:p-4 sm:pb-12 ' + (option.label === 'Roadside Assistance (RSA)' ? 'pr-2.5 sm:pr-4' : '')}
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
                       <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className={'min-w-0 flex-1 ' + (option.label === 'Roadside Assistance (RSA)' ? 'text-center' : '')}>
                       <div className="text-sm font-extrabold leading-snug text-[#102c4d] sm:text-base">
                         {tr(option.label, language)}
                       </div>
