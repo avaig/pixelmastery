@@ -31,6 +31,11 @@ const vehicleOptions = [
     label: 'Car Driver',
     href: '/customer/car-driver',
   },
+  {
+    icon: 'Truck',
+    label: 'Roadside Assistance (RSA)',
+    href: '/customer/vehicle/car',
+  },
 ];
 
 const helpCatalog = [
