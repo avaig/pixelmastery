@@ -239,6 +239,7 @@ export default function CustomerRequestStart() {
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
   const estimatedTotalValue = cartSubtotal + (includePickupDrop ? 100 : 0);
+  const [showTotalBilling, setShowTotalBilling] = useState(false);
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
@@ -642,7 +643,10 @@ export default function CustomerRequestStart() {
                 {includePickupDrop && <div className="flex items-center justify-between rounded-lg border p-3"><div><div className="font-medium">Pickup &amp; Drop</div><div className="text-sm text-muted-foreground">Optional service</div></div><div className="flex items-center gap-3"><span className="font-semibold">₹100</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop(false); }}>Remove</Button></div></div>}
               </>}
             </div>
-
+            <div className="mt-4 border-t pt-4">
+              <Button type="button" className="w-full sm:w-auto" onClick={() => { setShowTotalBilling(true); window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(normalizedWashCart)); window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop)); }} disabled={!normalizedWashCart.length && !includePickupDrop}>Calculate Total Billing</Button>
+              {showTotalBilling && <div className="mt-3 flex items-center justify-between rounded-lg border-2 border-primary/30 bg-primary/5 px-4 py-3"><span className="font-semibold">Total Billing</span><span className="text-xl font-bold">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span></div>}
+            </div>
           </Card>
         </section>
       )}
