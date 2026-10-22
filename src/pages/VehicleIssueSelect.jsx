@@ -72,7 +72,10 @@ export default function VehicleIssueSelect() {
             <ApperIcon name="Headset" size={30} />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-[#102C4D] sm:text-2xl">{tr('LOCAL 24×7 Roadside Support', language)}</h1>
+            <h1 className="text-xl font-bold leading-tight tracking-tight text-[#102C4D] sm:text-2xl">
+              <span className="block">{tr('LOCAL 24×7 Roadside', language)}</span>
+              <span className="block text-center">{tr('Support', language)}</span>
+            </h1>
             <div className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-emerald-700 sm:text-base">
               <span className="size-2.5 rounded-full bg-emerald-500" />
               {tr('Available Day & Night', language)}
