@@ -479,17 +479,17 @@ export default function Home() {
                   <Link
                     key={option.label}
                     to={customerDestination(option.href)}
-                    className="group flex min-h-[104px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[104px] sm:gap-4 sm:p-4"
+                    className={'group flex min-h-[104px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[104px] sm:gap-4 sm:p-4 ' + (option.label === 'Roadside Assistance (RSA)' ? 'items-start' : '')}
                   >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
+                    <div className={'flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12 ' + (option.label === 'Roadside Assistance (RSA)' ? 'mt-1.5 -translate-y-1' : '')}>
                       <ApperIcon name={option.icon} size={21} className="sm:size-[25px]" />
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className={'min-w-0 flex-1 ' + (option.label === 'Roadside Assistance (RSA)' ? 'flex flex-col items-center text-center' : '')}>
                       <div className="text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
                         {tr(option.label, language)}
                       </div>
                       {option.label === 'Roadside Assistance (RSA)' && (
-                        <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-extrabold leading-tight text-emerald-700 sm:px-2 sm:text-[11px]">
+                        <span className="mt-1 inline-flex w-max max-w-full flex-nowrap items-center justify-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-extrabold leading-tight text-emerald-700 sm:px-2 sm:text-[11px]">
                           <span className="size-1.5 rounded-full bg-emerald-500" />
                           {tr('24×7 Available', language)}
                         </span>
