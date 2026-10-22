@@ -240,10 +240,8 @@ export default function CustomerRequestStart() {
   }, 0);
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
-  const [estimatedTotalValue, setEstimatedTotalValue] = useState(() => {
-    const savedTotal = normalizeWashCart(washCart).reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
-    return savedTotal + (includePickupDrop ? 100 : 0);
-  });
+  // Always derive the displayed amount from the same cart the customer can see.
+  const estimatedTotalValue = cartSubtotal + (includePickupDrop ? 100 : 0);
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
@@ -256,7 +254,6 @@ export default function CustomerRequestStart() {
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
-    setEstimatedTotalValue(nextTotal);
     setTotalRefreshed(true);
     toast.success('Estimated total updated: ₹' + nextTotal.toLocaleString('en-IN'));
   }
@@ -266,7 +263,7 @@ export default function CustomerRequestStart() {
       const quantity = Math.max(0, Number.parseInt(item.qty, 10) || 0);
       return sum + (getWashPrice(item) * quantity);
     }, 0);
-    setEstimatedTotalValue(nextSubtotal + (includePickupDrop ? 100 : 0));
+    // The displayed total is derived directly from the current cart, so no separate state update is needed.
   }, [washCart, includePickupDrop]);
 
   useEffect(() => {
