@@ -79,9 +79,6 @@ export default function VehicleIssueSelect() {
             </div>
           </div>
         </div>
-        <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
-          {tr('Flat tyre, battery trouble, fuel shortage or breakdown? One call connects you to LOCAL support.', language)}
-        </p>
         <a href="tel:9235559696" className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-center text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:text-lg">
           <ApperIcon name="PhoneCall" size={22} />
           <span>{tr('CALL LOCAL SUPPORT', language)} · 9235559696</span>
