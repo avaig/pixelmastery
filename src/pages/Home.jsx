@@ -474,17 +474,17 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-4">
                 {vehicleOptions.map((option) => (
                   <Link
                     key={option.label}
                     to={customerDestination(option.href)}
-                    className="group flex min-h-[88px] items-center gap-3 rounded-2xl border border-white/15 bg-white p-3 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[104px] sm:gap-4 sm:p-4"
+                    className="group flex min-h-[104px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[104px] sm:gap-4 sm:p-4"
                   >
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
-                      <ApperIcon name={option.icon} size={25} />
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
+                      <ApperIcon name={option.icon} size={21} className="sm:size-[25px]" />
                     </div>
-                    <div className="min-w-0 flex-1 text-sm font-extrabold text-[#102c4d] sm:text-base">
+                    <div className="min-w-0 flex-1 text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
                       {tr(option.label, language)}
                     </div>
                     <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />
@@ -492,16 +492,16 @@ export default function Home() {
                 ))}
                 <div
                   aria-disabled="true"
-                  className="relative flex min-h-[88px] cursor-default items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-3 text-left shadow-xl sm:min-h-[104px] sm:gap-4 sm:p-4"
+                  className="relative flex min-h-[104px] cursor-default items-center gap-2 rounded-2xl border border-red-100 bg-red-50 p-2 text-left shadow-xl sm:min-h-[104px] sm:gap-4 sm:p-4"
                 >
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white sm:size-12">
-                    <ApperIcon name="Siren" size={25} />
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white sm:size-12">
+                    <ApperIcon name="Siren" size={21} className="sm:size-[25px]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-extrabold text-[#102c4d] sm:text-base">
+                    <div className="text-xs font-extrabold leading-snug text-[#102c4d] sm:text-base">
                       {tr('Emergency Help', language)}
                     </div>
-                    <div className="mt-1 text-xs font-medium leading-tight text-slate-500 sm:text-sm">
+                    <div className="mt-1 text-[10px] font-medium leading-tight text-slate-500 sm:text-sm">
                       {tr('Ambulance & immediate assistance', language)}
                     </div>
                     <span className="mt-2 inline-flex rounded-full border border-red-200 bg-white/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-red-700 sm:text-xs">
