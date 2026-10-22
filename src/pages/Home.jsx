@@ -376,7 +376,7 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-3 max-w-2xl px-2 text-base font-semibold tracking-wide text-slate-600 sm:mt-4 sm:text-xl">
-              {tr('Local Needs. Local Solutions.', language)}
+              {tr('Time Is Money. We Save Both.', language)}
             </p>
 
             <div id="services" className="mx-auto mt-5 max-w-3xl sm:mt-8">
