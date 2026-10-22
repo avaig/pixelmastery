@@ -233,36 +233,27 @@ export default function CustomerRequestStart() {
   const language = getLanguage();
   // Keep all cart calculations based on the same normalized item list.
   const normalizedWashCart = normalizeWashCart(washCart);
-  const cartItemCount = normalizedWashCart.reduce((sum, item) => sum + Math.max(0, Number.parseInt(item.qty, 10) || 0), 0);
-  const cartSubtotal = normalizedWashCart.reduce((sum, item) => {
-    const quantity = Math.max(0, Number.parseInt(item.qty, 10) || 0);
-    return sum + (getWashPrice(item) * quantity);
-  }, 0);
+  // Derive every cart figure from this single normalized snapshot.
+  const cartItemCount = normalizedWashCart.reduce((sum, item) => sum + item.qty, 0);
+  const cartSubtotal = normalizedWashCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
-  // The total action writes the confirmed cart calculation to this display state.
-  const [estimatedTotalValue, setEstimatedTotalValue] = useState(() => {
-    const savedCart = normalizeWashCart(washCart);
-    return savedCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0) + (includePickupDrop ? 100 : 0);
-  });
+  const estimatedTotalValue = cartSubtotal + (includePickupDrop ? 100 : 0);
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
     const currentCart = normalizeWashCart(washCart);
-    const nextSubtotal = currentCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
+    const nextSubtotal = currentCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
-    setEstimatedTotalValue(nextTotal);
     setTotalRefreshed(true);
     toast.success('Estimated total updated: ₹' + nextTotal.toLocaleString('en-IN'));
   }
 
   useEffect(() => {
-    const currentCart = normalizeWashCart(washCart);
-    const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * Math.max(0, Number.parseInt(item.qty, 10) || 0)), 0);
-    setEstimatedTotalValue(nextSubtotal + (includePickupDrop ? 100 : 0));
+    // All displayed totals are derived directly from normalizedWashCart below.
   }, [washCart, includePickupDrop]);
 
   useEffect(() => {
@@ -277,7 +268,6 @@ export default function CustomerRequestStart() {
   function addWashItem(option, priceOption) {
     window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
     setTotalRefreshed(false);
-    setEstimatedTotalValue((current) => current + priceOption.price);
     const id = option.title + '::' + priceOption.label;
     setWashCart((current) => {
       const existing = current.find((item) => item.id === id);
@@ -291,8 +281,6 @@ export default function CustomerRequestStart() {
   function changeWashQty(id, delta) {
     window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
     setTotalRefreshed(false);
-    const changedItem = normalizedWashCart.find((item) => item.id === id);
-    if (changedItem) setEstimatedTotalValue((current) => Math.max(0, current + (getWashPrice(changedItem) * delta)));
     setWashCart((current) => current
       .map((item) => item.id === id ? { ...item, qty: Math.max(0, item.qty + delta) } : item)
       .filter((item) => item.qty > 0));
@@ -657,7 +645,7 @@ export default function CustomerRequestStart() {
             <div className="mt-5 border-t pt-4">
               <button type="button" onClick={refreshEstimatedTotal} aria-label={'Update estimated total to ₹' + estimatedTotalValue.toLocaleString('en-IN')} className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border-2 border-[#f4b61a] bg-[#fff7d6] px-4 py-4 text-left shadow-sm transition hover:bg-[#ffefad] focus:outline-none focus:ring-2 focus:ring-[#f4b61a] focus:ring-offset-2">
                 <span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#f4b61a] text-[#102c4d]"><ApperIcon name="RefreshCw" size={19} /></span><span><span className="block text-sm font-bold text-[#102c4d]">Estimated Total Value</span><span className="mt-0.5 block text-xs text-[#52677f]">Tap to update after changing your cart</span></span></span>
-                <span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={cartSubtotal} className="shrink-0 text-2xl font-extrabold text-[#102c4d]">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span>
+                <span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={cartItemCount} data-cart-subtotal={cartSubtotal} className="shrink-0 text-2xl font-extrabold text-[#102c4d]">₹{estimatedTotalValue.toLocaleString('en-IN')}</span>
               </button>
               <p className="mt-2 text-xs text-muted-foreground">LOCAL uses the listed menu price. No offers or negotiation. Any additional work must be approved separately before it begins.</p>
             </div>
