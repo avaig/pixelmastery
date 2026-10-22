@@ -245,7 +245,7 @@ export default function CustomerRequestStart() {
     return savedTotal + (includePickupDrop ? 100 : 0);
   });
 
-  // Recalculate on cart changes; customers can also explicitly refresh the total before submitting.
+  // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
     const currentCart = normalizeWashCart(washCart);
     const nextSubtotal = currentCart.reduce((sum, item) => {
@@ -258,7 +258,7 @@ export default function CustomerRequestStart() {
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
     setEstimatedTotalValue(nextTotal);
     setTotalRefreshed(true);
-    window.location.reload();
+    toast.success('Estimated total updated: ₹' + nextTotal.toLocaleString('en-IN'));
   }
 
   useEffect(() => {
@@ -656,10 +656,11 @@ export default function CustomerRequestStart() {
               </>}
             </div>
             <div className="mt-5 border-t pt-4">
-              <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-base font-semibold">Estimated Total Value</span><span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={cartSubtotal} className="text-2xl font-bold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
-              <p className="mt-2 text-xs text-muted-foreground">Review your selected services and refresh the total after making changes. LOCAL uses the listed menu price; customers cannot submit offers or negotiate the booking price.</p>
-              <Button type="button" variant={totalRefreshed ? 'secondary' : 'outline'} className="mt-3" onClick={refreshEstimatedTotal}><ApperIcon name="RefreshCw" size={16} /> {totalRefreshed ? 'Total Refreshed ✓' : 'Refresh Total (Required)'}</Button>
-              <div className="mt-4 rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Fixed menu total</div><div className="text-lg font-semibold">₹{estimatedTotalValue.toLocaleString('en-IN')}</div><div className="text-xs text-muted-foreground">The listed price applies to the selected services. Any additional work must be approved separately before it begins.</div></div>
+              <button type="button" onClick={refreshEstimatedTotal} aria-label={'Update estimated total to ₹' + estimatedTotalValue.toLocaleString('en-IN')} className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border-2 border-[#f4b61a] bg-[#fff7d6] px-4 py-4 text-left shadow-sm transition hover:bg-[#ffefad] focus:outline-none focus:ring-2 focus:ring-[#f4b61a] focus:ring-offset-2">
+                <span className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#f4b61a] text-[#102c4d]"><ApperIcon name="RefreshCw" size={19} /></span><span><span className="block text-sm font-bold text-[#102c4d]">Estimated Total Value</span><span className="mt-0.5 block text-xs text-[#52677f]">Tap to update after changing your cart</span></span></span>
+                <span aria-live="polite" data-testid="car-wash-estimated-total" data-cart-count={normalizedWashCart.length} data-cart-subtotal={cartSubtotal} className="shrink-0 text-2xl font-extrabold text-[#102c4d]">₹{estimatedTotalValue.toLocaleString('en-IN')}</span>
+              </button>
+              <p className="mt-2 text-xs text-muted-foreground">LOCAL uses the listed menu price. No offers or negotiation. Any additional work must be approved separately before it begins.</p>
             </div>
           </Card>
         </section>
@@ -794,7 +795,7 @@ export default function CustomerRequestStart() {
           {location && (
             <>
               {isCarEssentialsDelivery && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && (washCart.length === 0 || !totalRefreshed)) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && washCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
                 {creating ? tr('Sharing request…', language) : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
