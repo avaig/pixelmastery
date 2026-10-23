@@ -251,7 +251,12 @@ export default function CentralDispatch() {
     const subtotal = Number(details.total || 0);
     const enteredDiscount = Number(current.discount ?? 0);
     const discount = Math.max(0, Math.min(subtotal, Number.isFinite(enteredDiscount) ? enteredDiscount : 0));
-    const pickupDrop = current.pickupDrop === undefined ? Boolean(details.pickupDrop) : current.pickupDrop === 'yes';
+    const pickupChoice = String(current.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')).toLowerCase();
+    if (pickupChoice === 'ask') {
+      toast.error('Confirm whether Pickup & Drop is required before sending the quote.');
+      return;
+    }
+    const pickupDrop = pickupChoice === 'yes';
     const enteredPickupCharge = Number(current.pickupCharge ?? (details.pickupDropAmount || 100));
     const pickupCharge = pickupDrop ? Math.max(0, Number.isFinite(enteredPickupCharge) ? enteredPickupCharge : 0) : 0;
     const platformFee = 25;
