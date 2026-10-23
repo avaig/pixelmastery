@@ -46,6 +46,22 @@ function readCarEssentialsApproval(description) {
   try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
+function readCarWashQuote(description) {
+  const marker = 'LOCAL_CAR_WASH_QUOTE_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
+}
+
+function readCarWashApproval(description) {
+  const marker = 'LOCAL_CAR_WASH_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
 function readRsaQuote(message) {
   const marker = 'LOCAL_RSA_QUOTE_JSON:';
   const source = String(message ?? '');
@@ -105,6 +121,7 @@ export default function CentralDispatch() {
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [providerChoice, setProviderChoice] = useState({});
   const [busyKey, setBusyKey] = useState('');
+  const [carWashQuoteInputs, setCarWashQuoteInputs] = useState({});
   const { data, loading, error, run } = useFetch(async () => {
     const [requestRes, providerRes, responseRes, jobsRes] = await Promise.all([
       sdk.table('service_requests_c').select(REQUEST_FIELDS).orderByDesc('CreatedOn').page(1, 500).fetch(),
@@ -229,7 +246,61 @@ export default function CentralDispatch() {
     }
   }
 
+  async function sendCarWashQuote(request, details) {
+    const current = carWashQuoteInputs[request.Id] ?? {};
+    const subtotal = Number(details.total || 0);
+    const discount = Math.max(0, Math.min(subtotal, Number(current.discount || 0)));
+    const pickupDrop = current.pickupDrop === undefined ? Boolean(details.pickupDrop) : current.pickupDrop === 'yes';
+    const pickupCharge = pickupDrop ? Math.max(0, Number(current.pickupCharge ?? (details.pickupDropAmount || 100))) : 0;
+    const platformFee = 25;
+    const total = subtotal - discount + platformFee + pickupCharge;
+    if (!(subtotal > 0) || !Number.isFinite(total) || total < 25) {
+      toast.error('Please review the service subtotal and quote amounts.');
+      return;
+    }
+    setBusyKey('car-wash-quote:' + request.Id);
+    try {
+      const previous = readCarWashQuote(request.problem_description_c);
+      const quote = {
+        quoteId: 'CW-' + Date.now(),
+        version: Number(previous?.version || 0) + 1,
+        serviceSubtotal: subtotal,
+        discount,
+        platformFee,
+        pickupDrop,
+        pickupDropCharge: pickupCharge,
+        total,
+        status: 'Sent to Customer',
+        sentAt: new Date().toISOString(),
+        sentBy: 'LOCAL Customer Care',
+        reason: String(current.reason || '').trim(),
+      };
+      const clean = String(request.problem_description_c || '').split('LOCAL_CAR_WASH_QUOTE_JSON:')[0].split('LOCAL_CAR_WASH_APPROVAL_JSON:')[0].trimEnd();
+      const result = await sdk.table('service_requests_c').update({
+        Id: request.Id,
+        status_c: 'Quoted',
+        problem_description_c: clean + '\\nLOCAL_CAR_WASH_QUOTE_JSON:' + JSON.stringify(quote),
+      });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Revised quote could not be saved.');
+      toast.success('Revised quote sent to the customer for approval.');
+      await run();
+    } catch (err) {
+      toast.error(err.message || 'Could not send the revised quote.');
+    } finally {
+      setBusyKey('');
+    }
+  }
+
   async function manualAssign(request) {
+    const details = getStructuredServiceDetails(request);
+    if (details.type === 'Car Wash') {
+      const quote = readCarWashQuote(request.problem_description_c);
+      const approval = readCarWashApproval(request.problem_description_c);
+      if (!quote || quote.status !== 'Sent to Customer' || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total)) {
+        toast.error('Car Wash assignment is locked until the customer approves the latest revised quote.');
+        return;
+      }
+    }
     const providerId = providerChoice[request.Id];
     const provider = eligibleProviders.find((item) => String(item.Id) === String(providerId));
     if (!provider) {
@@ -633,6 +704,34 @@ export default function CentralDispatch() {
                   </div>
                 </>; })()}
               </section>
+              {(() => {
+                const details = getStructuredServiceDetails(request);
+                if (details.type !== 'Car Wash') return null;
+                const quote = readCarWashQuote(request.problem_description_c);
+                const approval = readCarWashApproval(request.problem_description_c);
+                const approved = Boolean(quote && approval && String(approval.quoteId) === String(quote.quoteId) && Number(approval.total) === Number(quote.total));
+                const input = carWashQuoteInputs[request.Id] ?? {};
+                return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                  <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Confirm Pickup & Drop during the call. Record any negotiated discount and send the final itemized quote to the customer.</p></div>
+                  {quote && <div className="rounded-lg border bg-background p-3 text-sm"><div className="flex justify-between gap-3"><span>Last quote (v{quote.version || 1})</span><strong>₹{Number(quote.total).toLocaleString('en-IN')}</strong></div><p className="mt-1 text-muted-foreground">{approved ? 'Customer approved this exact quote.' : quote.status === 'Sent to Customer' ? 'Awaiting customer approval.' : 'Quote needs to be sent.'}</p></div>}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div><label className="mb-1 block text-sm font-medium">Negotiated discount (₹)</label><Input type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], discount: e.target.value}}))} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop required?</label><Select value={input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')} onValueChange={(value) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], pickupDrop: value}}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="yes">Yes</SelectItem><SelectItem value="no">No</SelectItem><SelectItem value="ask">Confirm with customer first</SelectItem></SelectContent></Select></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop charge (₹)</label><Input type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100)} disabled={(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) !== 'yes'} onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], pickupCharge: e.target.value}}))} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], reason: e.target.value}}))} /></div>
+                  </div>
+                  <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
+                    <div className="flex justify-between gap-3"><span>Service subtotal</span><strong>₹{Number(details.total || 0).toLocaleString('en-IN')}</strong></div>
+                    <div className="flex justify-between gap-3"><span>Discount</span><strong>−₹{Number(input.discount ?? quote?.discount ?? 0).toLocaleString('en-IN')}</strong></div>
+                    <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
+                    <div className="flex justify-between gap-3"><span>Pickup & Drop</span><strong>{(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'yes' ? '₹' + Number(input.pickupCharge ?? quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100).toLocaleString('en-IN') : (input.pickupDrop === 'no' ? 'Not required' : 'Confirm first')}</strong></div>
+                    <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{Math.max(0, Number(details.total || 0) - Number(input.discount ?? quote?.discount ?? 0) + 25 + ((input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'yes' ? Number(input.pickupCharge ?? quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100) : 0)).toLocaleString('en-IN')}</strong></div>
+                  </div>
+                  {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
+                  <Button className="w-full" disabled={Boolean(busyKey) || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
+                  <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote.</p>
+                </section>;
+              })()}
               <section className="rounded-lg border p-4">
                 <h3 className="font-semibold">Price review</h3>
                 <div className="mt-3 flex items-center justify-between gap-3">
@@ -648,6 +747,7 @@ export default function CentralDispatch() {
               <div className="flex items-center gap-2"><ApperIcon name="Settings2" size={19} /><h3 className="font-semibold">Assignment controls</h3></div>
               <p className="mt-1 text-sm text-muted-foreground">Choose a verified provider or invite the nearest eligible provider. No bidding or counter-offers.</p>
               <div className="mt-4 space-y-3">
+                {getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) ? <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Manual assignment is locked until the customer approves the latest revised quote.</p> : <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">Customer approved the current quote. You can now assign the pickup-and-drop person.</p>; })()}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">Manual assignment</label>
                   <Select value={providerChoice[request.Id] ?? ''} onValueChange={(value) => setProviderChoice((current) => ({ ...current, [request.Id]: value }))}>
@@ -655,10 +755,10 @@ export default function CentralDispatch() {
                     <SelectContent>{eligibleProviders.map((provider) => <SelectItem key={provider.Id} value={provider.Id}>{provider.Name}{providerDistance(request, provider) !== null ? ' · ' + formatDistance(providerDistance(request, provider)) : ''}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <Button className="w-full" variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => manualAssign(request)}>
+                <Button className="w-full" variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || (getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total); })())} onClick={() => manualAssign(request)}>
                   <ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : 'Assign manually'}
                 </Button>
-                <Button className="w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => findNearby(request)}>
+                <Button className="w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || getStructuredServiceDetails(request).type === 'Car Wash'} onClick={() => findNearby(request)}>
                   <ApperIcon name="MapPinned" size={16} /> {busyKey === request.Id ? 'Checking nearby…' : 'Find Nearby & Invite'}
                 </Button>
               </div>
