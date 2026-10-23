@@ -663,7 +663,7 @@ export default function CustomerRequestStart() {
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <img
-                  src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=700&q=85"
+                  src="https://cdni.autocarindia.com/ExtraImages/20230330044441_i20.jpg"
                   alt="Hatchback / Small Car"
                   loading="lazy"
                   className="h-28 w-full object-contain bg-white p-2 sm:h-36"
