@@ -249,11 +249,13 @@ export default function CentralDispatch() {
   async function sendCarWashQuote(request, details) {
     const current = carWashQuoteInputs[request.Id] ?? {};
     const subtotal = Number(details.total || 0);
-    const discount = Math.max(0, Math.min(subtotal, Number(current.discount || 0)));
+    const enteredDiscount = Number(current.discount ?? 0);
+    const discount = Math.max(0, Math.min(subtotal, Number.isFinite(enteredDiscount) ? enteredDiscount : 0));
     const pickupDrop = current.pickupDrop === undefined ? Boolean(details.pickupDrop) : current.pickupDrop === 'yes';
-    const pickupCharge = pickupDrop ? Math.max(0, Number(current.pickupCharge ?? (details.pickupDropAmount || 100))) : 0;
+    const enteredPickupCharge = Number(current.pickupCharge ?? (details.pickupDropAmount || 100));
+    const pickupCharge = pickupDrop ? Math.max(0, Number.isFinite(enteredPickupCharge) ? enteredPickupCharge : 0) : 0;
     const platformFee = 25;
-    const total = subtotal - discount + platformFee + pickupCharge;
+    const total = Math.max(0, subtotal - discount) + platformFee + pickupCharge;
     if (!(subtotal > 0) || !Number.isFinite(total) || total < 25) {
       toast.error('Please review the service subtotal and quote amounts.');
       return;
@@ -723,17 +725,17 @@ export default function CentralDispatch() {
                   <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Confirm Pickup & Drop during the call. Record any negotiated discount and send the final itemized quote to the customer.</p></div>
                   {quote && <div className="rounded-lg border bg-background p-3 text-sm"><div className="flex justify-between gap-3"><span>Last quote (v{quote.version || 1})</span><strong>₹{Number(quote.total).toLocaleString('en-IN')}</strong></div><p className="mt-1 text-muted-foreground">{approved ? 'Customer approved this exact quote.' : quote.status === 'Sent to Customer' ? 'Awaiting customer approval.' : 'Quote needs to be sent.'}</p></div>}
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div><label className="mb-1 block text-sm font-medium">Negotiated discount (₹)</label><Input type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], discount: e.target.value}}))} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Negotiated discount (₹)</label><Input type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.target.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], discount: value}})); }} onInput={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], discount: value}})); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Pickup & Drop required?</label><Select value={input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')} onValueChange={(value) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], pickupDrop: value}}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="yes">Yes</SelectItem><SelectItem value="no">No</SelectItem><SelectItem value="ask">Confirm with customer first</SelectItem></SelectContent></Select></div>
-                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop charge (₹)</label><Input type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100)} disabled={(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) !== 'yes'} onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], pickupCharge: e.target.value}}))} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop charge (₹)</label><Input type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100)} disabled={(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) !== 'yes'} onChange={(e) => { const value = e.target.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], pickupCharge: value}})); }} onInput={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], pickupCharge: value}})); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...old[request.Id], reason: e.target.value}}))} /></div>
                   </div>
                   <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
                     <div className="flex justify-between gap-3"><span>Service subtotal</span><strong>₹{Number(details.total || 0).toLocaleString('en-IN')}</strong></div>
-                    <div className="flex justify-between gap-3"><span>Discount</span><strong>−₹{Number(input.discount ?? quote?.discount ?? 0).toLocaleString('en-IN')}</strong></div>
+                    <div className="flex justify-between gap-3"><span>Discount</span><strong>−₹{Math.max(0, Math.min(Number(details.total || 0), Number(input.discount ?? quote?.discount ?? 0) || 0)).toLocaleString('en-IN')}</strong></div>
                     <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
                     <div className="flex justify-between gap-3"><span>Pickup & Drop</span><strong>{(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'yes' ? '₹' + Number(input.pickupCharge ?? quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100).toLocaleString('en-IN') : (input.pickupDrop === 'no' ? 'Not required' : 'Confirm first')}</strong></div>
-                    <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{Math.max(0, Number(details.total || 0) - Number(input.discount ?? quote?.discount ?? 0) + 25 + ((input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'yes' ? Number(input.pickupCharge ?? quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100) : 0)).toLocaleString('en-IN')}</strong></div>
+                    <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{(Math.max(0, Number(details.total || 0) - Math.max(0, Math.min(Number(details.total || 0), Number(input.discount ?? quote?.discount ?? 0) || 0))) + 25 + ((input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'yes' ? Math.max(0, Number(input.pickupCharge ?? quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100) || 0) : 0)).toLocaleString('en-IN')}</strong></div>
                   </div>
                   {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
                   <Button className="w-full" disabled={Boolean(busyKey) || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
