@@ -662,12 +662,15 @@ export default function CustomerRequestStart() {
                 onClick={() => setWashCarType('small')}
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
-                <img
-                  src="https://cdni.autocarindia.com/ExtraImages/20230330044441_i20.jpg"
-                  alt="Hatchback / Sedan"
-                  loading="lazy"
-                  className="h-28 w-full object-cover bg-white sm:h-36"
-                />
+                <div className="relative h-28 w-full overflow-hidden bg-white sm:h-36">
+                  <img
+                    src="https://cdni.autocarindia.com/ExtraImages/20230330044441_i20.jpg"
+                    alt="Hatchback / Sedan"
+                    loading="lazy"
+                    className="h-full w-full scale-90 object-cover bg-white"
+                  />
+                  <span aria-hidden="true" className="absolute left-[19%] top-[65%] h-[13%] w-[16%] rounded-sm bg-white/40 backdrop-blur-md" />
+                </div>
                 <span className="block border-t border-border/70 px-2 py-3 text-sm font-bold leading-snug">Hatchback / Sedan</span>
                 {washCarType === 'small' && <span className="flex items-center justify-center gap-1 pb-2 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={15} /> Selected</span>}
               </button>
