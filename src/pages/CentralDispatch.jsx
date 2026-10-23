@@ -261,6 +261,16 @@ export default function CentralDispatch() {
       const items = text.match(/Car Essentials order details:\s*([^.]+)\./i)?.[1]?.trim();
       return [vehicle ? 'Vehicle: ' + vehicle : '', items ? 'Requested items: ' + items : '', location ? 'Delivery location: ' + location : '', 'Provider to confirm compatibility, stock, final price and delivery charges before fulfilment.'].filter(Boolean).join('\n');
     }
+    if (/Car Wash quote for Customer Care review/i.test(text)) {
+      const pickupDrop = /Pickup\s*&\s*Drop requested/i.test(text);
+      return [
+        'Customer Care action required',
+        'Call customer to confirm vehicle details and service location.',
+        pickupDrop ? 'Confirm the Pickup & Drop charge and availability.' : 'Ask whether Pickup & Drop is required; if yes, confirm the charge before finalizing.',
+        'Review the selected services and confirm the final quote with the customer.',
+        'Do not start work until the customer approves the final quote.',
+      ].join('\n');
+    }
     return text
       .replace(/CUSTOMER_CAR_WASH_OFFER_JSON:[\s\S]*$/i, '')
       .replace(/CAR_WASH_DECISIONS_JSON:[\s\S]*$/i, '')
@@ -315,7 +325,22 @@ export default function CentralDispatch() {
     const isCarService = /economy service|normal service|major service|point checkup|covered items:/i.test(name + ' ' + description);
     if (isCarWash) {
       const summary = getCarWashAdminSummary(description);
-      return { type: 'Car Wash', title: 'Selected services', items: summary.items.map(item => ({ name: item.name, quantity: item.quantity, amount: item.amount, included: false })), total: summary.menuTotal, offer: summary.customerOffer, notes: getCleanRequestNotes(description), structured: true };
+      const pickupDrop = /Pickup\s*&\s*Drop requested/i.test(description);
+      const serviceSubtotal = summary.items.filter(item => !/Pickup\s*&\s*Drop/i.test(item.name)).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const pickupDropAmount = summary.items.filter(item => /Pickup\s*&\s*Drop/i.test(item.name)).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      return {
+        type: 'Car Wash',
+        title: 'Selected services',
+        items: summary.items.map(item => ({ name: item.name, quantity: item.quantity, amount: item.amount, included: false })),
+        total: serviceSubtotal,
+        platformFee: 25,
+        pickupDrop,
+        pickupDropAmount,
+        indicativeTotal: serviceSubtotal + 25 + pickupDropAmount,
+        offer: summary.customerOffer,
+        notes: getCleanRequestNotes(description),
+        structured: true,
+      };
     }
     if (isAC) {
       let payload = null;
