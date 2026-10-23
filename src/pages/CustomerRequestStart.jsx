@@ -237,7 +237,9 @@ export default function CustomerRequestStart() {
     ? 'Prioritize nearby available help for faster assistance. No bidding.'
     : isProfessionalDriverService
       ? 'Submit your request. LOCAL Customer Care will confirm driver availability, your schedule and the applicable charges before confirming your booking.'
-      : pricingMode === 'Fixed Price'
+      : isCarWash
+        ? 'Submit your selected menu quote. LOCAL Customer Care will call to confirm details and pickup/drop, then send any revised quote for your approval before work starts.'
+        : pricingMode === 'Fixed Price'
         ? 'See the listed price and book without waiting for bids.'
         : pricingMode === 'Urgent Dispatch'
           ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
@@ -543,7 +545,7 @@ export default function CustomerRequestStart() {
         return;
       }
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
-      toast.success(tr('Request shared with eligible nearby Service Providers.', language));
+      toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : tr('Request shared with eligible nearby Service Providers.', language));
       navigate('/requests/' + res.data[0].Id);
     } finally {
       setCreating(false);
@@ -835,7 +837,7 @@ export default function CustomerRequestStart() {
               {isCarEssentialsDelivery && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
               <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && washCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
-                {creating ? tr('Sharing request…', language) : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Find LOCAL Car Wash' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
+                {creating ? tr('Sharing request…', language) : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isCarWash ? 'Submit Quote to Customer Care' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
             </>
           )}
