@@ -572,20 +572,9 @@ export default function CustomerRequestStart() {
   return (
     <div>
       {isCarWash ? (
-        <div className="mb-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="relative h-40 sm:h-56">
-            <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1800&q=90" alt="Professional car wash and detailing" className="h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
-            <div className="absolute inset-y-0 left-0 flex max-w-xl flex-col justify-center p-5 text-white sm:p-8">
-              <span className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">LOCAL Car Care</span>
-              <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">A cleaner car. A better drive.</h1>
-              <p className="mt-2 max-w-md text-sm text-white/85 sm:text-base">Choose your wash, add the extras you need, and review your estimated total before LOCAL Customer Care confirms the final quote.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-border bg-background px-2 py-3 text-center sm:px-5">
-            <div className="px-1"><ApperIcon name="Sparkles" size={19} className="mx-auto text-primary" /><p className="mt-1 text-xs font-semibold sm:text-sm">Quality care</p></div>
-            <div className="px-1"><ApperIcon name="BadgeIndianRupee" size={19} className="mx-auto text-primary" /><p className="mt-1 text-xs font-semibold sm:text-sm">Clear prices</p></div>
-            <div className="px-1"><ApperIcon name="Headset" size={19} className="mx-auto text-primary" /><p className="mt-1 text-xs font-semibold sm:text-sm">LOCAL support</p></div>
+        <div className="mb-4 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="h-24 sm:h-32">
+            <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1400&q=80" alt="Car being washed" className="h-full w-full object-cover" />
           </div>
         </div>
       ) : (
@@ -660,9 +649,9 @@ export default function CustomerRequestStart() {
       )}
       {isCarWash && (
         <section className="mx-auto mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-            <div><h2 className="text-xl font-bold sm:text-2xl">Pick your wash package</h2><p className="mt-1 text-sm text-muted-foreground">Choose your car type once. We’ll show only the matching package prices.</p></div>
-            <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1.5 text-xs font-bold text-emerald-700">Transparent menu pricing</span>
+          <div className="mb-3">
+            <h2 className="text-xl font-bold sm:text-2xl">Pick your wash package</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Choose your car type to see prices.</p>
           </div>
           <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2"><ApperIcon name="CarFront" size={20} className="text-primary" /><div><h3 className="font-bold">What type of car do you have?</h3><p className="text-xs text-muted-foreground">Prices below update automatically.</p></div></div>
