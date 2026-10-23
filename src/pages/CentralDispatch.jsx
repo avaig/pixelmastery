@@ -272,6 +272,28 @@ export default function CentralDispatch() {
 
   function getCarWashAdminSummary(value) {
     const text = String(value ?? '');
+    const marker = 'CAR_WASH_DECISIONS_JSON:';
+    const markerIndex = text.indexOf(marker);
+    if (markerIndex >= 0) {
+      const jsonStart = markerIndex + marker.length;
+      const jsonEnd = text.lastIndexOf(']');
+      if (jsonEnd >= jsonStart) {
+        try {
+          const selected = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+          if (Array.isArray(selected) && selected.length) {
+            const items = selected.map((item) => ({
+              name: String(item.title ?? item.name ?? 'Car Wash option') + (item.variant && item.variant !== 'Fixed' ? ' — ' + item.variant : ''),
+              quantity: Math.max(1, Number(item.quantity ?? 1)),
+              amount: Number.isFinite(Number(item.listedUnitPrice ?? item.unitPrice ?? item.price)) ? Number(item.listedUnitPrice ?? item.unitPrice ?? item.price) * Math.max(1, Number(item.quantity ?? 1)) : null,
+            }));
+            const total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+            return { items, menuTotal: total > 0 ? total : null, customerOffer: null };
+          }
+        } catch {
+          // Fall back to parsing older requests saved before structured selections were added.
+        }
+      }
+    }
     const body = text.match(/these Car Wash services:\s*(.*?)\.\s*(?:Menu Total|Estimated Total Value):/i)?.[1] ?? '';
     const items = body.split(';').map((part) => part.trim()).filter(Boolean).map((part) => {
       const pickup = /Pickup\s*&\s*Drop/i.test(part);
@@ -281,7 +303,7 @@ export default function CentralDispatch() {
       if (itemMatch) return { name: itemMatch[1].trim(), quantity: Number(itemMatch[2]), amount: Number(itemMatch[3].replace(/,/g, '')) };
       return { name: part, quantity: 1, amount: null };
     });
-    const totalMatch = text.match(/Menu Total:\s*₹\s*([\d,]+)/i);
+    const totalMatch = text.match(/(?:Customer menu estimate|Menu Total|Estimated Total Value):?\s*₹\s*([\d,]+)/i);
     return { items, menuTotal: totalMatch ? Number(totalMatch[1].replace(/,/g, '')) : null, customerOffer: null };
   }
 
