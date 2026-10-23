@@ -513,6 +513,14 @@ export default function CentralDispatch() {
         toast.info('This request is already finalized or closed.');
         return;
       }
+      if (getStructuredServiceDetails(request).type === 'Car Wash') {
+        const quote = readCarWashQuote(request.problem_description_c);
+        const approval = readCarWashApproval(request.problem_description_c);
+        if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total)) {
+          toast.error('Car Wash booking cannot be confirmed until the customer approves the latest revised quote.');
+          return;
+        }
+      }
       if (acceptedAssignment.status_c !== 'Selected' || !/Central LOCAL assignment invitation/i.test(String(acceptedAssignment.message_c ?? ''))) {
         toast.error('Only a provider who accepted a Central LOCAL assignment can be confirmed.');
         return;
