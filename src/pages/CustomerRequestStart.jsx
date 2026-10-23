@@ -258,11 +258,16 @@ export default function CustomerRequestStart() {
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
     setTotalRefreshed(true);
+    setShowTotalBilling(true);
     toast.success('Estimated total updated: ₹' + nextTotal.toLocaleString('en-IN'));
   }
 
   useEffect(() => {
-    // All displayed totals are derived directly from normalizedWashCart below.
+    // A displayed calculation is valid only for the exact cart state that was reviewed.
+    // Any add/remove or Pickup & Drop change invalidates the previous master calculation.
+    window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
+    setTotalRefreshed(false);
+    setShowTotalBilling(false);
   }, [washCart, includePickupDrop]);
 
   useEffect(() => {
