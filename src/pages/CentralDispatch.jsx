@@ -122,6 +122,7 @@ export default function CentralDispatch() {
   const [providerChoice, setProviderChoice] = useState({});
   const [busyKey, setBusyKey] = useState('');
   const [carWashQuoteInputs, setCarWashQuoteInputs] = useState({});
+  const [carWashCalculatedQuotes, setCarWashCalculatedQuotes] = useState({});
   const { data, loading, error, run } = useFetch(async () => {
     const [requestRes, providerRes, responseRes, jobsRes] = await Promise.all([
       sdk.table('service_requests_c').select(REQUEST_FIELDS).orderByDesc('CreatedOn').page(1, 500).fetch(),
@@ -246,21 +247,52 @@ export default function CentralDispatch() {
     }
   }
 
-  async function sendCarWashQuote(request, details) {
+  function refreshCarWashQuote(request, details) {
     const current = carWashQuoteInputs[request.Id] ?? {};
-    const subtotal = Number(details.total || 0);
-    const enteredDiscount = Number(current.discount ?? 0);
-    const discount = Math.max(0, Math.min(subtotal, Number.isFinite(enteredDiscount) ? enteredDiscount : 0));
-    const pickupChoice = String(current.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')).toLowerCase();
+    const discountField = document.getElementById('car-wash-discount-' + request.Id);
+    const pickupChoiceField = document.getElementById('car-wash-pickup-choice-' + request.Id);
+    const pickupChargeField = document.getElementById('car-wash-pickup-charge-' + request.Id);
+    const discountRaw = discountField ? discountField.value : String(current.discount ?? 0);
+    const pickupChoice = String(pickupChoiceField ? pickupChoiceField.value : current.pickupDrop ?? 'ask').toLowerCase();
+    const pickupRaw = pickupChargeField ? pickupChargeField.value : String(current.pickupCharge ?? 100);
     if (pickupChoice === 'ask') {
-      toast.error('Confirm whether Pickup & Drop is required before sending the quote.');
+      toast.error('Select Yes or No for Pickup & Drop before refreshing the quote.');
       return;
     }
-    const pickupDrop = pickupChoice === 'yes';
-    const enteredPickupCharge = Number(current.pickupCharge ?? (details.pickupDropAmount || 100));
-    const pickupCharge = pickupDrop ? Math.max(0, Number.isFinite(enteredPickupCharge) ? enteredPickupCharge : 0) : 0;
-    const platformFee = 25;
-    const total = Math.max(0, subtotal - discount) + platformFee + pickupCharge;
+    const subtotal = Number(details.total || 0);
+    const discount = Math.max(0, Math.min(subtotal, Number(discountRaw) || 0));
+    const pickupDropCharge = pickupChoice === 'yes' ? Math.max(0, Number(pickupRaw) || 0) : 0;
+    const calculation = {
+      discount,
+      pickupDrop: pickupChoice === 'yes',
+      pickupDropCharge,
+      platformFee: 25,
+      serviceSubtotal: subtotal,
+      total: Math.max(0, subtotal - discount) + 25 + pickupDropCharge,
+      refreshedAt: Date.now(),
+    };
+    setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: discountRaw, pickupDrop: pickupChoice, pickupCharge: pickupRaw}}));
+    setCarWashCalculatedQuotes((old) => ({...old, [request.Id]: calculation}));
+    toast.success('Quote total refreshed.');
+  }
+
+  async function sendCarWashQuote(request, details) {
+    const current = carWashQuoteInputs[request.Id] ?? {};
+    const calculation = carWashCalculatedQuotes[request.Id];
+    if (!calculation) {
+      toast.error('Please click Refresh Quote Total before sending the revised quote.');
+      return;
+    }
+    const subtotal = Number(details.total || 0);
+    const pickupDrop = calculation.pickupDrop;
+    const discount = calculation.discount;
+    const pickupCharge = calculation.pickupDropCharge;
+    const platformFee = calculation.platformFee;
+    const total = calculation.total;
+    if (Number(calculation.serviceSubtotal) !== subtotal) {
+      toast.error('Service price changed. Refresh the quote total again before sending.');
+      return;
+    }
     if (!(subtotal > 0) || !Number.isFinite(total) || total < 25) {
       toast.error('Please review the service subtotal and quote amounts.');
       return;
@@ -727,28 +759,31 @@ export default function CentralDispatch() {
                 const approved = Boolean(quote && approval && String(approval.quoteId) === String(quote.quoteId) && Number(approval.total) === Number(quote.total));
                 const input = carWashQuoteInputs[request.Id] ?? {};
                 const serviceSubtotal = Number(details.total || 0);
-                const discountValue = Math.max(0, Math.min(serviceSubtotal, Number(input.discount ?? quote?.discount ?? 0) || 0));
+                const refreshed = carWashCalculatedQuotes[request.Id];
+                const discountValue = refreshed ? refreshed.discount : 0;
                 const pickupChoice = String(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')).toLowerCase();
-                const pickupChargeValue = pickupChoice === 'yes' ? Math.max(0, Number(input.pickupCharge ?? quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100) || 0) : 0;
-                const quoteTotalValue = Math.max(0, serviceSubtotal - discountValue) + 25 + pickupChargeValue;
+                const pickupChargeValue = refreshed ? refreshed.pickupDropCharge : 0;
+                const quoteTotalValue = refreshed ? refreshed.total : serviceSubtotal + 25;
                 return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                   <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Confirm Pickup & Drop during the call. Record any negotiated discount and send the final itemized quote to the customer.</p></div>
                   {quote && <div className="rounded-lg border bg-background p-3 text-sm"><div className="flex justify-between gap-3"><span>Last quote (v{quote.version || 1})</span><strong>₹{Number(quote.total).toLocaleString('en-IN')}</strong></div><p className="mt-1 text-muted-foreground">{approved ? 'Customer approved this exact quote.' : quote.status === 'Sent to Customer' ? 'Awaiting customer approval.' : 'Quote needs to be sent.'}</p></div>}
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div><label className="mb-1 block text-sm font-medium">Negotiated discount (₹)</label><input className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm" type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); }} /></div>
-                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop required?</label><select className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" value={pickupChoice} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupDrop: value}})); }}><option value="yes">Yes</option><option value="no">No</option><option value="ask">Confirm with customer first</option></select></div>
-                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop charge (₹)</label><input className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm disabled:cursor-not-allowed disabled:opacity-50" type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100)} disabled={pickupChoice !== 'yes'} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); }} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Negotiated discount (₹)</label><input id={'car-wash-discount-' + request.Id} className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm" type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); setCarWashCalculatedQuotes((old) => { const next = {...old}; delete next[request.Id]; return next; }); }} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop required?</label><select id={'car-wash-pickup-choice-' + request.Id} className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" value={pickupChoice} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupDrop: value}})); setCarWashCalculatedQuotes((old) => { const next = {...old}; delete next[request.Id]; return next; }); }}><option value="yes">Yes</option><option value="no">No</option><option value="ask">Confirm with customer first</option></select></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop charge (₹)</label><input id={'car-wash-pickup-charge-' + request.Id} className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm disabled:cursor-not-allowed disabled:opacity-50" type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? details.pickupDropAmount ?? 100)} disabled={pickupChoice !== 'yes'} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); setCarWashCalculatedQuotes((old) => { const next = {...old}; delete next[request.Id]; return next; }); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), reason: e.target.value}}))} /></div>
                   </div>
                   <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
                     <div className="flex justify-between gap-3"><span>Service subtotal</span><strong>₹{Number(details.total || 0).toLocaleString('en-IN')}</strong></div>
                     <div className="flex justify-between gap-3"><span>Discount</span><strong>−₹{discountValue.toLocaleString('en-IN')}</strong></div>
                     <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
-                    <div className="flex justify-between gap-3"><span>Pickup & Drop</span><strong>{pickupChoice === 'yes' ? '₹' + pickupChargeValue.toLocaleString('en-IN') : pickupChoice === 'no' ? 'Not required' : 'Confirm first'}</strong></div>
+                    <div className="flex justify-between gap-3"><span>Pickup & Drop</span><strong>{!refreshed ? 'Refresh to calculate' : refreshed.pickupDrop ? '₹' + pickupChargeValue.toLocaleString('en-IN') : 'Not required'}</strong></div>
                     <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{quoteTotalValue.toLocaleString('en-IN')}</strong></div>
+                    <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details)}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
+                    {!refreshed && <p className="text-xs text-amber-700">Enter the discount and Pickup & Drop choice/charge, then refresh the total before sending.</p>}
                   </div>
                   {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
-                  <Button className="w-full" disabled={Boolean(busyKey) || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
+                  <Button className="w-full" disabled={Boolean(busyKey) || !refreshed || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
               })()}
