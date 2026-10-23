@@ -33,11 +33,13 @@ const CAR_WASH_OPTIONS = [
   },
   {
     title: 'Exterior Only',
-    description: 'Exterior body wash. Body polish is optional at an extra charge.',
+    description: 'Choose the price that matches whether body polish is included.',
     icon: 'Droplets',
     prices: [
-      { label: 'Small Car (Hatchback / Sedan)', price: 300, extra: 'Body polish +₹200' },
-      { label: 'SUV / Big Car', price: 400, extra: 'Body polish +₹500' },
+      { label: 'Small Car — Without Body Polish', price: 300 },
+      { label: 'Small Car — With Body Polish', price: 500 },
+      { label: 'SUV / Big Car — Without Body Polish', price: 400 },
+      { label: 'SUV / Big Car — With Body Polish', price: 900 },
     ],
   },
   {
@@ -51,20 +53,22 @@ const CAR_WASH_OPTIONS = [
   },
   {
     title: 'Interior Deep Clean',
-    description: 'Ceiling included. Removal + Refitting of Seats - + Rs. 500. Complimentary exterior wash included.',
+    description: 'Ceiling and complimentary exterior wash included. Seat removal and refitting is a separate priced option.',
     icon: 'Wind',
     prices: [
-      { label: 'Small Car (Hatchback / Sedan)', price: 2500, extra: 'Removal + Refitting of Seats - + Rs. 500' },
-      { label: 'SUV / Big Car', price: 4500, extra: 'Removal + Refitting of Seats - + Rs. 500' },
+      { label: 'Small Car — Without Seat Removal & Refitting', price: 2500 },
+      { label: 'Small Car — With Seat Removal & Refitting', price: 3000 },
+      { label: 'SUV / Big Car — Without Seat Removal & Refitting', price: 4500 },
+      { label: 'SUV / Big Car — With Seat Removal & Refitting', price: 5000 },
     ],
   },
   {
-    title: 'Rubbing and Detailing',
-    description: 'Choose a basic or premium detailing package.',
+    title: 'Rubbing & Detailing',
+    description: 'Choose Basic or Premium detailing for your vehicle size.',
     icon: 'WandSparkles',
     prices: [
-      { label: 'Small Car (Hatchback / Sedan) — Basic', price: 3000 },
-      { label: 'Small Car (Hatchback / Sedan) — Premium', price: 8000 },
+      { label: 'Small Car — Basic', price: 3000 },
+      { label: 'Small Car — Premium', price: 8000 },
       { label: 'SUV / Big Car — Basic', price: 5000 },
       { label: 'SUV / Big Car — Premium', price: 10000 },
     ],
@@ -480,9 +484,9 @@ export default function CustomerRequestStart() {
       toast.error('Add at least one Car Wash service to your cart.');
       return;
     }
-    const customerWashOffer = isCarWash ? (carWashOffer.trim() === '' ? estimatedTotalValue : Number(carWashOffer)) : null;
+    const customerWashOffer = isCarWash ? estimatedTotalValue : null;
     if (isCarWash && (!Number.isFinite(customerWashOffer) || customerWashOffer <= 0)) {
-      toast.error('Enter a valid total offer greater than ₹0.');
+      toast.error('Please select at least one valid priced wash option.');
       return;
     }
     if (isCarService && !selectedCarServicePackage) {
@@ -517,7 +521,7 @@ export default function CustomerRequestStart() {
         service_category_c: category.Id,
         required_capability_c: requiredCapability.Id,
         problem_description_c: (requestedService
-          ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + (item.addons?.length ? ' [' + item.addons.map((addon) => addon.label + ' +₹' + addon.price).join(', ') + ']' : '') + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Fixed listed price; no offers or negotiation. LOCAL Customer Care will coordinate the service. Prices shown are menu prices. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, addons: item.addons || [], listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
+          ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Customer menu estimate: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
@@ -651,17 +655,7 @@ export default function CustomerRequestStart() {
                             {qty ? 'Unselect' : 'Select'}
                           </Button>
                         </div>
-                        {priceOption.extra && (() => {
-                          const baseId = option.title + '::' + priceOption.label;
-                          const addon = option.title === 'Exterior Only'
-                            ? { id: 'body-polish', label: 'Body Polish', price: /SUV|Big Car/i.test(priceOption.label) ? 500 : 200 }
-                            : option.title === 'Interior Deep Clean'
-                              ? { id: 'seat-removal-refitting', label: 'Removal + Refitting of Seats', price: 500 }
-                              : null;
-                          if (!addon) return <div className="mt-2 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold">{priceOption.extra}</div>;
-                          const selected = Boolean(washAddonSelections[baseId]);
-                          return <button type="button" aria-pressed={selected} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setWashAddonSelections((current) => ({ ...current, [baseId]: !current[baseId] })); }} className={'mt-2 flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-semibold leading-relaxed transition-colors ' + (selected ? 'border-primary bg-primary/10 text-primary' : 'border-amber-500/20 bg-amber-500/10 text-foreground hover:border-primary/40')}><ApperIcon name={selected ? "CheckCircle2" : "PlusCircle"} size={16} /><span className="flex-1">{addon.label} <span className="whitespace-nowrap">+₹{addon.price}</span><span className="block font-medium opacity-75">{selected ? 'Added to next selection' : 'Tap to add this extra'}</span></span></button>;
-                        })()}
+
                       </div>
                     );
                   })}

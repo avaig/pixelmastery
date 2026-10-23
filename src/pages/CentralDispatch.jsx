@@ -319,8 +319,8 @@ export default function CentralDispatch() {
     const markerIndex = notes.indexOf(marker);
     if (markerIndex < 0) return null;
     const jsonStart = markerIndex + marker.length;
-    const jsonEnd = notes.indexOf(']', jsonStart);
-    if (jsonEnd < 0) return null;
+    const jsonEnd = notes.lastIndexOf(']');
+    if (jsonEnd < jsonStart) return null;
     try {
       const items = JSON.parse(notes.slice(jsonStart, jsonEnd + 1));
       if (!Array.isArray(items) || !items.length) return null;

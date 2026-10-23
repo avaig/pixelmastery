@@ -85,7 +85,7 @@ function getRequestLineItems(request) {
     }
   }
   let washDecisions = [];
-  try { const marker = 'CAR_WASH_DECISIONS_JSON:'; const start = description.indexOf(marker); const jsonStart = start >= 0 ? start + marker.length : -1; const jsonEnd = jsonStart >= 0 ? description.indexOf(']', jsonStart) + 1 : -1; if (jsonStart >= 0 && jsonEnd > jsonStart) washDecisions = JSON.parse(description.slice(jsonStart, jsonEnd)); } catch { washDecisions = []; }
+  try { const marker = 'CAR_WASH_DECISIONS_JSON:'; const start = description.indexOf(marker); const jsonStart = start >= 0 ? start + marker.length : -1; const jsonEnd = jsonStart >= 0 ? description.lastIndexOf(']') + 1 : -1; if (jsonStart >= 0 && jsonEnd > jsonStart) washDecisions = JSON.parse(description.slice(jsonStart, jsonEnd)); } catch { washDecisions = []; }
   const isWash = /car wash/i.test(String(request?.Name ?? '')) || /Car Wash services/i.test(description);
   const isCarService = /service package|point checkup|Covered items:/i.test(description) || /economy|normal|major/i.test(String(request?.Name ?? ''));
   if (isWash) {
