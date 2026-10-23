@@ -231,6 +231,7 @@ export default function CustomerRequestStart() {
   const [includePickupDrop, setIncludePickupDrop] = useState(() => window.sessionStorage.getItem('local_car_wash_pickup_v1') === 'true');
   const [washDecisions, setWashDecisions] = useState({});
   const [washAddonSelections, setWashAddonSelections] = useState({});
+  const [washCarType, setWashCarType] = useState(() => window.sessionStorage.getItem('local_car_wash_type_v1') || 'small');
   const [serviceTiming, setServiceTiming] = useState('ASAP');
   const [scheduledAt, setScheduledAt] = useState('');
   const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(null);
@@ -283,6 +284,14 @@ export default function CustomerRequestStart() {
     setTotalRefreshed(false);
     setShowTotalBilling(false);
   }, [washCart, includePickupDrop]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('local_car_wash_type_v1', washCarType);
+    } catch {
+      // The car-type selection still works for this page if session storage is unavailable.
+    }
+  }, [washCarType]);
 
   useEffect(() => {
     try {
@@ -652,8 +661,15 @@ export default function CustomerRequestStart() {
       {isCarWash && (
         <section className="mx-auto mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-            <div><h2 className="text-xl font-bold sm:text-2xl">Pick your wash package</h2><p className="mt-1 text-sm text-muted-foreground">Select a package for your car and review the listed price before adding it.</p></div>
+            <div><h2 className="text-xl font-bold sm:text-2xl">Pick your wash package</h2><p className="mt-1 text-sm text-muted-foreground">Choose your car type once. We’ll show only the matching package prices.</p></div>
             <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1.5 text-xs font-bold text-emerald-700">Transparent menu pricing</span>
+          </div>
+          <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+            <div className="mb-3 flex items-center gap-2"><ApperIcon name="CarFront" size={20} className="text-primary" /><div><h3 className="font-bold">What type of car do you have?</h3><p className="text-xs text-muted-foreground">Prices below update automatically.</p></div></div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" aria-pressed={washCarType === 'small'} onClick={() => setWashCarType('small')} className={'flex min-h-20 items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors ' + (washCarType === 'small' ? 'border-primary bg-background shadow-sm' : 'border-border bg-background/70 hover:border-primary/40')}><span className={'flex size-10 shrink-0 items-center justify-center rounded-lg ' + (washCarType === 'small' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}><ApperIcon name="CarFront" size={23} /></span><span><span className="block text-sm font-bold">Hatchback / Small Car</span><span className="mt-1 block text-xs text-muted-foreground">Hatchback and sedan</span></span>{washCarType === 'small' && <ApperIcon name="CheckCircle2" size={18} className="ml-auto shrink-0 text-primary" />}</button>
+              <button type="button" aria-pressed={washCarType === 'suv'} onClick={() => setWashCarType('suv')} className={'flex min-h-20 items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-sm' : 'border-border bg-background/70 hover:border-primary/40')}><span className={'flex size-10 shrink-0 items-center justify-center rounded-lg ' + (washCarType === 'suv' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}><ApperIcon name="Truck" size={23} /></span><span><span className="block text-sm font-bold">SUV / Big Car</span><span className="mt-1 block text-xs text-muted-foreground">SUV and larger cars</span></span>{washCarType === 'suv' && <ApperIcon name="CheckCircle2" size={18} className="ml-auto shrink-0 text-primary" />}</button>
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
@@ -670,7 +686,7 @@ export default function CustomerRequestStart() {
                   <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
                   <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><span>Vehicle &amp; price</span><span>INR</span></div>
                   <div className="grid content-start gap-2">
-                  {option.prices.map((priceOption) => {
+                  {option.prices.filter((priceOption) => washCarType === 'suv' ? /SUV|Big Car/i.test(priceOption.label) : !/SUV|Big Car/i.test(priceOption.label)).map((priceOption) => {
                     const id = option.title + '::' + priceOption.label;
                     const qty = washCart.find((item) => item.id === id)?.qty ?? 0;
                     return (
