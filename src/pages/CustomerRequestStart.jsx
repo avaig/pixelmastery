@@ -667,8 +667,36 @@ export default function CustomerRequestStart() {
           <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2"><ApperIcon name="CarFront" size={20} className="text-primary" /><div><h3 className="font-bold">What type of car do you have?</h3><p className="text-xs text-muted-foreground">Prices below update automatically.</p></div></div>
             <div className="grid grid-cols-2 gap-3">
-              <button type="button" aria-pressed={washCarType === 'small'} onClick={() => setWashCarType('small')} className={'flex min-h-20 items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors ' + (washCarType === 'small' ? 'border-primary bg-background shadow-sm' : 'border-border bg-background/70 hover:border-primary/40')}><span className={'flex size-10 shrink-0 items-center justify-center rounded-lg ' + (washCarType === 'small' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}><ApperIcon name="CarFront" size={23} /></span><span><span className="block text-sm font-bold">Hatchback / Small Car</span><span className="mt-1 block text-xs text-muted-foreground">Hatchback and sedan</span></span>{washCarType === 'small' && <ApperIcon name="CheckCircle2" size={18} className="ml-auto shrink-0 text-primary" />}</button>
-              <button type="button" aria-pressed={washCarType === 'suv'} onClick={() => setWashCarType('suv')} className={'flex min-h-20 items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-sm' : 'border-border bg-background/70 hover:border-primary/40')}><span className={'flex size-10 shrink-0 items-center justify-center rounded-lg ' + (washCarType === 'suv' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}><ApperIcon name="Truck" size={23} /></span><span><span className="block text-sm font-bold">SUV / Big Car</span><span className="mt-1 block text-xs text-muted-foreground">SUV and larger cars</span></span>{washCarType === 'suv' && <ApperIcon name="CheckCircle2" size={18} className="ml-auto shrink-0 text-primary" />}</button>
+              <button
+                type="button"
+                aria-pressed={washCarType === 'small'}
+                onClick={() => setWashCarType('small')}
+                className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1502877719530-5c5e9c4e7b47?auto=format&fit=crop&w=700&q=85"
+                  alt="Hatchback / Small Car"
+                  loading="lazy"
+                  className="h-28 w-full object-contain bg-white p-2 sm:h-36"
+                />
+                <span className="block border-t border-border/70 px-2 py-3 text-sm font-bold leading-snug">Hatchback / Small Car</span>
+                {washCarType === 'small' && <span className="flex items-center justify-center gap-1 pb-2 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={15} /> Selected</span>}
+              </button>
+              <button
+                type="button"
+                aria-pressed={washCarType === 'suv'}
+                onClick={() => setWashCarType('suv')}
+                className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=700&q=85"
+                  alt="SUV / Big Car"
+                  loading="lazy"
+                  className="h-28 w-full object-contain bg-white p-2 sm:h-36"
+                />
+                <span className="block border-t border-border/70 px-2 py-3 text-sm font-bold leading-snug">SUV / Big Car</span>
+                {washCarType === 'suv' && <span className="flex items-center justify-center gap-1 pb-2 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={15} /> Selected</span>}
+              </button>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
