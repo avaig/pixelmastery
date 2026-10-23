@@ -578,35 +578,52 @@ export default function CustomerRequestStart() {
         </section>
       )}
       {isCarWash && (
-        <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Wash service packages">
-          <div>
-            <h2 className="mb-1 text-xl font-semibold">Choose Car Wash services</h2>
-            <p className="text-sm text-muted-foreground">Choose your wash services and add-ons. The listed total is shown before you submit your booking.</p>
+        <section className="mx-auto mb-6 max-w-5xl space-y-6" aria-label="Car Wash service packages">
+          <div className="overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-background to-background p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><ApperIcon name="Sparkles" size={25} /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">LOCAL Car Care</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Choose your perfect wash</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Pick a service, choose your car size and add any extras you need. LOCAL Customer Care will review your selections before final confirmation.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-background/80 px-3 py-1.5"><ApperIcon name="CarFront" size={14} /> Small Car</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-background/80 px-3 py-1.5"><ApperIcon name="Truck" size={14} /> SUV / Big Car</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-background/80 px-3 py-1.5"><ApperIcon name="BadgeIndianRupee" size={14} /> Itemized pricing</span>
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
-              <Card key={option.title} className="flex h-full flex-col border-2 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <ApperIcon name={option.icon} size={23} />
+              <Card key={option.title} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                <div className="flex items-start gap-3 border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent p-4 sm:p-5">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10"><ApperIcon name={option.icon} size={24} /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">WASH PACKAGE</div>
+                    <h3 className="text-base font-bold leading-snug sm:text-lg">{option.title}</h3>
                   </div>
-                  <h3 className="font-semibold">{option.title}</h3>
                 </div>
-                <p className="mt-3 min-h-10 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
-                <div className="mt-3 grid flex-1 content-start gap-2">
+                <div className="flex flex-1 flex-col p-4 sm:p-5">
+                  <p className="mb-4 min-h-10 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
+                  <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><span>Vehicle &amp; price</span><span>INR</span></div>
+                  <div className="grid flex-1 content-start gap-2.5">
                   {option.prices.map((priceOption) => {
                     const id = option.title + '::' + priceOption.label;
                     const qty = washCart.find((item) => item.id === id)?.qty ?? 0;
                     return (
-                      <div key={priceOption.label} className={'rounded-lg border p-3 ' + (qty ? 'border-primary bg-primary/5' : '')}>
-                        <div className="text-sm font-medium">{priceOption.label}</div>
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <div className="text-lg font-bold">₹{priceOption.price.toLocaleString('en-IN')}</div>
-                          <Button type="button" size="sm" variant={qty ? 'outline' : 'default'} onClick={() => addWashItem(option, priceOption)}>
-                            {qty ? 'Add another (' + qty + ')' : 'Add to cart'}
+                      <div key={priceOption.label} className={'rounded-xl border p-3 transition-colors ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
+                        <div className="flex items-start gap-2">
+                          <div className={'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ' + (/SUV|Big Car/i.test(priceOption.label) ? 'bg-sky-500/10 text-sky-700' : 'bg-primary/10 text-primary')}><ApperIcon name={/SUV|Big Car/i.test(priceOption.label) ? 'Truck' : 'CarFront'} size={17} /></div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold leading-snug sm:text-sm">{priceOption.label}</div>
+                            <div className="mt-1 text-xl font-extrabold tracking-tight">₹{priceOption.price.toLocaleString('en-IN')}</div>
+                          </div>
+                          <Button type="button" size="sm" className="shrink-0 rounded-lg px-3" variant={qty ? 'outline' : 'default'} onClick={() => addWashItem(option, priceOption)}>
+                            {qty ? 'Added (' + qty + ')' : 'Select'}
                           </Button>
                         </div>
-                        {priceOption.extra && <p className="mt-1 text-xs text-muted-foreground">{priceOption.extra}</p>}
+                        {priceOption.extra && <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-2 text-xs font-semibold leading-relaxed text-foreground"><ApperIcon name="PlusCircle" size={15} /><span>{priceOption.extra}</span></div>}
                       </div>
                     );
                   })}
@@ -629,15 +646,15 @@ export default function CustomerRequestStart() {
               </Button>
             </Card>
           </div>
-          <Card className="border-2 border-primary/20 p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><h3 className="text-lg font-semibold">Your Car Wash Cart ({cartItemCount} items)</h3><p className="mt-1 text-sm text-muted-foreground">Live cart subtotal: ₹{cartSubtotal.toLocaleString('en-IN')}</p></div>
+          <Card className="overflow-hidden rounded-2xl border border-primary/20 p-0 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-primary/5 p-4 sm:p-5">
+              <div className="flex items-center gap-3"><div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ApperIcon name="ShoppingBag" size={21} /></div><div><h3 className="text-lg font-bold">Your selected services</h3><p className="mt-0.5 text-sm text-muted-foreground">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} · Subtotal ₹{cartSubtotal.toLocaleString('en-IN')}</p></div></div>
               <Button type="button" variant="outline" onClick={() => { setWashCart([]); setIncludePickupDrop(false); setTotalRefreshed(false); window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); window.sessionStorage.removeItem('local_car_wash_cart_v1'); window.sessionStorage.removeItem('local_car_wash_pickup_v1'); }} disabled={!washCart.length && !includePickupDrop}>Clear cart</Button>
             </div>
-            <div className="mt-4 space-y-3">
-              {!washCart.length && !includePickupDrop ? <div className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Your cart is empty. Add Car Wash services above.</div> : <>
+            <div className="space-y-3 p-4 sm:p-5">
+              {!washCart.length && !includePickupDrop ? <div className="rounded-xl border border-dashed border-border p-6 text-center"><div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><ApperIcon name="ShoppingCart" size={23} /></div><p className="mt-3 font-semibold">Your selection is empty</p><p className="mt-1 text-sm text-muted-foreground">Choose a wash package above to get started.</p></div> : <>
                 {normalizedWashCart.map((item) => (
-                  <div key={item.id} className="rounded-lg border p-3">
+                  <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-background p-3">
                     <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1"><div className="font-medium">{item.title}</div><div className="text-sm text-muted-foreground">{item.variant}</div></div><div className="flex items-center gap-4"><span className="whitespace-nowrap font-semibold">₹{(getWashPrice(item) * item.qty).toLocaleString('en-IN')}</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setWashCart((current) => current.filter((entry) => entry.id !== item.id)); }}>Remove</Button></div></div>
                     
                   </div>
@@ -645,9 +662,10 @@ export default function CustomerRequestStart() {
                 {includePickupDrop && <div className="flex items-center justify-between rounded-lg border p-3"><div><div className="font-medium">Pickup &amp; Drop</div><div className="text-sm text-muted-foreground">Optional service</div></div><div className="flex items-center gap-3"><span className="font-semibold">₹100</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop(false); }}>Remove</Button></div></div>}
               </>}
             </div>
-            <div className="mt-4 border-t pt-4">
-              <Button type="button" className="w-full sm:w-auto" onClick={() => { setShowTotalBilling(true); window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(normalizedWashCart)); window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop)); }} disabled={!normalizedWashCart.length && !includePickupDrop}>Calculate Total Billing</Button>
-              {showTotalBilling && <div className="mt-3 flex items-center justify-between rounded-lg border-2 border-primary/30 bg-primary/5 px-4 py-3"><span className="font-semibold">Total Billing</span><span className="text-xl font-bold">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span></div>}
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-4">
+              <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p></div><p className="text-2xl font-extrabold tracking-tight">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</p></div>
+              <Button type="button" className="mt-4 w-full rounded-xl" onClick={() => { setShowTotalBilling(true); window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(normalizedWashCart)); window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop)); }} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="Calculator" size={17} /> Review estimated total</Button>
+              {showTotalBilling && <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/25 bg-background px-3 py-2"><span className="text-sm font-semibold">Total billing estimate</span><span className="text-lg font-extrabold">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span></div>}
             </div>
           </Card>
         </section>
