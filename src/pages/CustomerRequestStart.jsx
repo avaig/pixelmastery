@@ -527,16 +527,22 @@ export default function CustomerRequestStart() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
-        title={tr(displayIssue, language)}
-        description={isCarWash ? '' : tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
-        action={
-          <Button asChild variant="outline">
-            <span onClick={() => navigate(['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{tr('Change problem', language)}</span>
-          </Button>
-        }
-      />
+      {isCarWash ? (
+        <div className="mb-4 border-b border-border pb-4 text-center">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight">Car Wash</h1>
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
+          title={tr(displayIssue, language)}
+          description={tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
+          action={
+            <Button asChild variant="outline">
+              <span onClick={() => navigate(['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{tr('Change problem', language)}</span>
+            </Button>
+          }
+        />
+      )}
       {isCarService && (
         <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Service packages">
           <div>
@@ -579,22 +585,7 @@ export default function CustomerRequestStart() {
       )}
       {isCarWash && (
         <section className="mx-auto mb-6 max-w-5xl space-y-6" aria-label="Car Wash service packages">
-          <div className="overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-background to-background p-5 sm:p-6">
-            <div className="flex items-start gap-3">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><ApperIcon name="Sparkles" size={25} /></div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">LOCAL Car Care</p>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Choose your perfect wash</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Pick a service, choose your car size and add any extras you need. LOCAL Customer Care will review your selections before final confirmation.</p>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-background/80 px-3 py-1.5"><ApperIcon name="CarFront" size={14} /> Small Car</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-background/80 px-3 py-1.5"><ApperIcon name="Truck" size={14} /> SUV / Big Car</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-background/80 px-3 py-1.5"><ApperIcon name="BadgeIndianRupee" size={14} /> Itemized pricing</span>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
               <Card key={option.title} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
                 <div className="flex items-start gap-3 border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent p-4 sm:p-5">
