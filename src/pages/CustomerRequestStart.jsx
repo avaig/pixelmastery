@@ -26,6 +26,7 @@ const CAR_WASH_OPTIONS = [
     title: 'Complete Car Wash',
     description: 'Exterior wash and interior cleaning.',
     icon: 'Sparkles',
+    image: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Small Car (Hatchback / Sedan)', price: 400 },
       { label: 'SUV / Big Car', price: 500 },
@@ -35,6 +36,7 @@ const CAR_WASH_OPTIONS = [
     title: 'Exterior Only',
     description: 'Choose the price that matches whether body polish is included.',
     icon: 'Droplets',
+    image: 'https://images.unsplash.com/photo-1605164599901-7c6b7f4f7d3c?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Small Car — Without Body Polish', price: 300 },
       { label: 'Small Car — With Body Polish', price: 500 },
@@ -46,6 +48,7 @@ const CAR_WASH_OPTIONS = [
     title: 'Interior Only',
     description: 'Full vacuum cleaning and dashboard polishing included.',
     icon: 'CarFront',
+    image: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Small Car (Hatchback / Sedan)', price: 200 },
       { label: 'SUV / Big Car', price: 300 },
@@ -55,6 +58,7 @@ const CAR_WASH_OPTIONS = [
     title: 'Interior Deep Clean',
     description: 'Ceiling and complimentary exterior wash included. Seat removal and refitting is a separate priced option.',
     icon: 'Wind',
+    image: 'https://images.unsplash.com/photo-1600320254374-ce2d293c324e?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Small Car — Without Seat Removal & Refitting', price: 2500 },
       { label: 'Small Car — With Seat Removal & Refitting', price: 3000 },
@@ -66,6 +70,7 @@ const CAR_WASH_OPTIONS = [
     title: 'Rubbing & Detailing',
     description: 'Choose Basic or Premium detailing for your vehicle size.',
     icon: 'WandSparkles',
+    image: 'https://images.unsplash.com/photo-1613214150384-4a4e3d5f5c4b?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Small Car — Basic', price: 3000 },
       { label: 'Small Car — Premium', price: 8000 },
@@ -79,6 +84,7 @@ const CAR_SERVICE_PACKAGES = [
   {
     title: 'Economy Service',
     checkup: '20-point checkup',
+    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Hatchback / Sedan', price: 3999 },
       { label: 'SUV / Big Car', price: 6999 },
@@ -94,6 +100,7 @@ const CAR_SERVICE_PACKAGES = [
   {
     title: 'Normal Service',
     checkup: '60-point checkup',
+    image: 'https://images.unsplash.com/photo-1632823471565-1ecdf5c1b2a5?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Hatchback / Sedan', price: 1500 },
       { label: 'SUV / Big Car', price: 2000 },
@@ -112,6 +119,7 @@ const CAR_SERVICE_PACKAGES = [
   {
     title: 'Major Service',
     checkup: '62-point checkup',
+    image: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=1200&q=85',
     prices: [
       { label: 'Hatchback / Sedan', price: 5000 },
       { label: 'SUV / Big Car', price: 6000 },
@@ -555,8 +563,21 @@ export default function CustomerRequestStart() {
   return (
     <div>
       {isCarWash ? (
-        <div className="mb-4 border-b border-border pb-4 text-center">
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">Car Wash</h1>
+        <div className="mb-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="relative h-40 sm:h-56">
+            <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1800&q=90" alt="Professional car wash and detailing" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
+            <div className="absolute inset-y-0 left-0 flex max-w-xl flex-col justify-center p-5 text-white sm:p-8">
+              <span className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">LOCAL Car Care</span>
+              <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">A cleaner car. A better drive.</h1>
+              <p className="mt-2 max-w-md text-sm text-white/85 sm:text-base">Choose your wash, add the extras you need, and review your estimated total before LOCAL Customer Care confirms the final quote.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border bg-background px-2 py-3 text-center sm:px-5">
+            <div className="px-1"><ApperIcon name="Sparkles" size={19} className="mx-auto text-primary" /><p className="mt-1 text-xs font-semibold sm:text-sm">Quality care</p></div>
+            <div className="px-1"><ApperIcon name="BadgeIndianRupee" size={19} className="mx-auto text-primary" /><p className="mt-1 text-xs font-semibold sm:text-sm">Clear prices</p></div>
+            <div className="px-1"><ApperIcon name="Headset" size={19} className="mx-auto text-primary" /><p className="mt-1 text-xs font-semibold sm:text-sm">LOCAL support</p></div>
+          </div>
         </div>
       ) : (
         <PageHeader
@@ -572,39 +593,57 @@ export default function CustomerRequestStart() {
       )}
       {isCarService && (
         <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Service packages">
-          <div>
-            <h2 className="mb-1 text-xl font-semibold">Car Service Packages</h2>
-            <p className="text-sm text-muted-foreground">Compare package coverage and indicative prices for your vehicle type. Final work and price must be confirmed by the Service Provider.</p>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="relative h-40 sm:h-52">
+              <img src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1800&q=90" alt="Mechanic servicing a car in a workshop" className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
+              <div className="absolute inset-y-0 left-0 flex max-w-xl flex-col justify-center p-5 text-white sm:p-8">
+                <span className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">LOCAL Car Care</span>
+                <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">Service with clarity.</h2>
+                <p className="mt-2 max-w-md text-sm text-white/85 sm:text-base">Compare service packages and inclusions. Any additional repair must be explained and approved before work begins.</p>
+              </div>
+            </div>
+            <div className="p-4 sm:p-5">
+              <h2 className="text-xl font-bold sm:text-2xl">Choose your service package</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Compare package coverage and listed prices for your vehicle type. Final work and price are confirmed before service starts.</p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
-              <Card key={pkg.title} className="flex h-full flex-col border-2 p-5 sm:p-6">
-                <div className="border-b pb-4">
-                  <h3 className="text-lg font-bold">{pkg.title}</h3>
-                  <p className="mt-1 text-sm font-medium text-muted-foreground">{pkg.checkup}</p>
-                  <div className="mt-4 space-y-3">
+              <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
+                <div className="relative h-40 sm:h-44">
+                  <img src={pkg.image} alt={pkg.title + ' automotive service'} loading="lazy" className="h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">{pkg.checkup}</p>
+                    <h3 className="mt-1 text-xl font-bold">{pkg.title}</h3>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col p-4 sm:p-5">
+                  <div className="mb-3 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-muted-foreground"><span>Select vehicle type</span><span>Listed price</span></div>
+                  <div className="space-y-3">
                     {pkg.prices.map((price) => {
                       const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
                       return (
                         <div key={price.label} className={'rounded-lg border px-3 py-3 ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'bg-primary/5')}>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-sm font-medium">{price.label}</span>
-                            <span className="shrink-0 text-base font-bold">₹{price.price.toLocaleString('en-IN')}</span>
+                            <span className="flex items-center gap-2 text-sm font-semibold"><ApperIcon name={/SUV|Big Car/i.test(price.label) ? 'Truck' : 'CarFront'} size={18} className="text-primary" />{price.label}</span>
+                            <span className="shrink-0 text-lg font-extrabold">₹{price.price.toLocaleString('en-IN')}</span>
                           </div>
-                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} className="mt-3 w-full" onClick={() => setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered })}>
-                            {isSelected ? 'Selected' : 'Select this package'}
+                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} className="mt-3 min-h-10 w-full rounded-xl" onClick={() => setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered })}>
+                            <ApperIcon name={isSelected ? 'CheckCircle2' : 'ArrowRight'} size={16} />{isSelected ? 'Package selected' : 'Choose package'}
                           </Button>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-                <div className="pt-4">
-                  <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide">Covered Area</h4>
-                  <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground marker:font-medium marker:text-muted-foreground">
-                    {pkg.covered.map((item) => <li key={item} className="pl-1">{item}</li>)}
-                  </ol>
-                </div>
+                  <div className="mt-5 border-t border-border pt-4">
+                    <h4 className="mb-3 flex items-center gap-2 text-sm font-bold"><ApperIcon name="ClipboardCheck" size={17} className="text-primary" />What's included</h4>
+                    <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                      {pkg.covered.map((item) => <li key={item} className="flex items-start gap-2"><ApperIcon name="Check" size={15} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>)}
+                    </ul>
+                  </div>
               </Card>
             ))}
           </div>
@@ -612,14 +651,19 @@ export default function CustomerRequestStart() {
       )}
       {isCarWash && (
         <section className="mx-auto mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
-<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div><h2 className="text-xl font-bold sm:text-2xl">Pick your wash package</h2><p className="mt-1 text-sm text-muted-foreground">Select a package for your car and review the listed price before adding it.</p></div>
+            <span className="rounded-full border border-emerald-600/20 bg-emerald-600/10 px-3 py-1.5 text-xs font-bold text-emerald-700">Transparent menu pricing</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
-              <Card key={option.title} className="group flex flex-col self-start overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                <div className="flex items-start gap-3 border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent p-3 sm:p-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10"><ApperIcon name={option.icon} size={24} /></div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">WASH PACKAGE</div>
-                    <h3 className="text-base font-bold leading-snug sm:text-lg">{option.title}</h3>
+              <Card key={option.title} className="group flex flex-col self-start overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg">
+                <div className="relative h-36 sm:h-44">
+                  <img src={option.image} alt={option.title + ' car wash service'} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-3 sm:p-4">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/95 text-slate-900 shadow-sm"><ApperIcon name={option.icon} size={22} /></div>
+                    <div className="min-w-0 text-white"><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-300">LOCAL WASH PACKAGE</div><h3 className="text-lg font-bold leading-snug sm:text-xl">{option.title}</h3></div>
                   </div>
                 </div>
                 <div className="flex flex-col p-3 sm:p-4">
@@ -630,7 +674,7 @@ export default function CustomerRequestStart() {
                     const id = option.title + '::' + priceOption.label;
                     const qty = washCart.find((item) => item.id === id)?.qty ?? 0;
                     return (
-                      <div key={priceOption.label} className={'rounded-xl border p-2.5 transition-colors ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
+                      <div key={priceOption.label} className={'rounded-xl border p-3 transition-colors ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
                         <div className="flex items-start gap-2">
                           <div className={'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ' + (/SUV|Big Car/i.test(priceOption.label) ? 'bg-sky-500/10 text-sky-700' : 'bg-primary/10 text-primary')}><ApperIcon name={/SUV|Big Car/i.test(priceOption.label) ? 'Truck' : 'CarFront'} size={17} /></div>
                           <div className="min-w-0 flex-1">
@@ -640,7 +684,7 @@ export default function CustomerRequestStart() {
                           <Button
                             type="button"
                             size="sm"
-                            className="shrink-0 rounded-lg px-3"
+                            className="min-h-10 shrink-0 rounded-xl px-3"
                             variant={qty ? 'outline' : 'default'}
                             onClick={() => {
                               if (qty) {
@@ -665,20 +709,9 @@ export default function CustomerRequestStart() {
                 </div>
               </Card>
             ))}
-            <Card className={'flex flex-col self-start border-2 p-3 ' + (includePickupDrop ? 'border-primary bg-primary/5' : '')}>
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <ApperIcon name="CarTaxiFront" size={23} />
-                  </div>
-                  <h3 className="font-semibold">Pickup &amp; Drop</h3>
-                </div>
-                <p className="mt-2 text-sm leading-snug text-muted-foreground">Optional vehicle pickup and return service.</p>
-                <p className="mt-1.5 text-lg font-bold">₹100</p>
-              </div>
-              <Button type="button" className="mt-3 w-full" variant={includePickupDrop ? 'outline' : 'default'} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop((value) => !value); }}>
-                {includePickupDrop ? 'Remove Pickup & Drop' : 'Add Pickup & Drop'}
-              </Button>
+            <Card className={'flex flex-col self-start overflow-hidden rounded-2xl border p-0 shadow-sm ' + (includePickupDrop ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
+              <div className="relative h-36 sm:h-44"><img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=85" alt="Car ready for collection and return" loading="lazy" className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" /><div className="absolute bottom-0 p-4 text-white"><div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Optional convenience</div><h3 className="mt-1 text-xl font-bold">Pickup &amp; Drop</h3></div></div>
+              <div className="flex flex-1 flex-col p-4"><p className="text-sm leading-relaxed text-muted-foreground">Have your car collected and returned. LOCAL Customer Care confirms the final charge after checking your location.</p><p className="mt-3 text-2xl font-extrabold">₹100 <span className="text-xs font-medium text-muted-foreground">indicative charge</span></p><Button type="button" className="mt-4 min-h-11 w-full rounded-xl" variant={includePickupDrop ? 'outline' : 'default'} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop((value) => !value); }}>{includePickupDrop ? 'Remove Pickup & Drop' : 'Request Pickup & Drop'}</Button></div>
             </Card>
           </div>
           <Card className="overflow-hidden rounded-2xl border border-primary/20 p-0 shadow-sm">
