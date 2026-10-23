@@ -584,26 +584,26 @@ export default function CustomerRequestStart() {
         </section>
       )}
       {isCarWash && (
-        <section className="mx-auto mb-6 max-w-5xl space-y-6" aria-label="Car Wash service packages">
+        <section className="mx-auto mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
-              <Card key={option.title} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                <div className="flex items-start gap-3 border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent p-4 sm:p-5">
+              <Card key={option.title} className="group flex flex-col self-start overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                <div className="flex items-start gap-3 border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent p-3 sm:p-4">
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10"><ApperIcon name={option.icon} size={24} /></div>
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">WASH PACKAGE</div>
                     <h3 className="text-base font-bold leading-snug sm:text-lg">{option.title}</h3>
                   </div>
                 </div>
-                <div className="flex flex-1 flex-col p-4 sm:p-5">
-                  <p className="mb-4 min-h-10 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
+                <div className="flex flex-col p-3 sm:p-4">
+                  <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
                   <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><span>Vehicle &amp; price</span><span>INR</span></div>
-                  <div className="grid flex-1 content-start gap-2.5">
+                  <div className="grid content-start gap-2">
                   {option.prices.map((priceOption) => {
                     const id = option.title + '::' + priceOption.label;
                     const qty = washCart.find((item) => item.id === id)?.qty ?? 0;
                     return (
-                      <div key={priceOption.label} className={'rounded-xl border p-3 transition-colors ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
+                      <div key={priceOption.label} className={'rounded-xl border p-2.5 transition-colors ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
                         <div className="flex items-start gap-2">
                           <div className={'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ' + (/SUV|Big Car/i.test(priceOption.label) ? 'bg-sky-500/10 text-sky-700' : 'bg-primary/10 text-primary')}><ApperIcon name={/SUV|Big Car/i.test(priceOption.label) ? 'Truck' : 'CarFront'} size={17} /></div>
                           <div className="min-w-0 flex-1">
@@ -614,7 +614,7 @@ export default function CustomerRequestStart() {
                             {qty ? 'Added (' + qty + ')' : 'Select'}
                           </Button>
                         </div>
-                        {priceOption.extra && <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-2 text-xs font-semibold leading-relaxed text-foreground"><ApperIcon name="PlusCircle" size={15} /><span>{priceOption.extra}</span></div>}
+                        {priceOption.extra && <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold leading-relaxed text-foreground"><ApperIcon name="PlusCircle" size={15} /><span>{priceOption.extra}</span></div>}
                       </div>
                     );
                   })}
@@ -622,7 +622,7 @@ export default function CustomerRequestStart() {
                 </div>
               </Card>
             ))}
-            <Card className={'flex flex-col justify-between border-2 p-4 ' + (includePickupDrop ? 'border-primary bg-primary/5' : '')}>
+            <Card className={'flex flex-col self-start border-2 p-3 ' + (includePickupDrop ? 'border-primary bg-primary/5' : '')}>
               <div>
                 <div className="flex items-center gap-3">
                   <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -630,10 +630,10 @@ export default function CustomerRequestStart() {
                   </div>
                   <h3 className="font-semibold">Pickup &amp; Drop</h3>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">Optional vehicle pickup and return service.</p>
-                <p className="mt-2 text-lg font-bold">₹100</p>
+                <p className="mt-2 text-sm leading-snug text-muted-foreground">Optional vehicle pickup and return service.</p>
+                <p className="mt-1.5 text-lg font-bold">₹100</p>
               </div>
-              <Button type="button" className="mt-4" variant={includePickupDrop ? 'outline' : 'default'} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop((value) => !value); }}>
+              <Button type="button" className="mt-3 w-full" variant={includePickupDrop ? 'outline' : 'default'} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop((value) => !value); }}>
                 {includePickupDrop ? 'Remove Pickup & Drop' : 'Add Pickup & Drop'}
               </Button>
             </Card>
