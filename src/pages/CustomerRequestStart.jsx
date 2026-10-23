@@ -627,6 +627,7 @@ export default function CustomerRequestStart() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               </Card>
             ))}
