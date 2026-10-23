@@ -666,7 +666,7 @@ export default function CustomerRequestStart() {
                   src="https://cdni.autocarindia.com/ExtraImages/20230330044441_i20.jpg"
                   alt="Hatchback / Small Car"
                   loading="lazy"
-                  className="h-28 w-full object-contain bg-white p-2 sm:h-36"
+                  className="h-28 w-full object-cover bg-white sm:h-36"
                 />
                 <span className="block border-t border-border/70 px-2 py-3 text-sm font-bold leading-snug">Hatchback / Small Car</span>
                 {washCarType === 'small' && <span className="flex items-center justify-center gap-1 pb-2 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={15} /> Selected</span>}
