@@ -681,7 +681,7 @@ export default function CustomerRequestStart() {
                   src="https://cdn-s3.autocarindia.com/Toyota/Fortuner/_DSC8216.JPG?q=75&w=728"
                   alt="SUV / Big Car"
                   loading="lazy"
-                  className="h-28 w-full object-contain bg-white p-2 sm:h-36"
+                  className="h-28 w-full object-cover bg-white sm:h-36"
                 />
                 <span className="block border-t border-border/70 px-2 py-3 text-sm font-bold leading-snug">SUV / Big Car</span>
                 {washCarType === 'suv' && <span className="flex items-center justify-center gap-1 pb-2 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={15} /> Selected</span>}
