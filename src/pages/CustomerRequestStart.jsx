@@ -201,6 +201,7 @@ export default function CustomerRequestStart() {
   const isCarEssentialsDelivery = requestedService === 'Car Essentials Delivery';
   const isCarFlatPuncture = vehicle === 'car' && /flat tyre \/ puncture/i.test(issue || requestedService);
   const [creating, setCreating] = useState(false);
+  const [submittedWashOrder, setSubmittedWashOrder] = useState(null);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
   const [punctureDispatchConsent, setPunctureDispatchConsent] = useState(false);
   const isProfessionalDriverService = ['Car Driver on Demand', 'Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
@@ -563,10 +564,43 @@ export default function CustomerRequestStart() {
       }
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
       toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : tr('Request shared with eligible nearby Service Providers.', language));
+      if (isCarWash) {
+        setSubmittedWashOrder({
+          requestId: res.data[0].Id,
+          items: normalizedWashCart.map((item) => ({ title: item.title, variant: item.variant, quantity: item.qty, unitPrice: item.price, lineTotal: item.price * item.qty })),
+          subtotal: estimatedTotalValue,
+          platformFee: 25,
+          pickupDropRequested: includePickupDrop,
+          pickupDropIndicative: includePickupDrop ? 100 : 0,
+          locationText: location.text,
+        });
+        return;
+      }
       navigate('/requests/' + res.data[0].Id);
     } finally {
       setCreating(false);
     }
+  }
+
+  if (submittedWashOrder) {
+    const order = submittedWashOrder;
+    const indicativeTotal = order.subtotal + order.platformFee + order.pickupDropIndicative;
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
+        <Card className="overflow-hidden rounded-2xl border border-border p-0 shadow-sm">
+          <div className="bg-primary px-5 py-5 text-primary-foreground sm:px-7">
+            <div className="flex items-center gap-3"><ApperIcon name="CheckCircle2" size={28} /><div><h1 className="text-xl font-extrabold sm:text-2xl">LOCAL Order Summary</h1><p className="mt-1 text-sm opacity-90">Your quote request has been submitted to Customer Care.</p></div></div>
+          </div>
+          <div className="space-y-5 p-5 sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Request reference</p><p className="mt-1 break-all text-sm font-bold">{order.requestId}</p></div><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">Provisional — Not Final Invoice</span></div>
+            <div><h2 className="mb-3 text-base font-bold">Selected services</h2><div className="divide-y rounded-xl border">{order.items.map((item, index) => <div key={item.title + item.variant + index} className="flex items-start justify-between gap-3 p-3 text-sm"><div className="min-w-0"><p className="font-semibold">{item.title}</p><p className="text-muted-foreground">{item.variant} · Qty {item.quantity} × ₹{item.unitPrice.toLocaleString('en-IN')}</p></div><p className="shrink-0 font-bold">₹{item.lineTotal.toLocaleString('en-IN')}</p></div>)}</div></div>
+            <div className="space-y-3 text-sm"><div className="flex justify-between gap-3"><span>Selected services subtotal</span><strong>₹{order.subtotal.toLocaleString('en-IN')}</strong></div><div className="flex justify-between gap-3"><span>LOCAL Platform Fee (per booking)</span><strong>₹{order.platformFee}</strong></div>{order.pickupDropRequested && <div className="flex justify-between gap-3"><span>Pickup &amp; Drop (indicative; pending confirmation)</span><strong>₹{order.pickupDropIndicative}</strong></div>}<div className="flex justify-between gap-3 border-t pt-3 text-base"><strong>Indicative total</strong><strong>₹{indicativeTotal.toLocaleString('en-IN')}</strong></div></div>
+            <div className="rounded-xl bg-muted/50 p-4 text-sm"><p className="font-semibold">Service location</p><p className="mt-1 text-muted-foreground">{order.locationText || 'Confirmed location'}</p><p className="mt-3 leading-relaxed text-muted-foreground">The ₹25 LOCAL Platform Fee is shown separately. Pickup &amp; Drop, if requested, is indicative until Customer Care confirms your location and final charge. This is not a payment request. Customer Care will review your order and confirm the final quotation before booking confirmation.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2"><Button variant="outline" className="w-full" onClick={() => navigate('/requests/' + order.requestId)}>View Request Status</Button><Button className="w-full" onClick={() => navigate('/customer/car-care')}>Back to Car Care</Button></div>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
