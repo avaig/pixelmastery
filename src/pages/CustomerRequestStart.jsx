@@ -530,7 +530,7 @@ export default function CustomerRequestStart() {
       <PageHeader
         eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
         title={tr(displayIssue, language)}
-        description={tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
+        description={isCarWash ? '' : tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
         action={
           <Button asChild variant="outline">
             <span onClick={() => navigate(['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{tr('Change problem', language)}</span>
