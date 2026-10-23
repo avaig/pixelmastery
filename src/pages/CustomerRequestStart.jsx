@@ -631,8 +631,24 @@ export default function CustomerRequestStart() {
                             <div className="text-xs font-semibold leading-snug sm:text-sm">{priceOption.label}</div>
                             <div className="mt-1 text-xl font-extrabold tracking-tight">₹{priceOption.price.toLocaleString('en-IN')}</div>
                           </div>
-                          <Button type="button" size="sm" className="shrink-0 rounded-lg px-3" variant={qty ? 'outline' : 'default'} onClick={() => addWashItem(option, priceOption)}>
-                            {qty ? 'Added (' + qty + ')' : 'Select'}
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="shrink-0 rounded-lg px-3"
+                            variant={qty ? 'outline' : 'default'}
+                            onClick={() => {
+                              if (qty) {
+                                window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
+                                setTotalRefreshed(false);
+                                setShowTotalBilling(false);
+                                setWashCart((current) => current.filter((item) => !(item.title === option.title && item.variant === priceOption.label)));
+                                toast.success(priceOption.label + ' removed from selection.');
+                              } else {
+                                addWashItem(option, priceOption);
+                              }
+                            }}
+                          >
+                            {qty ? 'Unselect' : 'Select'}
                           </Button>
                         </div>
                         {priceOption.extra && (() => {
