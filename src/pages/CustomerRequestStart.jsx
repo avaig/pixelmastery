@@ -145,8 +145,9 @@ function getCarEssentialsRequestNote() {
 function getWashPrice(item) {
   const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
   const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
-  const storedPrice = Number(item?.price);
-  return Number.isFinite(storedPrice) && storedPrice > 0 ? storedPrice : (Number(priceOption?.price) || 0);
+  const basePrice = Number(item?.basePrice ?? priceOption?.price);
+  const extrasTotal = Array.isArray(item?.addons) ? item.addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0) : 0;
+  return (Number.isFinite(basePrice) && basePrice > 0 ? basePrice : (Number(priceOption?.price) || 0)) + extrasTotal;
 }
 
 function normalizeWashCart(value) {
@@ -154,13 +155,17 @@ function normalizeWashCart(value) {
   return value.map((item) => {
     const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
     const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
-    const price = getWashPrice(item);
+    const addons = Array.isArray(item?.addons) ? item.addons.map((addon) => ({ id: String(addon.id || addon.label), label: String(addon.label || 'Optional extra'), price: Math.max(0, Number(addon.price) || 0) })) : [];
+    const basePrice = Number(item?.basePrice ?? priceOption?.price) || 0;
+    const price = basePrice + addons.reduce((sum, addon) => sum + addon.price, 0);
     const qty = Math.max(0, Number.parseInt(item?.qty, 10) || 0);
     return {
       ...item,
       id: item?.id || (item?.title + '::' + item?.variant),
       title: option?.title || String(item?.title || ''),
       variant: priceOption?.label || String(item?.variant || ''),
+      basePrice,
+      addons,
       price,
       qty,
     };
@@ -213,6 +218,7 @@ export default function CustomerRequestStart() {
   });
   const [includePickupDrop, setIncludePickupDrop] = useState(() => window.sessionStorage.getItem('local_car_wash_pickup_v1') === 'true');
   const [washDecisions, setWashDecisions] = useState({});
+  const [washAddonSelections, setWashAddonSelections] = useState({});
   const [serviceTiming, setServiceTiming] = useState('ASAP');
   const [scheduledAt, setScheduledAt] = useState('');
   const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(null);
@@ -271,14 +277,24 @@ export default function CustomerRequestStart() {
   function addWashItem(option, priceOption) {
     window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
     setTotalRefreshed(false);
-    const id = option.title + '::' + priceOption.label;
+    const baseId = option.title + '::' + priceOption.label;
+    const availableAddon = priceOption.extra
+      ? option.title === 'Exterior Only'
+        ? { id: 'body-polish', label: 'Body Polish', price: /SUV|Big Car/i.test(priceOption.label) ? 500 : 200 }
+        : option.title === 'Interior Deep Clean'
+          ? { id: 'seat-removal-refitting', label: 'Removal + Refitting of Seats', price: 500 }
+          : null
+      : null;
+    const addons = availableAddon && washAddonSelections[baseId] ? [availableAddon] : [];
+    const id = baseId + (addons.length ? '::addons:' + addons.map((addon) => addon.id).join(',') : '');
+    const unitPrice = priceOption.price + addons.reduce((sum, addon) => sum + addon.price, 0);
     setWashCart((current) => {
       const existing = current.find((item) => item.id === id);
       return existing
         ? current.map((item) => item.id === id ? { ...item, qty: item.qty + 1 } : item)
-        : [...current, { id, title: option.title, variant: priceOption.label, price: priceOption.price, qty: 1 }];
+        : [...current, { id, title: option.title, variant: priceOption.label, basePrice: priceOption.price, addons, price: unitPrice, qty: 1 }];
     });
-    toast.success(option.title + ' added to cart.');
+    toast.success(option.title + (addons.length ? ' with ' + addons.map((addon) => addon.label).join(', ') : '') + ' added to cart.');
   }
 
   function changeWashQty(id, delta) {
@@ -496,7 +512,7 @@ export default function CustomerRequestStart() {
         service_category_c: category.Id,
         required_capability_c: requiredCapability.Id,
         problem_description_c: (requestedService
-          ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + washCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Fixed listed price; no offers or negotiation. LOCAL Customer Care will coordinate the service. Prices shown are menu prices. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
+          ? 'Customer requested ' + (isCarWash ? 'these Car Wash services: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + (item.addons?.length ? ' [' + item.addons.map((addon) => addon.label + ' +₹' + addon.price).join(', ') + ']' : '') + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + (includePickupDrop ? '; Pickup & Drop — ₹100' : '') + '. Menu Total: ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. Fixed listed price; no offers or negotiation. LOCAL Customer Care will coordinate the service. Prices shown are menu prices. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, addons: item.addons || [], listedUnitPrice: item.price, decision: 'included', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Fixed', quantity: 1, listedUnitPrice: 100, decision: 'included', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
@@ -614,7 +630,17 @@ export default function CustomerRequestStart() {
                             {qty ? 'Added (' + qty + ')' : 'Select'}
                           </Button>
                         </div>
-                        {priceOption.extra && <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold leading-relaxed text-foreground"><ApperIcon name="PlusCircle" size={15} /><span>{priceOption.extra}</span></div>}
+                        {priceOption.extra && (() => {
+                          const baseId = option.title + '::' + priceOption.label;
+                          const addon = option.title === 'Exterior Only'
+                            ? { id: 'body-polish', label: 'Body Polish', price: /SUV|Big Car/i.test(priceOption.label) ? 500 : 200 }
+                            : option.title === 'Interior Deep Clean'
+                              ? { id: 'seat-removal-refitting', label: 'Removal + Refitting of Seats', price: 500 }
+                              : null;
+                          if (!addon) return <div className="mt-2 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold">{priceOption.extra}</div>;
+                          const selected = Boolean(washAddonSelections[baseId]);
+                          return <button type="button" aria-pressed={selected} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setWashAddonSelections((current) => ({ ...current, [baseId]: !current[baseId] })); }} className={'mt-2 flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-semibold leading-relaxed transition-colors ' + (selected ? 'border-primary bg-primary/10 text-primary' : 'border-amber-500/20 bg-amber-500/10 text-foreground hover:border-primary/40')}><ApperIcon name={selected ? "CheckCircle2" : "PlusCircle"} size={16} /><span className="flex-1">{addon.label} <span className="whitespace-nowrap">+₹{addon.price}</span><span className="block font-medium opacity-75">{selected ? 'Added to next selection' : 'Tap to add this extra'}</span></span></button>;
+                        })()}
                       </div>
                     );
                   })}
@@ -647,7 +673,7 @@ export default function CustomerRequestStart() {
               {!washCart.length && !includePickupDrop ? <div className="rounded-xl border border-dashed border-border p-6 text-center"><div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><ApperIcon name="ShoppingCart" size={23} /></div><p className="mt-3 font-semibold">Your selection is empty</p><p className="mt-1 text-sm text-muted-foreground">Choose a wash package above to get started.</p></div> : <>
                 {normalizedWashCart.map((item) => (
                   <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-background p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1"><div className="font-medium">{item.title}</div><div className="text-sm text-muted-foreground">{item.variant}</div></div><div className="flex items-center gap-4"><span className="whitespace-nowrap font-semibold">₹{(getWashPrice(item) * item.qty).toLocaleString('en-IN')}</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setWashCart((current) => current.filter((entry) => entry.id !== item.id)); }}>Remove</Button></div></div>
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1"><div className="font-medium">{item.title}</div><div className="text-sm text-muted-foreground">{item.variant}</div>{item.addons?.length > 0 && <div className="mt-1 text-xs font-medium text-primary">Extras: {item.addons.map((addon) => addon.label + ' +₹' + addon.price).join(', ')}</div>}</div><div className="flex items-center gap-4"><span className="whitespace-nowrap font-semibold">₹{(getWashPrice(item) * item.qty).toLocaleString('en-IN')}</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setWashCart((current) => current.filter((entry) => entry.id !== item.id)); }}>Remove</Button></div></div>
                     
                   </div>
                 ))}
