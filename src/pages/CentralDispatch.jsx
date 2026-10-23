@@ -752,8 +752,8 @@ export default function CentralDispatch() {
           </Card>
           <div className="space-y-4">
             <Card className="p-5">
-              <div className="flex items-center gap-2"><ApperIcon name="Settings2" size={19} /><h3 className="font-semibold">Assignment controls</h3></div>
-              <p className="mt-1 text-sm text-muted-foreground">Choose a verified provider or invite the nearest eligible provider. No bidding or counter-offers.</p>
+              <div className="flex items-center gap-2"><ApperIcon name="Settings2" size={19} /><h3 className="font-semibold">{getStructuredServiceDetails(request).type === 'Car Wash' ? 'Pickup & Drop Assignment' : 'Assignment controls'}</h3></div>
+              <p className="mt-1 text-sm text-muted-foreground">{getStructuredServiceDetails(request).type === 'Car Wash' ? 'After customer approval, select a verified person for manual pickup and return coordination.' : 'Choose a verified provider or invite the nearest eligible provider. No bidding or counter-offers.'}</p>
               <div className="mt-4 space-y-3">
                 {getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) ? <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Manual assignment is locked until the customer approves the latest revised quote.</p> : <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">Customer approved the current quote. You can now assign the pickup-and-drop person.</p>; })()}
                 <div>
@@ -764,7 +764,7 @@ export default function CentralDispatch() {
                   </Select>
                 </div>
                 <Button className="w-full" variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || (getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total); })())} onClick={() => manualAssign(request)}>
-                  <ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : 'Assign manually'}
+                  <ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : getStructuredServiceDetails(request).type === 'Car Wash' ? 'Assign Pickup & Drop Person' : 'Assign manually'}
                 </Button>
                 <Button className="w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || getStructuredServiceDetails(request).type === 'Car Wash'} onClick={() => findNearby(request)}>
                   <ApperIcon name="MapPinned" size={16} /> {busyKey === request.Id ? 'Checking nearby…' : 'Find Nearby & Invite'}
