@@ -674,7 +674,7 @@ export default function CustomerRequestStart() {
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <img
-                  src="https://images.unsplash.com/photo-1502877719530-5c5e9c4e7b47?auto=format&fit=crop&w=700&q=85"
+                  src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=700&q=85"
                   alt="Hatchback / Small Car"
                   loading="lazy"
                   className="h-28 w-full object-contain bg-white p-2 sm:h-36"
@@ -689,7 +689,7 @@ export default function CustomerRequestStart() {
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <img
-                  src="https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=700&q=85"
+                  src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=700&q=85"
                   alt="SUV / Big Car"
                   loading="lazy"
                   className="h-28 w-full object-contain bg-white p-2 sm:h-36"
