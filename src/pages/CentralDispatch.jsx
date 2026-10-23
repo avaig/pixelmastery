@@ -749,7 +749,7 @@ export default function CentralDispatch() {
                   </div>
                   {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
                   <Button className="w-full" disabled={Boolean(busyKey) || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
-                  <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote.</p>
+                  <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
               })()}
               <section className="rounded-lg border p-4">
