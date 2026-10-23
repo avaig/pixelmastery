@@ -678,7 +678,7 @@ export default function CustomerRequestStart() {
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <img
-                  src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=700&q=85"
+                  src="https://cdn-s3.autocarindia.com/Toyota/Fortuner/_DSC8216.JPG?q=75&w=728"
                   alt="SUV / Big Car"
                   loading="lazy"
                   className="h-28 w-full object-contain bg-white p-2 sm:h-36"
