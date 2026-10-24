@@ -733,7 +733,7 @@ export default function CustomerRequestStart() {
                     {option.description && <p className={'mt-1 leading-relaxed text-muted-foreground ' + (option.title === 'Complete Car Wash' ? 'text-xs sm:text-sm' : 'text-sm')}>{option.description}</p>}
                   </div>
                 </div>
-                <div className={'flex flex-col ' + (option.title === 'Complete Car Wash' || option.title === 'Exterior Only' || option.title === 'Interior Only' ? 'px-2 pb-2 pt-0 sm:px-2 sm:pb-2 sm:pt-0' : 'p-3 sm:p-4')}>
+                <div className={'flex flex-col ' + (option.title === 'Exterior Only' ? '-mt-4 px-2 pb-2 pt-0 sm:-mt-4 sm:px-2 sm:pb-2 sm:pt-0' : option.title === 'Complete Car Wash' || option.title === 'Interior Only' ? 'px-2 pb-2 pt-0 sm:px-2 sm:pb-2 sm:pt-0' : 'p-3 sm:p-4')}>
                   {option.title !== 'Exterior Only' && option.title !== 'Interior Only' && <div className={'flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground ' + (option.title === 'Complete Car Wash' ? 'mb-1' : 'mb-2')}><span>{option.title === 'Complete Car Wash' && washCarType === 'small' ? 'Package price' : 'Vehicle &amp; price'}</span><span>INR</span></div>}
                   <div className="grid content-start gap-2">
                   {option.prices.filter((priceOption) => washCarType === 'suv' ? /SUV|Big Car/i.test(priceOption.label) : !/SUV|Big Car/i.test(priceOption.label)).map((priceOption) => {
