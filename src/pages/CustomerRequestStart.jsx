@@ -181,7 +181,13 @@ function normalizeWashCart(value) {
       price,
       qty,
     };
-  }).filter((item) => item.title && item.variant && item.price > 0 && item.qty > 0);
+  }).filter((item) => item.title && item.variant && item.price > 0 && item.qty > 0)
+    .reduce((unique, item) => {
+      const previousIndex = unique.findIndex((entry) => entry.title === item.title);
+      if (previousIndex >= 0) unique.splice(previousIndex, 1);
+      unique.push(item);
+      return unique;
+    }, []);
 }
 
 export const route = {
@@ -317,12 +323,10 @@ export default function CustomerRequestStart() {
     const addons = availableAddon && washAddonSelections[baseId] ? [availableAddon] : [];
     const id = baseId + (addons.length ? '::addons:' + addons.map((addon) => addon.id).join(',') : '');
     const unitPrice = priceOption.price + addons.reduce((sum, addon) => sum + addon.price, 0);
-    setWashCart((current) => {
-      const existing = current.find((item) => item.id === id);
-      return existing
-        ? current.map((item) => item.id === id ? { ...item, qty: item.qty + 1 } : item)
-        : [...current, { id, title: option.title, variant: priceOption.label, basePrice: priceOption.price, addons, price: unitPrice, qty: 1 }];
-    });
+    setWashCart((current) => [
+      ...current.filter((item) => item.title !== option.title),
+      { id, title: option.title, variant: priceOption.label, basePrice: priceOption.price, addons, price: unitPrice, qty: 1 },
+    ]);
     toast.success(option.title + (addons.length ? ' with ' + addons.map((addon) => addon.label).join(', ') : '') + ' added to cart.');
   }
 
