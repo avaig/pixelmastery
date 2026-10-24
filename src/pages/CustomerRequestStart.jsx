@@ -751,7 +751,7 @@ export default function CustomerRequestStart() {
                             type="button"
                             size="sm"
                             className="min-h-10 shrink-0 rounded-xl px-3"
-                            variant={qty ? 'outline' : 'default'}
+                            variant={qty && option.title !== 'Rubbing & Detailing' ? 'outline' : 'default'}
                             onClick={() => {
                               if (qty) {
                                 window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
