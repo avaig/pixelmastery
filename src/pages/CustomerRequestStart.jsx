@@ -828,6 +828,25 @@ export default function CustomerRequestStart() {
               </div>
               <p className="mt-3 border-t border-primary/15 pt-3 text-sm font-medium">Final amount = Actual diesel cost + Delivery charges</p>
             </div>
+          ) : isCarWash ? (
+            <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={18} />Selected Car Wash Packages</span><span>{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}</span></div>
+              {normalizedWashCart.length ? (
+                <div className="mt-3 space-y-2">
+                  {normalizedWashCart.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between gap-3 border-b border-primary/10 pb-2 text-sm last:border-b-0 last:pb-0">
+                      <div className="min-w-0"><div className="font-medium">{item.variant.replace(/^Small Car — /, '').replace(/^SUV \/ Big Car — /, '')}</div>{item.addons?.length > 0 && <div className="mt-0.5 text-xs text-muted-foreground">{item.addons.map((addon) => addon.label).join(', ')}</div>}</div>
+                      <div className="shrink-0 font-semibold">₹{(item.price * item.qty).toLocaleString('en-IN')}</div>
+                    </div>
+                  ))}
+                  {includePickupDrop && <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>Pickup &amp; Drop</span><span className="font-semibold">₹100</span></div>}
+                  <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><span className="font-semibold">Estimated total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">No package selected yet. Select a Car Wash package above to see it listed here.</p>
+              )}
+              <p className="mt-3 text-xs text-muted-foreground">LOCAL Customer Care will confirm the package and any revised charges with you before work starts.</p>
+            </div>
           ) : (
             <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
