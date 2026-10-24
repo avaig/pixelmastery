@@ -785,9 +785,6 @@ export default function CustomerRequestStart() {
               <h3 className="text-lg font-bold">Pickup &amp; Drop On Request</h3>
             </Card>
           </div>
-          <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-4">
-            <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p><Button type="button" variant="outline" size="sm" className="mt-2 rounded-lg" onClick={refreshEstimatedTotal} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="RefreshCw" size={14} /> Refresh total</Button></div><p className="shrink-0 text-2xl font-extrabold tracking-tight">₹{estimatedTotalValue.toLocaleString('en-IN')}</p></div>
-          </div>
         </section>
       )}
       <section className="mx-auto mb-4 max-w-4xl"><h2 className="text-xl font-semibold">Book Your Service with LOCAL</h2></section><div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
