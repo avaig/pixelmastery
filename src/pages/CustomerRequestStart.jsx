@@ -775,9 +775,8 @@ export default function CustomerRequestStart() {
                 </div>
               </Card>
             ))}
-            <Card className={'flex flex-col self-start overflow-hidden rounded-2xl border p-0 shadow-sm ' + (includePickupDrop ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
-              <div className="relative h-36 sm:h-44"><img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=85" alt="Car ready for collection and return" loading="lazy" className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" /><div className="absolute bottom-0 p-4 text-white"><div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Optional convenience</div><h3 className="mt-1 text-xl font-bold">Pickup &amp; Drop</h3></div></div>
-              <div className="flex flex-1 flex-col p-4"><p className="text-sm leading-relaxed text-muted-foreground">Have your car collected and returned. LOCAL Customer Care confirms the final charge after checking your location.</p><p className="mt-3 text-2xl font-extrabold">₹100 <span className="text-xs font-medium text-muted-foreground">indicative charge</span></p><Button type="button" className="mt-4 min-h-11 w-full rounded-xl" variant={includePickupDrop ? 'outline' : 'default'} onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); setTotalRefreshed(false); setIncludePickupDrop((value) => !value); }}>{includePickupDrop ? 'Remove Pickup & Drop' : 'Request Pickup & Drop'}</Button></div>
+            <Card className={'flex flex-col self-start rounded-2xl border p-4 shadow-sm ' + (includePickupDrop ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
+              <h3 className="text-lg font-bold">Pickup &amp; Drop On Request</h3>
             </Card>
           </div>
           <Card className="overflow-hidden rounded-2xl border border-primary/20 p-0 shadow-sm">
