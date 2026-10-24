@@ -785,26 +785,9 @@ export default function CustomerRequestStart() {
               <h3 className="text-lg font-bold">Pickup &amp; Drop On Request</h3>
             </Card>
           </div>
-          <Card className="overflow-hidden rounded-2xl border border-primary/20 p-0 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-primary/5 p-4 sm:p-5">
-              <div className="flex items-center gap-3"><div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ApperIcon name="ShoppingBag" size={21} /></div><div><h3 className="text-lg font-bold">Your selected services</h3><p className="mt-0.5 text-sm text-muted-foreground">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} · Subtotal ₹{cartSubtotal.toLocaleString('en-IN')}</p></div></div>
-              <Button type="button" variant="outline" onClick={() => { setWashCart([]); setIncludePickupDrop(false); setWashDecisions({}); setWashAddonSelections({}); setTotalRefreshed(false); setShowTotalBilling(false); window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); window.sessionStorage.removeItem('local_car_wash_reviewed_total_v1'); window.sessionStorage.removeItem('local_car_wash_cart_v1'); window.sessionStorage.removeItem('local_car_wash_cart_v2'); window.sessionStorage.setItem('local_car_wash_pickup_v1', 'false'); }} disabled={!normalizedWashCart.length && !includePickupDrop}>Clear cart</Button>
-            </div>
-            <div className="space-y-3 p-4 sm:p-5">
-              {!normalizedWashCart.length && !includePickupDrop ? <div className="rounded-xl border border-dashed border-border p-6 text-center"><div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><ApperIcon name="ShoppingCart" size={23} /></div><p className="mt-3 font-semibold">Your selection is empty</p><p className="mt-1 text-sm text-muted-foreground">Choose a wash package above to get started.</p></div> : <>
-                {normalizedWashCart.map((item) => (
-                  <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-background p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1"><div className="font-medium">{item.title}</div><div className="text-sm text-muted-foreground">{item.variant}</div>{item.addons?.length > 0 && <div className="mt-1 text-xs font-medium text-primary">Extras: {item.addons.map((addon) => addon.label + ' +₹' + addon.price).join(', ')}</div>}</div><div className="flex items-center gap-4"><span className="whitespace-nowrap font-semibold">₹{(getWashPrice(item) * item.qty).toLocaleString('en-IN')}</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); window.sessionStorage.removeItem('local_car_wash_reviewed_total_v1'); setTotalRefreshed(false); setShowTotalBilling(false); setWashCart((current) => current.filter((entry) => entry.id !== item.id)); }}>Remove</Button></div></div>
-                    
-                  </div>
-                ))}
-                {includePickupDrop && <div className="flex items-center justify-between rounded-lg border p-3"><div><div className="font-medium">Pickup &amp; Drop</div><div className="text-sm text-muted-foreground">Optional service</div></div><div className="flex items-center gap-3"><span className="font-semibold">₹100</span><Button type="button" size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1'); window.sessionStorage.removeItem('local_car_wash_reviewed_total_v1'); setTotalRefreshed(false); setShowTotalBilling(false); setIncludePickupDrop(false); }}>Remove</Button></div></div>}
-              </>}
-            </div>
-            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-4">
-              <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p><Button type="button" variant="outline" size="sm" className="mt-2 rounded-lg" onClick={refreshEstimatedTotal} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="RefreshCw" size={14} /> Refresh total</Button></div><p className="shrink-0 text-2xl font-extrabold tracking-tight">₹{estimatedTotalValue.toLocaleString('en-IN')}</p></div>
-            </div>
-          </Card>
+          <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-4">
+            <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p><Button type="button" variant="outline" size="sm" className="mt-2 rounded-lg" onClick={refreshEstimatedTotal} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="RefreshCw" size={14} /> Refresh total</Button></div><p className="shrink-0 text-2xl font-extrabold tracking-tight">₹{estimatedTotalValue.toLocaleString('en-IN')}</p></div>
+          </div>
         </section>
       )}
       <section className="mx-auto mb-4 max-w-4xl"><h2 className="text-xl font-semibold">Book Your Service with LOCAL</h2></section><div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
