@@ -678,8 +678,8 @@ export default function CustomerRequestStart() {
         </section>
       )}
       {isCarWash && (
-        <section className="mx-auto mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
-          <div className="mb-4 text-center">
+        <section className="mx-auto -mt-4 mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
+          <div className="mb-2 text-center">
             <h2 className="text-xl font-bold sm:text-2xl">Car Wash Services</h2>
           </div>
           <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
