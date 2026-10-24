@@ -606,11 +606,7 @@ export default function CustomerRequestStart() {
   return (
     <div>
       {isCarWash ? (
-        <div className="mb-4 overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="h-24 sm:h-32">
-            <img src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1400&q=80" alt="Car being washed" className="h-full w-full object-cover" />
-          </div>
-        </div>
+        <div className="mb-4" aria-hidden="true" />
       ) : (
         <PageHeader
           eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
