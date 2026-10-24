@@ -265,7 +265,7 @@ export default function CustomerRequestStart() {
   const normalizedWashCart = normalizeWashCart(washCart);
   // Derive every cart figure from this single normalized snapshot.
   const cartItemCount = normalizedWashCart.reduce((sum, item) => sum + item.qty, 0);
-  const cartSubtotal = normalizedWashCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const cartSubtotal = normalizedWashCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
   const estimatedTotalValue = cartSubtotal + (includePickupDrop ? 100 : 0);
@@ -274,7 +274,7 @@ export default function CustomerRequestStart() {
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
     const currentCart = normalizeWashCart(washCart);
-    const nextSubtotal = currentCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
@@ -801,9 +801,9 @@ export default function CustomerRequestStart() {
               </>}
             </div>
             <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-4">
-              <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p></div><p className="text-2xl font-extrabold tracking-tight">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</p></div>
-              <Button type="button" className="mt-4 w-full rounded-xl" onClick={() => { setShowTotalBilling(true); window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(normalizedWashCart)); window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop)); }} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="Calculator" size={17} /> Review estimated total</Button>
-              {showTotalBilling && <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/25 bg-background px-3 py-2"><span className="text-sm font-semibold">Total billing estimate</span><span className="text-lg font-extrabold">₹{(cartSubtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span></div>}
+              <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p></div><p className="text-2xl font-extrabold tracking-tight">₹{estimatedTotalValue.toLocaleString('en-IN')}</p></div>
+              <Button type="button" className="mt-4 w-full rounded-xl" onClick={() => { const currentCart = normalizeWashCart(washCart); const currentTotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0) + (includePickupDrop ? 100 : 0); window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart)); window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop)); window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(currentTotal)); setShowTotalBilling(true); }} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="Calculator" size={17} /> Review estimated total</Button>
+              {showTotalBilling && <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/25 bg-background px-3 py-2"><span className="text-sm font-semibold">Total billing estimate</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>}
             </div>
           </Card>
         </section>
