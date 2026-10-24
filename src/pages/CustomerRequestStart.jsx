@@ -742,7 +742,8 @@ export default function CustomerRequestStart() {
                   <div className="grid content-start gap-2">
                   {option.prices.filter((priceOption) => washCarType === 'suv' ? /SUV|Big Car/i.test(priceOption.label) : !/SUV|Big Car/i.test(priceOption.label)).map((priceOption) => {
                     const id = option.title + '::' + priceOption.label;
-                    const qty = washCart.find((item) => item.title === option.title && item.variant === priceOption.label)?.qty ?? 0;
+                    const selectedWashItem = washCart.find((item) => item.title === option.title);
+                    const qty = selectedWashItem?.variant === priceOption.label ? selectedWashItem.qty : 0;
                     return (
                       <div key={priceOption.label} className={'rounded-xl border transition-colors ' + (option.title === 'Interior Only' || option.title === 'Interior Deep Clean' || option.title === 'Rubbing & Detailing' ? 'p-2' : option.title === 'Complete Car Wash' || option.title === 'Exterior Only' ? 'p-2' : 'p-3') + ' ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
                         <div className={'flex items-center gap-2 ' + (option.title === 'Interior Only' ? 'min-h-0' : 'items-start')}>
@@ -755,7 +756,7 @@ export default function CustomerRequestStart() {
                             type="button"
                             size="sm"
                             className="min-h-10 shrink-0 rounded-xl px-3"
-                            variant={qty && option.title !== 'Rubbing & Detailing' ? 'outline' : 'default'}
+                            variant={qty ? 'outline' : 'default'}
                             onClick={() => {
                               if (qty) {
                                 window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
