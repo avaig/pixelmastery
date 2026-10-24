@@ -729,12 +729,11 @@ export default function CustomerRequestStart() {
                 <div className={'flex items-center gap-3 border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-sky-500/5 ' + (option.title === 'Complete Car Wash' ? 'p-3 sm:p-3' : 'min-h-28 p-4 sm:min-h-32 sm:p-5')}>
                   <div className={'flex shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ' + (option.title === 'Complete Car Wash' ? 'size-10' : 'size-12 sm:size-14')}><ApperIcon name={option.icon} size={option.title === 'Complete Car Wash' ? 22 : 26} /></div>
                   <div className="min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600">LOCAL WASH PACKAGE</div>
-                    <h3 className="mt-1 text-lg font-bold leading-snug text-foreground sm:text-xl">{option.title}</h3>
+                    <h3 className={'text-lg font-bold leading-snug text-foreground sm:text-xl ' + (option.title === 'Complete Car Wash' ? 'mt-0' : 'mt-1')}>{option.title}</h3>
                     <p className={'mt-1 leading-relaxed text-muted-foreground ' + (option.title === 'Complete Car Wash' ? 'text-xs sm:text-sm' : 'text-sm')}>{option.description}</p>
                   </div>
                 </div>
-                <div className={'flex flex-col ' + (option.title === 'Complete Car Wash' ? 'p-2 sm:p-2' : 'p-3 sm:p-4')}>
+                <div className={'flex flex-col ' + (option.title === 'Complete Car Wash' ? 'px-2 pb-2 pt-0 sm:px-2 sm:pb-2 sm:pt-0' : 'p-3 sm:p-4')}>
                   <div className={'flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground ' + (option.title === 'Complete Car Wash' ? 'mb-1' : 'mb-2')}><span>{option.title === 'Complete Car Wash' && washCarType === 'small' ? 'Package price' : 'Vehicle &amp; price'}</span><span>INR</span></div>
                   <div className="grid content-start gap-2">
                   {option.prices.filter((priceOption) => washCarType === 'suv' ? /SUV|Big Car/i.test(priceOption.label) : !/SUV|Big Car/i.test(priceOption.label)).map((priceOption) => {
