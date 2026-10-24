@@ -42,10 +42,7 @@ export default function CarCareAssistance() {
 
   return (
     <div className="mx-auto -mt-3 max-w-5xl sm:mt-0">
-      <div className="mb-2 -mt-5 text-center sm:mb-5 sm:-mt-2">
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
-          <ApperIcon name="CarFront" size={28} />
-        </div>
+      <div className="mb-2 -mt-10 text-center sm:mb-5 sm:-mt-5">
         <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {tr('Car Care & Assistance', language)}
         </h1>
