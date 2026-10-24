@@ -679,12 +679,11 @@ export default function CustomerRequestStart() {
       )}
       {isCarWash && (
         <section className="mx-auto mb-4 max-w-5xl space-y-3" aria-label="Car Wash service packages">
-          <div className="mb-3">
-            <h2 className="text-xl font-bold sm:text-2xl">Pick your wash package</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Choose your car type to see prices.</p>
+          <div className="mb-4 text-center">
+            <h2 className="text-xl font-bold sm:text-2xl">Car Wash Services</h2>
           </div>
           <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
-            <div className="mb-3 flex items-center gap-2"><ApperIcon name="CarFront" size={20} className="text-primary" /><div><h3 className="font-bold">What type of car do you have?</h3><p className="text-xs text-muted-foreground">Prices below update automatically.</p></div></div>
+            <div className="mb-3"><h3 className="font-bold">Select Car Type</h3><p className="mt-1 text-sm text-muted-foreground">Choose your car type to see prices.</p></div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
