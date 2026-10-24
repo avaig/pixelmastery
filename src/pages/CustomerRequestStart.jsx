@@ -683,7 +683,7 @@ export default function CustomerRequestStart() {
             <h2 className="text-xl font-bold sm:text-2xl">Car Wash Services</h2>
           </div>
           <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
-            <div className="mb-3"><h3 className="font-bold">Select Car Type</h3><p className="mt-1 text-sm text-muted-foreground">Choose your car type to see prices.</p></div>
+            <div className="mb-3 text-center"><h3 className="font-bold">Select Car Type</h3><p className="mt-1 text-sm text-muted-foreground">Choose your car type to see prices.</p></div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
