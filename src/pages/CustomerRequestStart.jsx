@@ -729,7 +729,7 @@ export default function CustomerRequestStart() {
                 <div className={'flex items-center gap-3 border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-sky-500/5 ' + (option.title === 'Interior Deep Clean' ? 'px-3 py-2 sm:px-3 sm:py-2' : option.title === 'Complete Car Wash' || option.title === 'Exterior Only' || option.title === 'Interior Only' ? 'p-3 sm:p-3' : 'min-h-28 p-4 sm:min-h-32 sm:p-5')}>
                   <div className={'flex shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ' + (option.title === 'Complete Car Wash' || option.title === 'Interior Deep Clean' ? 'size-10 sm:size-12' : 'size-12 sm:size-14')}><ApperIcon name={option.icon} size={option.title === 'Complete Car Wash' ? 22 : 26} /></div>
                   <div className="min-w-0">
-                    <h3 className={'text-lg font-bold leading-snug text-foreground sm:text-xl ' + (option.title === 'Complete Car Wash' || option.title === 'Interior Only' ? 'mt-0' : 'mt-1')}>{option.title}</h3>
+                    <h3 className={'text-lg font-bold leading-snug text-foreground sm:text-xl ' + (option.title === 'Complete Car Wash' || option.title === 'Interior Only' || option.title === 'Interior Deep Clean' ? 'mt-0' : 'mt-1')}>{option.title}</h3>
                     {option.description && <p className={'mt-1 ' + (option.title === 'Interior Deep Clean' ? 'leading-tight' : option.title === 'Interior Only' ? 'leading-snug' : 'leading-relaxed') + ' text-muted-foreground ' + (option.title === 'Complete Car Wash' ? 'text-xs sm:text-sm' : 'text-sm')}>{option.description}</p>}
                   </div>
                 </div>
