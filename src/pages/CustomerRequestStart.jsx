@@ -740,8 +740,8 @@ export default function CustomerRequestStart() {
                     const id = option.title + '::' + priceOption.label;
                     const qty = washCart.find((item) => item.id === id)?.qty ?? 0;
                     return (
-                      <div key={priceOption.label} className={'rounded-xl border transition-colors ' + (option.title === 'Complete Car Wash' || option.title === 'Exterior Only' || option.title === 'Interior Only' ? 'p-2' : 'p-3') + ' ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
-                        <div className="flex items-start gap-2">
+                      <div key={priceOption.label} className={'rounded-xl border transition-colors ' + (option.title === 'Interior Only' ? 'px-2 py-1' : option.title === 'Complete Car Wash' || option.title === 'Exterior Only' ? 'p-2' : 'p-3') + ' ' + (qty ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border/80 bg-background hover:border-primary/30')}>
+                        <div className={'flex items-center gap-2 ' + (option.title === 'Interior Only' ? 'min-h-0' : 'items-start')}>
                           {option.title !== 'Exterior Only' && option.title !== 'Interior Only' && <div className={'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ' + (/SUV|Big Car/i.test(priceOption.label) ? 'bg-sky-500/10 text-sky-700' : 'bg-primary/10 text-primary')}><ApperIcon name={/SUV|Big Car/i.test(priceOption.label) ? 'Truck' : 'CarFront'} size={17} /></div>}
                           <div className="min-w-0 flex-1">
                             {option.title !== 'Interior Only' && <div className="text-xs font-semibold leading-snug sm:text-sm">{option.title === 'Exterior Only' ? (washCarType === 'suv' ? priceOption.label.replace(/^SUV \/ Big Car — /, 'Exterior Car Wash ') : priceOption.label.replace(/^Small Car — /, 'Exterior Car Wash ')) : (!(option.title === 'Complete Car Wash' && washCarType === 'small') ? priceOption.label : '')}</div>}
