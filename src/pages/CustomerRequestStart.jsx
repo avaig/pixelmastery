@@ -731,16 +731,15 @@ export default function CustomerRequestStart() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
               <Card key={option.title} className="group flex flex-col self-start overflow-hidden rounded-2xl border border-border/70 bg-card p-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg">
-                <div className="relative h-36 sm:h-44">
-                  <img src={option.image} alt={option.title + ' car wash service'} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-3 sm:p-4">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/95 text-slate-900 shadow-sm"><ApperIcon name={option.icon} size={22} /></div>
-                    <div className="min-w-0 text-white"><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-300">LOCAL WASH PACKAGE</div><h3 className="text-lg font-bold leading-snug sm:text-xl">{option.title}</h3></div>
+                <div className="flex min-h-28 items-center gap-3 border-b border-border/70 bg-gradient-to-r from-primary/5 via-background to-sky-500/5 p-4 sm:min-h-32 sm:p-5">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-14"><ApperIcon name={option.icon} size={26} /></div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600">LOCAL WASH PACKAGE</div>
+                    <h3 className="mt-1 text-lg font-bold leading-snug text-foreground sm:text-xl">{option.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
                   </div>
                 </div>
                 <div className="flex flex-col p-3 sm:p-4">
-                  <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
                   <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><span>Vehicle &amp; price</span><span>INR</span></div>
                   <div className="grid content-start gap-2">
                   {option.prices.filter((priceOption) => washCarType === 'suv' ? /SUV|Big Car/i.test(priceOption.label) : !/SUV|Big Car/i.test(priceOption.label)).map((priceOption) => {
