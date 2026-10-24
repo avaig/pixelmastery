@@ -24,7 +24,7 @@ const VEHICLE_CATEGORY = {
 const CAR_WASH_OPTIONS = [
   {
     title: 'Complete Car Wash',
-    description: 'Exterior wash and interior cleaning.',
+    description: 'Exterior wash + interior cleaning.',
     icon: 'Sparkles',
     image: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1200&q=85',
     prices: [
@@ -731,11 +731,11 @@ export default function CustomerRequestStart() {
                   <div className="min-w-0">
                     <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600">LOCAL WASH PACKAGE</div>
                     <h3 className="mt-1 text-lg font-bold leading-snug text-foreground sm:text-xl">{option.title}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{option.description}</p>
+                    <p className={'mt-1 leading-relaxed text-muted-foreground ' + (option.title === 'Complete Car Wash' ? 'text-xs sm:text-sm' : 'text-sm')}>{option.description}</p>
                   </div>
                 </div>
                 <div className="flex flex-col p-3 sm:p-4">
-                  <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><span>Vehicle &amp; price</span><span>INR</span></div>
+                  <div className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><span>{option.title === 'Complete Car Wash' && washCarType === 'small' ? 'Package price' : 'Vehicle &amp; price'}</span><span>INR</span></div>
                   <div className="grid content-start gap-2">
                   {option.prices.filter((priceOption) => washCarType === 'suv' ? /SUV|Big Car/i.test(priceOption.label) : !/SUV|Big Car/i.test(priceOption.label)).map((priceOption) => {
                     const id = option.title + '::' + priceOption.label;
@@ -745,7 +745,7 @@ export default function CustomerRequestStart() {
                         <div className="flex items-start gap-2">
                           <div className={'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ' + (/SUV|Big Car/i.test(priceOption.label) ? 'bg-sky-500/10 text-sky-700' : 'bg-primary/10 text-primary')}><ApperIcon name={/SUV|Big Car/i.test(priceOption.label) ? 'Truck' : 'CarFront'} size={17} /></div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs font-semibold leading-snug sm:text-sm">{priceOption.label}</div>
+                            {!(option.title === 'Complete Car Wash' && washCarType === 'small') && <div className="text-xs font-semibold leading-snug sm:text-sm">{priceOption.label}</div>}
                             <div className="mt-1 text-xl font-extrabold tracking-tight">₹{priceOption.price.toLocaleString('en-IN')}</div>
                           </div>
                           <Button
