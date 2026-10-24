@@ -278,6 +278,7 @@ export default function CustomerRequestStart() {
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
+    window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(nextTotal));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
     setTotalRefreshed(true);
     setShowTotalBilling(true);
@@ -801,9 +802,7 @@ export default function CustomerRequestStart() {
               </>}
             </div>
             <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-4">
-              <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p></div><p className="text-2xl font-extrabold tracking-tight">₹{estimatedTotalValue.toLocaleString('en-IN')}</p></div>
-              <Button type="button" className="mt-4 w-full rounded-xl" onClick={() => { const currentCart = normalizeWashCart(washCart); const currentTotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0) + (includePickupDrop ? 100 : 0); window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart)); window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop)); window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(currentTotal)); setShowTotalBilling(true); }} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="Calculator" size={17} /> Review estimated total</Button>
-              {showTotalBilling && <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/25 bg-background px-3 py-2"><span className="text-sm font-semibold">Total billing estimate</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>}
+              <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">Estimated service subtotal</p><p className="mt-0.5 text-xs text-muted-foreground">Final quote is reviewed by LOCAL Customer Care</p><Button type="button" variant="outline" size="sm" className="mt-2 rounded-lg" onClick={refreshEstimatedTotal} disabled={!normalizedWashCart.length && !includePickupDrop}><ApperIcon name="RefreshCw" size={14} /> Refresh total</Button></div><p className="shrink-0 text-2xl font-extrabold tracking-tight">₹{estimatedTotalValue.toLocaleString('en-IN')}</p></div>
             </div>
           </Card>
         </section>
