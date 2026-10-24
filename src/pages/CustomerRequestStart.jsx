@@ -764,7 +764,7 @@ export default function CustomerRequestStart() {
                               }
                             }}
                           >
-                            {qty ? 'Unselect' : 'Select'}
+                            {option.title === 'Rubbing & Detailing' ? 'Select' : qty ? 'Unselect' : 'Select'}
                           </Button>
                         </div>
 
