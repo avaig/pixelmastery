@@ -264,17 +264,18 @@ export default function CustomerRequestStart() {
   // Keep all cart calculations based on the same normalized item list.
   const normalizedWashCart = normalizeWashCart(washCart);
   // Derive every cart figure from this single normalized snapshot.
-  const cartItemCount = normalizedWashCart.reduce((sum, item) => sum + item.qty, 0);
-  const cartSubtotal = normalizedWashCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
+  // Each selected package is one cart item; derive the displayed count and subtotal from the exact rows shown below.
+  const cartItemCount = normalizedWashCart.length;
+  const cartSubtotal = normalizedWashCart.reduce((sum, item) => sum + ((Number(item.price) || getWashPrice(item)) * item.qty), 0);
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
-  const estimatedTotalValue = cartSubtotal + (includePickupDrop ? 100 : 0);
+  const estimatedTotalValue = normalizedWashCart.reduce((sum, item) => sum + ((Number(item.price) || getWashPrice(item)) * item.qty), 0) + (includePickupDrop ? 100 : 0);
   const [showTotalBilling, setShowTotalBilling] = useState(false);
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
     const currentCart = normalizeWashCart(washCart);
-    const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
+    const nextSubtotal = currentCart.reduce((sum, item) => sum + ((Number(item.price) || getWashPrice(item)) * item.qty), 0);
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
