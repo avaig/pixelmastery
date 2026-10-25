@@ -16,6 +16,8 @@ import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
+const CUSTOMER_CARE_PHONE = '';
+
 const VEHICLE_CATEGORY = {
   car: 'Car Assistance',
   bike: 'Bike Assistance',
@@ -277,14 +279,17 @@ export default function CustomerRequestStart() {
   const cartSubtotal = washCartSummary.subtotal;
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
-  const estimatedTotalValue = washCartSummary.subtotal + (includePickupDrop ? 100 : 0);
+  const CAR_WASH_PLATFORM_FEE = 25;
+  const pickupDropCharge = includePickupDrop ? 100 : 0;
+  const estimatedTotalValue = washCartSummary.subtotal + pickupDropCharge + CAR_WASH_PLATFORM_FEE;
   const [showTotalBilling, setShowTotalBilling] = useState(false);
+  const [showCarWashQuoteReview, setShowCarWashQuoteReview] = useState(false);
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
     const currentCart = normalizeWashCart(washCart);
     const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
-    const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
+    const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0) + CAR_WASH_PLATFORM_FEE;
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(nextTotal));
@@ -581,8 +586,8 @@ export default function CustomerRequestStart() {
         setSubmittedWashOrder({
           requestId: res.data[0].Id,
           items: normalizedWashCart.map((item) => ({ title: item.title, variant: item.variant, quantity: item.qty, unitPrice: item.price, lineTotal: item.price * item.qty })),
-          subtotal: estimatedTotalValue,
-          platformFee: 25,
+          subtotal: washCartSummary.subtotal,
+          platformFee: CAR_WASH_PLATFORM_FEE,
           pickupDropRequested: includePickupDrop,
           pickupDropIndicative: includePickupDrop ? 100 : 0,
           locationText: location.text,
@@ -945,10 +950,11 @@ export default function CustomerRequestStart() {
           {(location || isCarWash || isCarService) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-5 w-full" onClick={createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && washCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              <Button className="mt-5 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && normalizedWashCart.items.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
-                {creating ? tr('Sharing request…', language) : isCarWash ? 'Book Your Car Wash' : isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
+                {creating ? tr('Sharing request…', language) : isCarWash ? 'Book My Car Wash' : isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
+              {isCarWash && (CUSTOMER_CARE_PHONE ? <Button asChild type="button" variant="outline" className="mt-3 w-full"><a href={'tel:' + CUSTOMER_CARE_PHONE}><ApperIcon name="Phone" size={17} /> Call Customer Care</a></Button> : <Button type="button" variant="outline" className="mt-3 w-full" disabled title="Customer Care phone number has not been configured"><ApperIcon name="Phone" size={17} /> Call Customer Care</Button>)}
               {(isCarWash || isCarService) && !location && <p className="mt-2 text-center text-xs text-amber-700">Your saved location isn’t available. Please update your location in your profile before booking.</p>}
             </>
           )}
