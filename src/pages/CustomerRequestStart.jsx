@@ -289,9 +289,8 @@ export default function CustomerRequestStart() {
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(nextTotal));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
-    setTotalRefreshed(true);
-    setShowTotalBilling(true);
-    toast.success('Estimated total updated: ₹' + nextTotal.toLocaleString('en-IN'));
+    // Reload the whole booking page from the persisted cart so every package row, count, and total rehydrates together.
+    window.location.reload();
   }
 
   useEffect(() => {
@@ -828,7 +827,7 @@ export default function CustomerRequestStart() {
                     </div>
                   ))}
                   {includePickupDrop && <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>Pickup &amp; Drop</span><span className="font-semibold">₹100</span></div>}
-                  <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><span className="font-semibold">Estimated total</span><span className="text-lg font-extrabold">₹{(washCartSummary.subtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span></div>
+                  <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><div className="flex min-w-0 items-center gap-1.5"><span className="font-semibold">Estimated total</span><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={refreshEstimatedTotal} aria-label="Refresh booking total" title="Refresh booking total"><ApperIcon name="RefreshCw" size={16} /></Button></div><span className="shrink-0 text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
