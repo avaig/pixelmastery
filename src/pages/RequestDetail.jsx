@@ -225,6 +225,7 @@ export default function RequestDetail() {
   const [rsaQuoteNotes, setRsaQuoteNotes] = useState('');
   const [rsaEta, setRsaEta] = useState('');
   const [rsaCalculatedTotal, setRsaCalculatedTotal] = useState(null);
+  const [carEssentialsCustomer, setCarEssentialsCustomer] = useState(null);
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -298,6 +299,25 @@ export default function RequestDetail() {
   const centralAssignment = responses.find((item) => /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')) && item.status_c === 'Selected');
   const carQuote = readCarEssentialsQuote(centralAssignment?.message_c);
   const carApproval = readCarEssentialsApproval(request?.problem_description_c);
+  useEffect(() => {
+    let active = true;
+    async function loadCarEssentialsCustomer() {
+      if (!isTechnician || !isCarEssentialsRequest || !centralAssignment || !request?.customer_c) {
+        setCarEssentialsCustomer(null);
+        return;
+      }
+      const customerId = String(request.customer_c?.Id ?? request.customer_c ?? '');
+      if (!customerId) return;
+      try {
+        const result = await sdk.table('customer_profiles_c').select(['Id', 'Name', 'email_c', 'phone_c', 'location_c']).get(customerId);
+        if (active) setCarEssentialsCustomer(result?.success ? result.data : null);
+      } catch {
+        if (active) setCarEssentialsCustomer(null);
+      }
+    }
+    loadCarEssentialsCustomer();
+    return () => { active = false; };
+  }, [isTechnician, isCarEssentialsRequest, centralAssignment?.Id, request?.customer_c]);
   const isRsaQuote = isRsaQuoteRequest(request) && !isCarEssentialsRequest;
   const isFlatPunctureRequest = /flat tyre|flat tire|puncture/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
   const rsaQuote = readRsaQuote(centralAssignment?.message_c);
@@ -745,6 +765,7 @@ export default function RequestDetail() {
           {user?.profile === 'Admin_c' && <section className="mt-4 rounded-xl border border-border bg-card p-4 md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="ClipboardList" size={20} /></div>
+              {isTechnician && isCarEssentialsRequest && centralAssignment && <section className="mb-4 rounded-xl border border-primary/25 bg-primary/5 p-4"><div className="flex items-center gap-2"><ApperIcon name="ContactRound" size={18} className="text-primary" /><h3 className="font-heading text-base font-semibold">Customer contact &amp; delivery details</h3></div><p className="mt-1 text-sm text-muted-foreground">Shared with the assigned Service Provider for fulfilment of this Car Essentials order.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border bg-background p-3"><p className="text-xs text-muted-foreground">Customer name</p><p className="mt-1 break-words font-medium">{carEssentialsCustomer?.Name || request.customer_c?.Name || 'Not available'}</p></div><div className="rounded-lg border bg-background p-3"><p className="text-xs text-muted-foreground">Phone number</p>{carEssentialsCustomer?.phone_c ? <a className="mt-1 inline-flex items-center gap-2 font-medium text-primary underline" href={'tel:' + String(carEssentialsCustomer.phone_c).replace(/[^+\\d]/g, '')}><ApperIcon name="Phone" size={15} />{carEssentialsCustomer.phone_c}</a> : <p className="mt-1 text-sm">Not recorded in customer profile</p>}</div><div className="rounded-lg border bg-background p-3"><p className="text-xs text-muted-foreground">Email address</p>{carEssentialsCustomer?.email_c ? <a className="mt-1 break-all font-medium text-primary underline" href={'mailto:' + carEssentialsCustomer.email_c}>{carEssentialsCustomer.email_c}</a> : <p className="mt-1 text-sm">Not recorded in customer profile</p>}</div><div className="rounded-lg border bg-background p-3"><p className="text-xs text-muted-foreground">Delivery location</p><p className="mt-1 break-words font-medium">{request.location_c || carEssentialsCustomer?.location_c || 'Not recorded'}</p>{request.latitude_c != null && request.longitude_c != null && <a className="mt-1 inline-block text-sm text-primary underline" target="_blank" rel="noreferrer" href={'https://www.google.com/maps?q=' + request.latitude_c + ',' + request.longitude_c}>Open delivery location in Maps</a>}</div></div><p className="mt-3 text-xs text-muted-foreground">Use these details only to coordinate delivery for this LOCAL order.</p></section>}
               <div className="min-w-0"><h3 className="font-heading text-base font-semibold">Service details &amp; customer notes</h3><p className="mt-0.5 text-sm text-muted-foreground">A concise summary of what the customer requested.</p></div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
