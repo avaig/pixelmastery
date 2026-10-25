@@ -813,14 +813,14 @@ export default function CentralDispatch() {
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
               })()}
-              <section className="rounded-lg border p-4">
+              {getStructuredServiceDetails(request).type !== 'Car Wash' && <section className="rounded-lg border p-4">
                 <h3 className="font-semibold">Price review</h3>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <span className="text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Detected fixed service total' : 'Inspection / estimate amount'}</span>
                   <span className="text-xl font-bold">{fixedPrice !== null ? '₹' + fixedPrice.toLocaleString('en-IN') : 'Review required'}</span>
                 </div>
                 {request.pricing_mode_c !== 'Fixed Price' && <p className="mt-2 text-xs text-amber-700">If inspection is required, disclose the visiting charge first and obtain customer approval for any additional repair price before work begins. This is not a bidding process.</p>}
-              </section>
+              </section>}
             </div>
           </Card>
           <div className="space-y-4">
