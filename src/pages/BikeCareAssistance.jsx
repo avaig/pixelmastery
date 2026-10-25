@@ -68,7 +68,7 @@ export default function BikeCareAssistance() {
         ))}
       </div>
 
-      <div className="mt-4 sm:mt-5">
+      <div className="mt-7 sm:mt-8">
         {CUSTOMER_CARE_PHONE ? (
           <Button asChild type="button" variant="outline" className="w-full">
             <a href={'tel:' + CUSTOMER_CARE_PHONE}>
