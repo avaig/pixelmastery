@@ -279,15 +279,16 @@ export default function CentralDispatch() {
 
   async function sendCarWashQuote(request, details) {
     const current = carWashQuoteInputs[request.Id] ?? {};
-    const calculation = carWashCalculatedQuotes[request.Id];
-    if (!calculation) {
-      toast.error('Please click Refresh Quote Total before sending the revised quote.');
-      return;
-    }
     const subtotal = Number(details.total || 0);
-    const pickupDrop = calculation.pickupDrop;
-    const discount = calculation.discount;
-    const pickupCharge = calculation.pickupDropCharge;
+    const existingCalculation = carWashCalculatedQuotes[request.Id];
+    const discount = Math.max(0, Number(current.discount ?? 0) || 0);
+    const pickupCharge = Math.max(0, Number(current.pickupCharge ?? 0) || 0);
+    const calculation = existingCalculation && Number(existingCalculation.serviceSubtotal) === subtotal
+      ? existingCalculation
+      : { discount, pickupDrop: pickupCharge > 0, pickupDropCharge: pickupCharge, platformFee: 25, serviceSubtotal: subtotal, total: subtotal - discount + pickupCharge + 25 };
+    const pickupDrop = calculation.pickupDropCharge > 0;
+    const finalDiscount = calculation.discount;
+    const finalPickupCharge = calculation.pickupDropCharge;
     const platformFee = calculation.platformFee;
     const total = calculation.total;
     if (Number(calculation.serviceSubtotal) !== subtotal) {
@@ -305,10 +306,10 @@ export default function CentralDispatch() {
         quoteId: 'CW-' + Date.now(),
         version: Number(previous?.version || 0) + 1,
         serviceSubtotal: subtotal,
-        discount,
+        discount: finalDiscount,
         platformFee,
         pickupDrop,
-        pickupDropCharge: pickupCharge,
+        pickupDropCharge: finalPickupCharge,
         total,
         status: 'Sent to Customer',
         sentAt: new Date().toISOString(),
@@ -778,7 +779,7 @@ export default function CentralDispatch() {
                   </div>
 
 
-                  <Button className="w-full" disabled={Boolean(busyKey) || !refreshed} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
+                  <Button className="w-full" disabled={Boolean(busyKey)} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
               })()}
