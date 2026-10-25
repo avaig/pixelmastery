@@ -671,9 +671,14 @@ export default function CentralDispatch() {
 
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => setSelectedRequestId(null)} className="-ml-3">
-          <ApperIcon name="ArrowLeft" size={16} /> Back to requests
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" onClick={() => setSelectedRequestId(null)} className="-ml-3">
+            <ApperIcon name="ArrowLeft" size={16} /> Back to requests
+          </Button>
+          <Button variant="outline" onClick={run} disabled={loading}>
+            <ApperIcon name="RefreshCw" size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+          </Button>
+        </div>
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
           <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
