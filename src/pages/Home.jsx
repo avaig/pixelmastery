@@ -293,17 +293,17 @@ export default function Home() {
     <div className="min-h-svh bg-white text-[#102c4d]">
       <CustomerLocationGate required={!isProvider && !isAdmin} allowProviderBypass />
       <header className="relative z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-3 py-2 sm:h-20 sm:flex-nowrap sm:px-8 sm:py-0 lg:px-10">
+        <div className="mx-auto flex min-h-16 max-w-7xl flex-nowrap items-center justify-between gap-2 px-2 py-2 sm:h-20 sm:gap-3 sm:px-8 sm:py-0 lg:px-10">
           <Link to="/" className="shrink-0">
             <img
               src={LOCAL_LOGO}
               alt="LOCAL — Happy to Help"
-              className="h-10 w-auto max-w-[38vw] sm:h-12 sm:max-w-none"
+              className="h-9 w-auto max-w-[29vw] sm:h-12 sm:max-w-none"
             />
           </Link>
 
-          <div className="flex min-w-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-            <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center justify-end gap-1 sm:gap-2">
             <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-bold">
               <button
                 type="button"
