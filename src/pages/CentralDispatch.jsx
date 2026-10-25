@@ -248,12 +248,15 @@ export default function CentralDispatch() {
   }
 
   function calculateCarWashQuote(details, values = {}) {
-    const serviceSubtotal = Number(details.total || 0);
+    const serviceSubtotal = Number(values.customerQuotedAmount ?? details.total ?? 0);
     const discount = Number(values.discount ?? 0);
     const pickupDropCharge = Number(values.pickupCharge ?? 0);
-    if (!Number.isFinite(discount) || discount < 0 || discount > serviceSubtotal) return { error: 'Negotiation value must be between ₹0 and the service total.' };
-    if (!Number.isFinite(pickupDropCharge) || pickupDropCharge < 0) return { error: 'Pickup & Drop value must be ₹0 or more.' };
-    return { discount, pickupDrop: pickupDropCharge > 0, pickupDropCharge, platformFee: 25, serviceSubtotal, total: serviceSubtotal - discount + pickupDropCharge + 25, refreshedAt: Date.now() };
+    const platformFee = Number(values.platformFee ?? 25);
+    if (!Number.isFinite(serviceSubtotal) || serviceSubtotal < 0) return { error: 'Customer Quoted Amount must be ₹0 or more.' };
+    if (!Number.isFinite(discount) || discount < 0 || discount > serviceSubtotal) return { error: 'Discount Offered must be between ₹0 and Customer Quoted Amount.' };
+    if (!Number.isFinite(pickupDropCharge) || pickupDropCharge < 0) return { error: 'Pick up and drop must be ₹0 or more.' };
+    if (!Number.isFinite(platformFee) || platformFee < 0) return { error: 'Local Platform Fee must be ₹0 or more.' };
+    return { discount, pickupDrop: pickupDropCharge > 0, pickupDropCharge, platformFee, serviceSubtotal, total: serviceSubtotal - discount + pickupDropCharge + platformFee, refreshedAt: Date.now() };
   }
 
   function refreshCarWashQuote(request, details, visibleInput = null) {
@@ -268,16 +271,13 @@ export default function CentralDispatch() {
     const current = carWashQuoteInputs[request.Id] ?? {};
     const calculation = calculateCarWashQuote(details, current);
     if (calculation.error) { toast.error(calculation.error); return; }
-    const subtotal = Number(details.total || 0);
+    const subtotal = Number(calculation.serviceSubtotal || 0);
     const pickupDrop = calculation.pickupDropCharge > 0;
     const finalDiscount = calculation.discount;
     const finalPickupCharge = calculation.pickupDropCharge;
     const platformFee = calculation.platformFee;
     const total = calculation.total;
-    if (Number(calculation.serviceSubtotal) !== subtotal) {
-      toast.error('Service price changed. Refresh the quote total again before sending.');
-      return;
-    }
+
     if (!(subtotal > 0) || !Number.isFinite(total) || total < 25) {
       toast.error('Please review the service subtotal and quote amounts.');
       return;
