@@ -168,7 +168,10 @@ function normalizeWashCart(value) {
     const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
     const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
     const addons = Array.isArray(item?.addons) ? item.addons.map((addon) => ({ id: String(addon.id || addon.label), label: String(addon.label || 'Optional extra'), price: Math.max(0, Number(addon.price) || 0) })) : [];
-    const basePrice = Number(item?.basePrice ?? priceOption?.price) || 0;
+    // The configured package price is authoritative whenever the package/variant is recognized.
+    // Saved cart values are only a fallback for legacy entries, preventing stale prices from corrupting totals.
+    const storedBasePrice = Number(item?.basePrice);
+    const basePrice = Number(priceOption?.price) > 0 ? Number(priceOption.price) : (Number.isFinite(storedBasePrice) && storedBasePrice > 0 ? storedBasePrice : 0);
     const price = basePrice + addons.reduce((sum, addon) => sum + addon.price, 0);
     const qty = Math.max(0, Number.parseInt(item?.qty, 10) || 0);
     return {
@@ -261,21 +264,24 @@ export default function CustomerRequestStart() {
           ? 'Prioritize available nearby help, arrival time and transparent pricing. No bidding.'
           : 'LOCAL Customer Care will contact you and arrange a suitable provider. Any additional work is explained before you approve it.';
   const language = getLanguage();
-  // Keep all cart calculations based on the same normalized item list.
+  // Single source of truth for every Car Wash cart display and submission calculation.
   const normalizedWashCart = normalizeWashCart(washCart);
-  // Derive every cart figure from this single normalized snapshot.
-  // Each selected package is one cart item; derive the displayed count and subtotal from the exact rows shown below.
-  const cartItemCount = normalizedWashCart.length;
-  const cartSubtotal = normalizedWashCart.reduce((sum, item) => sum + ((Number(item.price) || getWashPrice(item)) * item.qty), 0);
+  const washCartSummary = normalizedWashCart.reduce((summary, item) => {
+    const unitPrice = getWashPrice(item);
+    const lineTotal = unitPrice * item.qty;
+    return { items: summary.items.concat([{ ...item, price: unitPrice, lineTotal }]), count: summary.count + 1, subtotal: summary.subtotal + lineTotal };
+  }, { items: [], count: 0, subtotal: 0 });
+  const cartItemCount = washCartSummary.count;
+  const cartSubtotal = washCartSummary.subtotal;
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
-  const estimatedTotalValue = normalizedWashCart.reduce((sum, item) => sum + ((Number(item.price) || getWashPrice(item)) * item.qty), 0) + (includePickupDrop ? 100 : 0);
+  const estimatedTotalValue = washCartSummary.subtotal + (includePickupDrop ? 100 : 0);
   const [showTotalBilling, setShowTotalBilling] = useState(false);
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
     const currentCart = normalizeWashCart(washCart);
-    const nextSubtotal = currentCart.reduce((sum, item) => sum + ((Number(item.price) || getWashPrice(item)) * item.qty), 0);
+    const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0);
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
@@ -506,7 +512,7 @@ export default function CustomerRequestStart() {
       toast.error(tr('The selected problem is not yet mapped to a Service Provider capability.', language));
       return;
     }
-    if (isCarWash && washCart.length === 0) {
+    if (isCarWash && normalizedWashCart.length === 0) {
       toast.error('Add at least one Car Wash service to your cart.');
       return;
     }
@@ -811,16 +817,16 @@ export default function CustomerRequestStart() {
           ) : isCarWash ? (
             <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
               <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={16} />Selected Car Wash Packages</span><span className="text-sm">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}</span></div>
-              {normalizedWashCart.length ? (
+              {washCartSummary.items.length ? (
                 <div className="mt-3 space-y-2">
-                  {normalizedWashCart.map((item) => (
+                  {washCartSummary.items.map((item) => (
                     <div key={item.id} className="flex items-start justify-between gap-3 border-b border-primary/10 pb-2 text-sm last:border-b-0 last:pb-0">
                       <div className="min-w-0"><div className="font-medium">{item.variant.replace(/^Small Car — /, '').replace(/^SUV \/ Big Car — /, '')}</div>{item.addons?.length > 0 && <div className="mt-0.5 text-xs text-muted-foreground">{item.addons.map((addon) => addon.label).join(', ')}</div>}</div>
-                      <div className="shrink-0 font-semibold">₹{(item.price * item.qty).toLocaleString('en-IN')}</div>
+                      <div className="shrink-0 font-semibold">₹{item.lineTotal.toLocaleString('en-IN')}</div>
                     </div>
                   ))}
                   {includePickupDrop && <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>Pickup &amp; Drop</span><span className="font-semibold">₹100</span></div>}
-                  <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><span className="font-semibold">Estimated total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
+                  <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><span className="font-semibold">Estimated total</span><span className="text-lg font-extrabold">₹{(washCartSummary.subtotal + (includePickupDrop ? 100 : 0)).toLocaleString('en-IN')}</span></div>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
