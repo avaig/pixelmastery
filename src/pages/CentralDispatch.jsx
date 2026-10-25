@@ -776,16 +776,7 @@ export default function CentralDispatch() {
                     <div><label className="mb-1 block text-sm font-medium">Pickup & Drop Value (₹)</label><input id={'car-wash-pickup-value-' + request.Id} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), reason: e.target.value}}))} /></div>
                   </div>
-                  <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
-                    <div className="flex justify-between gap-3"><span>Service subtotal</span><strong>₹{Number(details.total || 0).toLocaleString('en-IN')}</strong></div>
 
-                    <div className="flex justify-between gap-3"><span>Negotiation Value</span><strong>−₹{discountValue.toLocaleString('en-IN')}</strong></div>
-                    <div className="flex justify-between gap-3"><span>Pickup & Drop Value</span><strong>₹{pickupChargeValue.toLocaleString('en-IN')}</strong></div>
-                    <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
-                    <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{quoteTotalValue.toLocaleString('en-IN')}</strong></div>
-                    <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details, {...(carWashQuoteInputs[request.Id] || {}), discount: document.getElementById('car-wash-negotiation-' + request.Id)?.value ?? input.discount ?? '0', pickupCharge: document.getElementById('car-wash-pickup-value-' + request.Id)?.value ?? input.pickupCharge ?? '0'})}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
-                    {!refreshed && <p className="text-xs text-amber-700">Enter Negotiation Value and Pickup & Drop Value (leave blank for ₹0), then refresh before sending.</p>}
-                  </div>
 
                   <Button className="w-full" disabled={Boolean(busyKey) || !refreshed} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
