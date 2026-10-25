@@ -32,13 +32,28 @@ function readCarEssentialsApproval(description) {
   const source = String(description ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  const raw = source.slice(index + marker.length).split('\\n')[0].trim();
-  try {
-    const approval = JSON.parse(raw);
-    return approval && approval.approved === true && /^\\d{6}$/.test(String(approval.otp ?? '')) ? approval : null;
-  } catch {
-    return null;
+  const raw = source.slice(index + marker.length).trim().replace(/^(?:\\\\n|\\n|\\r\\n)+/, '');
+  const objectStart = raw.indexOf('{');
+  if (objectStart < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = objectStart; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}' && --depth === 0) {
+      try {
+        const approval = JSON.parse(raw.slice(objectStart, i + 1));
+        return approval && approval.approved === true ? approval : null;
+      } catch { return null; }
+    }
   }
+  return null;
 }
 
 export default function JobsDetail() {
@@ -628,16 +643,15 @@ export default function JobsDetail() {
       const description = String(requestResult.data.problem_description_c ?? '');
       const marker = 'LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:';
       const markerIndex = description.lastIndexOf(marker);
-      if (markerIndex < 0) throw new Error('The customer-approved quote does not contain a delivery OTP. Reopen the request and approve the quote again before delivery.');
-      let approval;
-      try { approval = JSON.parse(description.slice(markerIndex + marker.length).split('\\n')[0]); } catch { throw new Error('The customer delivery OTP record is unreadable. Please reopen the request and review the approved quote.'); }
-      if (approval?.approved !== true || !approval.quoteId || !Number.isFinite(Number(approval.total))) throw new Error('The customer-approved quote is incomplete. Do not deliver until Admin reviews the request.');
+      let approval = readCarEssentialsApproval(description);
+      if (!approval || !approval.quoteId || !Number.isFinite(Number(approval.total))) throw new Error('The customer-approved quote record is missing or unreadable. Open the service request and confirm that the quote was approved before generating a delivery OTP.');
       const otp = /^\\d{6}$/.test(String(approval.otp ?? '')) ? String(approval.otp) : String(Math.floor(100000 + Math.random() * 900000));
       if (String(approval.otp ?? '') !== otp) {
-        const updatedApproval = { ...approval, otp };
+        const updatedApproval = { ...approval, otp, otpExpiresAt: approval.otpExpiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), otpUsed: false };
         const updatedDescription = description.slice(0, markerIndex) + marker + JSON.stringify(updatedApproval);
         const requestSaved = await sdk.table('service_requests_c').update({ Id: requestId, problem_description_c: updatedDescription });
         if (!requestSaved.success || !requestSaved.data?.length) throw new Error(requestSaved.messages?.[0] || 'Could not save the authoritative customer delivery OTP.');
+        approval = updatedApproval;
       }
       const related = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'service_start_otp_c', 'service_start_otp_verified_at_c']).where(eq('request_c', requestId)).page(1, 100).fetch();
       if (!related.success) throw new Error(related.message || 'Could not check related booking records.');
