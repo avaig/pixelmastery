@@ -32,7 +32,7 @@ function readCarEssentialsApproval(description) {
   const source = String(description ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  const raw = source.slice(index + marker.length).trim().replace(/^(?:\\\\n|\\n|\\r\\n)+/, '');
+  const raw = source.slice(index + marker.length).trim().replace(/^(?:\\\\n|\\n|\\r\\n|\\r)+/, '');
   const objectStart = raw.indexOf('{');
   if (objectStart < 0) return null;
   let depth = 0;
@@ -46,11 +46,14 @@ function readCarEssentialsApproval(description) {
       else if (ch === '"') inString = false;
     } else if (ch === '"') inString = true;
     else if (ch === '{') depth += 1;
-    else if (ch === '}' && --depth === 0) {
-      try {
-        const approval = JSON.parse(raw.slice(objectStart, i + 1));
-        return approval && approval.approved === true ? approval : null;
-      } catch { return null; }
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const approval = JSON.parse(raw.slice(objectStart, i + 1));
+          return approval && approval.approved === true ? approval : null;
+        } catch { return null; }
+      }
     }
   }
   return null;
@@ -657,7 +660,7 @@ export default function JobsDetail() {
       }
       const related = await sdk.table('jobs_c').select(['Id', 'request_c', 'response_c', 'service_start_otp_c', 'service_start_otp_verified_at_c']).where(eq('request_c', requestId)).page(1, 100).fetch();
       if (!related.success) throw new Error(related.message || 'Could not check related booking records.');
-      const siblings = (related.data ?? []).filter((item) => String(item.response_c?.Id ?? item.response_c ?? '') === String(responseId));
+      const siblings = (related.data ?? []).filter((item) => String(item.Id) === String(job.Id) || (responseId && String(item.response_c?.Id ?? item.response_c ?? '') === String(responseId)));
       if (!siblings.some((item) => String(item.Id) === String(job.Id))) throw new Error('This job could not be matched to its accepted provider assignment. Refresh and try again.');
       for (const sibling of siblings) {
         const saved = await sdk.table('jobs_c').update({ Id: sibling.Id, service_start_otp_c: otp, service_start_otp_verified_at_c: sibling.service_start_otp_verified_at_c ?? null });
