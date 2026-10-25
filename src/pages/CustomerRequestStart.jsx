@@ -294,9 +294,24 @@ export default function CustomerRequestStart() {
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(nextTotal));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
-    // Reload the whole booking page from the persisted cart so every package row, count, and total rehydrates together.
+    // Remember the selected-service card as the return point before reloading the persisted cart.
+    window.sessionStorage.setItem('local_car_wash_restore_summary_scroll_v1', 'true');
     window.location.reload();
   }
+
+  useEffect(() => {
+    // After an Estimated total refresh, return the customer directly to the selected-service summary card.
+    try {
+      if (window.sessionStorage.getItem('local_car_wash_restore_summary_scroll_v1') === 'true') {
+        window.sessionStorage.removeItem('local_car_wash_restore_summary_scroll_v1');
+        window.requestAnimationFrame(() => {
+          document.getElementById('car-wash-selected-summary')?.scrollIntoView({ behavior: 'auto', block: 'center' });
+        });
+      }
+    } catch {
+      // Keep normal page behaviour if session storage or scrolling is unavailable.
+    }
+  }, []);
 
   useEffect(() => {
     // A displayed calculation is valid only for the exact cart state that was reviewed.
@@ -801,7 +816,7 @@ export default function CustomerRequestStart() {
         </section>
       )}
       <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="border-2 border-primary/20 p-6">
+        <Card id="car-wash-selected-summary" className="border-2 border-primary/20 p-6">
           <div className="flex items-center gap-4">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <ApperIcon name={vehicle === 'car' ? 'Car' : 'Bike'} size={34} />
