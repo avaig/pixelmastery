@@ -279,6 +279,13 @@ export default function CustomerRequestStart() {
       return null;
     }
   });
+  const [carServiceCarType, setCarServiceCarType] = useState(() => {
+    try {
+      const savedPackage = JSON.parse(window.sessionStorage.getItem('local_car_service_selected_package_v1') || 'null');
+      if (savedPackage?.vehicleType) return /SUV|Big Car/i.test(savedPackage.vehicleType) ? 'suv' : 'small';
+      return window.sessionStorage.getItem('local_car_service_type_v1') || 'small';
+    } catch { return 'small'; }
+  });
   const [showCarServiceQuoteReview, setShowCarServiceQuoteReview] = useState(false);
   const isCarWash = vehicle === 'car' && requestedService === 'Car Wash';
   const isCarService = vehicle === 'car' && requestedService === 'Car Service';
@@ -370,6 +377,7 @@ export default function CustomerRequestStart() {
 
   useEffect(() => {
     try {
+      window.sessionStorage.setItem('local_car_service_type_v1', carServiceCarType);
       if (selectedCarServicePackage) {
         window.sessionStorage.setItem('local_car_service_selected_package_v1', JSON.stringify(selectedCarServicePackage));
       } else {
@@ -378,7 +386,7 @@ export default function CustomerRequestStart() {
     } catch {
       // Keep the current selection usable even if session storage is unavailable.
     }
-  }, [selectedCarServicePackage]);
+  }, [selectedCarServicePackage, carServiceCarType]);
 
   useEffect(() => {
     try {
@@ -779,12 +787,18 @@ export default function CustomerRequestStart() {
               <p className="mt-1 text-sm text-muted-foreground">Compare package coverage and listed prices for your vehicle type. Final work and price are confirmed before service starts.</p>
             </div>
           </div>
-          {selectedCarServicePackage && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
-              <span>Vehicle locked: <strong>{selectedCarServicePackage.vehicleType}</strong>. Choose another package for this vehicle or cancel this draft to change vehicle type.</span>
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowVehicleChangeConfirm(true)}>Cancel Booking &amp; Change Vehicle</Button>
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+            <div className="mb-3 text-center"><h3 className="font-bold">Select Car Type</h3><p className="mt-1 text-sm text-muted-foreground">Choose your car type to see only the matching Car Service packages and prices.</p></div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" aria-pressed={carServiceCarType === 'small'} disabled={Boolean(selectedCarServicePackage && carServiceCarType !== 'small')} onClick={() => setCarServiceCarType('small')} className={'rounded-xl border-2 bg-background p-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ' + (carServiceCarType === 'small' ? 'border-primary shadow-md' : 'border-border hover:border-primary/40')}>
+                <ApperIcon name="CarFront" size={34} className="mx-auto text-primary" /><span className="mt-2 block text-sm font-bold">Hatchback / Sedan</span>{carServiceCarType === 'small' && <span className="mt-1 flex items-center justify-center gap-1 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={14} /> Selected</span>}
+              </button>
+              <button type="button" aria-pressed={carServiceCarType === 'suv'} disabled={Boolean(selectedCarServicePackage && carServiceCarType !== 'suv')} onClick={() => setCarServiceCarType('suv')} className={'rounded-xl border-2 bg-background p-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ' + (carServiceCarType === 'suv' ? 'border-primary shadow-md' : 'border-border hover:border-primary/40')}>
+                <ApperIcon name="Truck" size={34} className="mx-auto text-primary" /><span className="mt-2 block text-sm font-bold">SUV / Big Car</span>{carServiceCarType === 'suv' && <span className="mt-1 flex items-center justify-center gap-1 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={14} /> Selected</span>}
+              </button>
             </div>
-          )}
+            {selectedCarServicePackage && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/80 p-3 text-sm"><span className="text-muted-foreground">Vehicle type is locked for this Car Service booking.</span><Button type="button" variant="outline" size="sm" onClick={() => setShowVehicleChangeConfirm(true)}>Cancel Booking &amp; Change Vehicle</Button></div>}
+          </div>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
               <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
@@ -797,19 +811,18 @@ export default function CustomerRequestStart() {
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col p-4 sm:p-5">
-                  <div className="mb-3 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-muted-foreground"><span>Select vehicle type</span><span>Listed price</span></div>
+                  <div className="mb-3 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-muted-foreground"><span>{carServiceCarType === 'suv' ? 'SUV / Big Car' : 'Hatchback / Sedan'}</span><span>Listed price</span></div>
                   <div className="space-y-3">
-                    {pkg.prices.map((price) => {
+                    {pkg.prices.filter((price) => carServiceCarType === 'suv' ? /SUV|Big Car/i.test(price.label) : !/SUV|Big Car/i.test(price.label)).map((price) => {
                       const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
-                      const priceVehicleType = /SUV|Big Car/i.test(price.label) ? 'suv' : 'small';
-                      const blockedByVehicleLock = Boolean(selectedCarServiceVehicleType && selectedCarServiceVehicleType !== priceVehicleType);
+                      const blockedByVehicleLock = Boolean(selectedCarServiceVehicleType && selectedCarServiceVehicleType !== carServiceCarType);
                       return (
                         <div key={price.label} className={'rounded-lg border px-3 py-3 ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'bg-primary/5')}>
                           <div className="flex items-center justify-between gap-3">
                             <span className="flex items-center gap-2 text-sm font-semibold"><ApperIcon name={/SUV|Big Car/i.test(price.label) ? 'Truck' : 'CarFront'} size={18} className="text-primary" />{price.label}</span>
                             <span className="shrink-0 text-lg font-extrabold">₹{price.price.toLocaleString('en-IN')}</span>
                           </div>
-                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} disabled={blockedByVehicleLock} className="mt-3 min-h-10 w-full rounded-xl" onClick={() => setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered })}>
+                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} disabled={blockedByVehicleLock} className="mt-3 min-h-10 w-full rounded-xl" onClick={() => { setCarServiceCarType(carServiceCarType); setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered }); }}>
                             <ApperIcon name={isSelected ? 'CheckCircle2' : 'ArrowRight'} size={16} />{isSelected ? 'Package selected' : blockedByVehicleLock ? 'Vehicle type locked' : 'Choose package'}
                           </Button>
                         </div>
