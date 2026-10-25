@@ -46,20 +46,42 @@ function readCarEssentialsApproval(description) {
   try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
-function readCarWashQuote(description) {
-  const marker = 'LOCAL_CAR_WASH_QUOTE_JSON:';
+function readCarWashMarkerJson(description, marker) {
   const source = String(description ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
+  const raw = source.slice(index + marker.length).replace(/^(?:\\\\n|\\n|\\r\\n|\\r)+/, '').trimStart();
+  const start = raw.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\\\') escaped = true;
+      else if (ch === '\"') inString = false;
+    } else if (ch === '\"') inString = true;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(raw.slice(start, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+function readCarWashQuote(description) {
+  const payload = readCarWashMarkerJson(description, 'LOCAL_CAR_WASH_QUOTE_JSON:');
+  return payload && Number.isFinite(Number(payload.total)) ? payload : null;
 }
 
 function readCarWashApproval(description) {
-  const marker = 'LOCAL_CAR_WASH_APPROVAL_JSON:';
-  const source = String(description ?? '');
-  const index = source.lastIndexOf(marker);
-  if (index < 0) return null;
-  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+  const payload = readCarWashMarkerJson(description, 'LOCAL_CAR_WASH_APPROVAL_JSON:');
+  return payload && payload.approved === true ? payload : null;
 }
 
 function readRsaQuote(message) {
