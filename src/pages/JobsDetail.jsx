@@ -122,10 +122,13 @@ export default function JobsDetail() {
   const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved' && !/(discount|negotiation|pick\s*up|pickup|platform\s*fee)/i.test(String(item.description ?? '').trim()));
   const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending' && !/(discount|negotiation|pick\s*up|pickup|platform\s*fee)/i.test(String(item.description ?? '').trim()));
   const carWashExtrasTotal = carWashApprovedExtras.reduce((sum, item) => sum + Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1), 0);
-  const carWashServiceTotal = isCarWash ? (approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : carWashBasePrice + carWashExtrasTotal) : Number(job?.agreed_price_c ?? 0);
+  const carWashQuoteMathSubtotal = approvedCarWashQuote ? Number(approvedCarWashQuote.total) + Number(approvedCarWashQuote.discount ?? 0) - Number(approvedCarWashQuote.pickupDropCharge ?? 0) - Number(approvedCarWashQuote.platformFee ?? 25) : null;
+  const carWashQuoteSubtotalIsConsistent = approvedCarWashQuote && Number.isFinite(carWashQuoteMathSubtotal) && Math.abs(carWashQuoteMathSubtotal - Number(approvedCarWashQuote.serviceSubtotal ?? 0)) < 0.01;
+  const carWashDisplayedQuoteSubtotal = approvedCarWashQuote ? (carWashQuoteSubtotalIsConsistent ? Number(approvedCarWashQuote.serviceSubtotal) : carWashBasePrice) : carWashBasePrice;
+  const carWashServiceTotal = isCarWash ? (approvedCarWashQuote ? carWashDisplayedQuoteSubtotal - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : carWashBasePrice + carWashExtrasTotal) : Number(job?.agreed_price_c ?? 0);
   const carWashPlatformFee = isCarWash ? Number(approvedCarWashQuote?.platformFee ?? 25) : 0;
   const carWashCustomerTotal = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.total) + carWashExtrasTotal : carWashServiceTotal + carWashPlatformFee;
-  const displayedAgreedPrice = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : Number(job?.agreed_price_c ?? 0);
+  const displayedAgreedPrice = isCarWash && approvedCarWashQuote ? carWashServiceTotal : Number(job?.agreed_price_c ?? 0);
   const displayedAmountDue = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.total) + carWashExtrasTotal : Number(job?.customer_payable_now_c ?? job?.agreed_price_c ?? 0);
   const awaitingSince = job?.completion_requested_at_c ? new Date(job.completion_requested_at_c).getTime() : 0;
   const adminReviewDue = (job?.status_c === 'Awaiting Customer Confirmation' || (isCarEssentialsDelivery && job?.provider_travel_status_c === 'Delivered — Awaiting Customer Confirmation')) && awaitingSince > 0 && Date.now() - awaitingSince >= 24 * 60 * 60 * 1000;
@@ -839,7 +842,7 @@ export default function JobsDetail() {
             </div>
             <div className="rounded-lg border border-border p-4">
               {approvedCarWashQuote ? <>
-                <div className="flex items-center justify-between gap-3 text-sm"><span>Customer Quoted Amount</span><strong>{displayMoney(approvedCarWashQuote.serviceSubtotal)}</strong></div>
+                <div className="flex items-center justify-between gap-3 text-sm"><span>Customer Quoted Amount</span><strong>{displayMoney(carWashDisplayedQuoteSubtotal)}</strong></div>
                 {Number(approvedCarWashQuote.discount ?? 0) > 0 && <div className="mt-2 flex items-center justify-between gap-3 text-sm"><span>Discount Offered</span><strong>−{displayMoney(approvedCarWashQuote.discount)}</strong></div>}
                 {Number(approvedCarWashQuote.pickupDropCharge ?? 0) > 0 && <div className="mt-2 flex items-center justify-between gap-3 text-sm"><span>Pick up and drop</span><strong>+{displayMoney(approvedCarWashQuote.pickupDropCharge)}</strong></div>}
                 <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm"><span>LOCAL Platform Fee</span><strong>{displayMoney(approvedCarWashQuote.platformFee ?? 25)}</strong></div>
