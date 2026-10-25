@@ -762,7 +762,7 @@ export default function CentralDispatch() {
                 const serviceSubtotal = Number(details.total || 0);
                 const refreshed = carWashCalculatedQuotes[request.Id];
                 const discountValue = refreshed ? refreshed.discount : 0;
-                const pickupChoice = String(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')).toLowerCase();
+                const pickupChoice = 'no';
                 const pickupChargeValue = refreshed ? refreshed.pickupDropCharge : 0;
                 const quoteTotalValue = refreshed ? refreshed.total : serviceSubtotal + 25;
                 return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
@@ -784,7 +784,7 @@ export default function CentralDispatch() {
                     <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details)}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
                     {!refreshed && <p className="text-xs text-amber-700">Enter Negotiation Value and Pickup & Drop Value (leave blank for ₹0), then refresh before sending.</p>}
                   </div>
-                  {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
+
                   <Button className="w-full" disabled={Boolean(busyKey) || !refreshed} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
