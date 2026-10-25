@@ -752,9 +752,16 @@ export default function CentralDispatch() {
                 return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                   <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Review the service total and send the final quote to the customer.</p></div>
                   {quote && <div className="rounded-lg border bg-background p-3 text-sm"><div className="flex justify-between gap-3"><span>Last quote (v{quote.version || 1})</span><strong>₹{Number(quote.total).toLocaleString('en-IN')}</strong></div><p className="mt-1 text-muted-foreground">{approved ? 'Customer approved this exact quote.' : quote.status === 'Sent to Customer' ? 'Awaiting customer approval.' : 'Quote needs to be sent.'}</p></div>}
-
-
-
+                  <div className="overflow-hidden rounded-lg border bg-background">
+                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(130px,220px)] border-b bg-muted/60 px-3 py-3 text-sm font-semibold sm:px-4"><span>Description</span><span className="text-right">Amount (₹)</span></div>
+                    {[
+                      {key:'customerQuotedAmount', label:'Customer Quoted Amount', value: input.customerQuotedAmount ?? String(quote?.serviceSubtotal ?? serviceSubtotal)},
+                      {key:'discount', label:'Discount Offered', value: input.discount ?? String(quote?.discount ?? 0)},
+                      {key:'pickupCharge', label:'Pick up and drop', value: input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)},
+                      {key:'platformFee', label:'Local Platform Fee', value: input.platformFee ?? String(quote?.platformFee ?? 25)},
+                    ].map((row) => <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_minmax(130px,220px)] items-center gap-3 border-b px-3 py-3 last:border-b-0 sm:px-4"><label htmlFor={'manual-quote-' + row.key + '-' + request.Id} className="text-sm sm:text-base">{row.label}</label><input id={'manual-quote-' + row.key + '-' + request.Id} type="number" min="0" step="1" className="h-10 w-full rounded-md border border-input bg-background px-3 text-right text-base shadow-sm" value={row.value} onChange={(e) => { const value = e.currentTarget.value; const next = {...input, [row.key]: value}; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), [row.key]: value}})); const calculation = calculateCarWashQuote(details, next); if (!calculation.error) setCarWashCalculatedQuotes((old) => ({...old, [request.Id]: calculation})); }} /></div>)}
+                    {(() => { const live = calculateCarWashQuote(details, input); return <div className="grid grid-cols-[minmax(0,1fr)_minmax(130px,220px)] items-center gap-3 bg-primary/5 px-3 py-4 sm:px-4"><span className="font-bold">Final Quote Total</span><span className="text-right text-lg font-bold">₹{Number(live.error ? 0 : live.total).toLocaleString('en-IN')}</span>{live.error && <p className="col-span-2 text-xs text-destructive">{live.error}</p>}</div>; })()}
+                  </div>
                   <Button className="w-full" disabled={Boolean(busyKey)} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
