@@ -33,15 +33,6 @@ export default function BikeCareAssistance() {
 
   return (
     <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
-      <button
-        type="button"
-        aria-label="Back"
-        onClick={() => navigate('/')}
-        className="mb-1 flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary sm:mb-3"
-      >
-        <ApperIcon name="ArrowLeft" size={19} />
-      </button>
-
       <div className="mb-3 text-center sm:mb-5">
         <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-3 sm:size-14">
           <ApperIcon name="Bike" size={28} />
@@ -49,9 +40,6 @@ export default function BikeCareAssistance() {
         <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {tr('Bike Care & Assistance', language)}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-          {tr('What Does Your Bike Need?', language)}
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4">
