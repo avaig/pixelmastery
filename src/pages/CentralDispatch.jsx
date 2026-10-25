@@ -689,7 +689,7 @@ export default function CentralDispatch() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Request detail</p>
-                <h2 className="mt-1 font-heading text-xl font-semibold">{request.Name}</h2>
+                <h2 className="mt-1 font-heading text-xl font-semibold">{request.Name}</h2>{/Car Wash|Car Service/i.test(String(request.Name || '') + ' ' + String(request.required_capability_c?.Name || '')) && <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-primary/25 bg-primary/5 px-3 py-1.5 text-sm"><ApperIcon name="CarFront" size={16} /><span className="font-semibold">Car type:</span><span>{/SUV|Big Car/i.test(String(request.problem_description_c || '') + ' ' + String(request.Name || '')) ? 'SUV / Big Car' : 'Small Car (Hatchback / Sedan)'}</span></div>}
               </div>
               <StatusBadge value={request.status_c} />
             </div>
