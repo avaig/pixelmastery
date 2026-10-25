@@ -176,7 +176,8 @@ function normalizeWashCart(value) {
     const qty = Math.max(0, Number.parseInt(item?.qty, 10) || 0);
     return {
       ...item,
-      id: item?.id || (item?.title + '::' + item?.variant),
+      // Always derive a stable unique identity from the canonical service and variant; old session IDs may collide.
+      id: (option?.title || String(item?.title || '')) + '::' + (priceOption?.label || String(item?.variant || '')),
       title: option?.title || String(item?.title || ''),
       variant: priceOption?.label || String(item?.variant || ''),
       basePrice,
@@ -820,8 +821,8 @@ export default function CustomerRequestStart() {
               {washCartSummary.items.length ? (
                 <div className="mt-3 space-y-2">
                   {washCartSummary.items.map((item) => (
-                    <div key={item.id} className="flex items-start justify-between gap-3 border-b border-primary/10 pb-2 text-sm last:border-b-0 last:pb-0">
-                      <div className="min-w-0"><div className="font-medium">{item.variant.replace(/^Small Car — /, '').replace(/^SUV \/ Big Car — /, '')}</div>{item.addons?.length > 0 && <div className="mt-0.5 text-xs text-muted-foreground">{item.addons.map((addon) => addon.label).join(', ')}</div>}</div>
+                    <div key={item.title + '::' + item.variant} className="flex items-start justify-between gap-3 border-b border-primary/10 pb-2 text-sm last:border-b-0 last:pb-0">
+                      <div className="min-w-0"><div className="font-medium">{item.title} — {item.variant.replace(/^Small Car — /, '').replace(/^SUV \/ Big Car — /, '')}</div>{item.addons?.length > 0 && <div className="mt-0.5 text-xs text-muted-foreground">{item.addons.map((addon) => addon.label).join(', ')}</div>}</div>
                       <div className="shrink-0 font-semibold">₹{item.lineTotal.toLocaleString('en-IN')}</div>
                     </div>
                   ))}
