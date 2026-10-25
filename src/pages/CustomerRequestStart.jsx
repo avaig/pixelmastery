@@ -797,12 +797,12 @@ export default function CustomerRequestStart() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
               <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
-                <div className="border-b bg-primary/5 px-4 py-4 text-center sm:px-5">
+                <div className="border-b bg-primary/5 px-3 py-2 text-center sm:px-4">
                   <h3 className="text-xl font-bold text-foreground">{pkg.title}</h3>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-600">{pkg.checkup}</p>
                 </div>
-                <div className="flex flex-col p-3 sm:p-4">
-                  <div className="space-y-3">
+                <div className="flex flex-col p-2 sm:p-3">
+                  <div className="space-y-1">
                     {pkg.prices.filter((price) => carServiceCarType === 'suv' ? /SUV|Big Car/i.test(price.label) : !/SUV|Big Car/i.test(price.label)).map((price) => {
                       const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
                       const blockedByVehicleLock = Boolean(selectedCarServiceVehicleType && selectedCarServiceVehicleType !== carServiceCarType);
@@ -819,7 +819,7 @@ export default function CustomerRequestStart() {
                     })}
                   </div>
                 </div>
-                  <div className="mt-2 border-t border-border pt-2">
+                  <div className="mt-1 border-t border-border pt-1">
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-bold"><ApperIcon name="ClipboardCheck" size={17} className="text-primary" />What's included</h4>
                     <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
                       {pkg.covered.map((item) => <li key={item} className="flex items-start gap-2"><ApperIcon name="Check" size={15} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>)}
