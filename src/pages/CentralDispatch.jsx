@@ -441,7 +441,7 @@ export default function CentralDispatch() {
       return {
         type: 'Car Wash',
         title: 'Selected services',
-        items: summary.items.map(item => ({ name: String(item.name || '').replace(/^Small Car(?=\s|$)/i, 'Hatchback / Sedan').replace(/^Small Car \(Hatchback \/ Sedan\)/i, 'Hatchback / Sedan'), quantity: item.quantity, amount: item.amount, included: false })),
+        items: summary.items.map(item => ({ name: String(item.name || '').replace(/\bSmall Car(?: \(Hatchback \/ Sedan\))?/gi, 'Hatchback / Sedan'), quantity: item.quantity, amount: item.amount, included: false })),
         total: serviceSubtotal,
         platformFee: 25,
         pickupDrop,
