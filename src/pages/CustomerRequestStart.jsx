@@ -758,6 +758,10 @@ export default function CustomerRequestStart() {
     <div>
       {isCarWash ? (
         <div className="mb-4" aria-hidden="true" />
+      ) : isCarService ? (
+        <div className="mx-auto mb-5 max-w-5xl px-4 pt-2 text-center" aria-label="Car Service heading">
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Car Service</h1>
+        </div>
       ) : (
         <PageHeader
           eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
@@ -772,21 +776,6 @@ export default function CustomerRequestStart() {
       )}
       {isCarService && (
         <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Service packages">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="relative h-40 sm:h-52">
-              <img src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1800&q=90" alt="Mechanic servicing a car in a workshop" className="h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
-              <div className="absolute inset-y-0 left-0 flex max-w-xl flex-col justify-center p-5 text-white sm:p-8">
-                <span className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">LOCAL Car Care</span>
-                <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">Service with clarity.</h2>
-                <p className="mt-2 max-w-md text-sm text-white/85 sm:text-base">Compare service packages and inclusions. Any additional repair must be explained and approved before work begins.</p>
-              </div>
-            </div>
-            <div className="p-4 sm:p-5">
-              <h2 className="text-xl font-bold sm:text-2xl">Choose your service package</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Compare package coverage and listed prices for your vehicle type. Final work and price are confirmed before service starts.</p>
-            </div>
-          </div>
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
             <div className="mb-3 text-center"><h3 className="font-bold">Select Car Type</h3><p className="mt-1 text-sm text-muted-foreground">Choose your car type to see only the matching Car Service packages and prices.</p></div>
             <div className="grid grid-cols-2 gap-3">
