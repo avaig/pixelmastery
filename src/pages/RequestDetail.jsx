@@ -29,7 +29,18 @@ function readCarEssentialsApproval(description) {
   const source = String(description ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+  const raw = source.slice(index + marker.length).trim();
+  const start = raw.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0; let inString = false; let escaped = false;
+  for (let i = start; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (inString) { if (escaped) escaped = false; else if (ch === '\\') escaped = true; else if (ch === '"') inString = false; }
+    else if (ch === '"') inString = true;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') { depth -= 1; if (depth === 0) { try { const payload = JSON.parse(raw.slice(start, i + 1)); return payload && payload.approved === true ? payload : null; } catch { return null; } } }
+  }
+  return null;
 }
 
 function readCarWashQuote(description) {

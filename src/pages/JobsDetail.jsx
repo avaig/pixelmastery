@@ -42,7 +42,7 @@ function readCarEssentialsApproval(description) {
     const ch = raw[i];
     if (inString) {
       if (escaped) escaped = false;
-      else if (ch === '\\\\') escaped = true;
+      else if (ch === '\\') escaped = true;
       else if (ch === '"') inString = false;
     } else if (ch === '"') inString = true;
     else if (ch === '{') depth += 1;
@@ -650,7 +650,7 @@ export default function JobsDetail() {
       const markerIndex = description.lastIndexOf(marker);
       let approval = readCarEssentialsApproval(description);
       if (!approval || !approval.quoteId || !Number.isFinite(Number(approval.total))) throw new Error('The customer-approved quote record is missing or unreadable. Open the service request and confirm that the quote was approved before generating a delivery OTP.');
-      const otp = /^\\d{6}$/.test(String(approval.otp ?? '')) ? String(approval.otp) : String(Math.floor(100000 + Math.random() * 900000));
+      const otp = /^\d{6}$/.test(String(approval.otp ?? '')) && approval.otpUsed !== true && (!approval.otpExpiresAt || Date.now() <= new Date(approval.otpExpiresAt).getTime()) ? String(approval.otp) : String(Math.floor(100000 + Math.random() * 900000));
       if (String(approval.otp ?? '') !== otp) {
         const updatedApproval = { ...approval, otp, otpExpiresAt: approval.otpExpiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), otpUsed: false };
         const updatedDescription = description.slice(0, markerIndex) + marker + JSON.stringify(updatedApproval);
