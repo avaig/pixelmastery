@@ -267,11 +267,24 @@ export default function CustomerRequestStart() {
   const [washDecisions, setWashDecisions] = useState({});
   const [washAddonSelections, setWashAddonSelections] = useState({});
   const [washCarType, setWashCarType] = useState(() => window.sessionStorage.getItem('local_car_wash_type_v1') || 'small');
+  const [washVehicleLocked, setWashVehicleLocked] = useState(() => window.sessionStorage.getItem('local_car_wash_vehicle_locked_v1') === 'true');
+  const [showVehicleChangeConfirm, setShowVehicleChangeConfirm] = useState(false);
   const [serviceTiming, setServiceTiming] = useState('ASAP');
   const [scheduledAt, setScheduledAt] = useState('');
-  const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(null);
+  const [selectedCarServicePackage, setSelectedCarServicePackage] = useState(() => {
+    try {
+      const savedPackage = window.sessionStorage.getItem('local_car_service_selected_package_v1');
+      return savedPackage ? JSON.parse(savedPackage) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showCarServiceQuoteReview, setShowCarServiceQuoteReview] = useState(false);
   const isCarWash = vehicle === 'car' && requestedService === 'Car Wash';
   const isCarService = vehicle === 'car' && requestedService === 'Car Service';
+  const selectedCarServiceVehicleType = selectedCarServicePackage
+    ? (/SUV|Big Car/i.test(selectedCarServicePackage.vehicleType) ? 'suv' : 'small')
+    : null;
   const isDieselRequest = vehicle === 'car' && issue === 'Out of Fuel';
   const isUrgentService = ['Emergency Driver', 'Ambulance'].includes(requestedService) || /jump|battery|tyre|towing|fuel|roadside|breakdown|accident/i.test(issue + ' ' + requestedService);
   // Only classify Car Wash as fixed-price here because this screen currently has an explicit package rate card.
@@ -349,10 +362,23 @@ export default function CustomerRequestStart() {
   useEffect(() => {
     try {
       window.sessionStorage.setItem('local_car_wash_type_v1', washCarType);
+      window.sessionStorage.setItem('local_car_wash_vehicle_locked_v1', String(washVehicleLocked));
     } catch {
       // The car-type selection still works for this page if session storage is unavailable.
     }
-  }, [washCarType]);
+  }, [washCarType, washVehicleLocked]);
+
+  useEffect(() => {
+    try {
+      if (selectedCarServicePackage) {
+        window.sessionStorage.setItem('local_car_service_selected_package_v1', JSON.stringify(selectedCarServicePackage));
+      } else {
+        window.sessionStorage.removeItem('local_car_service_selected_package_v1');
+      }
+    } catch {
+      // Keep the current selection usable even if session storage is unavailable.
+    }
+  }, [selectedCarServicePackage]);
 
   useEffect(() => {
     try {
@@ -367,23 +393,29 @@ export default function CustomerRequestStart() {
   }, [normalizedWashCart, includePickupDrop, washCarType]);
 
   function switchWashCarType(nextType) {
-    if (nextType === washCarType) return;
-    try {
-      const currentKey = washCarType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
-      window.sessionStorage.setItem(currentKey, JSON.stringify(normalizeWashCart(washCart)));
-      const nextKey = nextType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
-      const savedNextCart = window.sessionStorage.getItem(nextKey);
-      setWashCart(savedNextCart ? normalizeWashCartForType(JSON.parse(savedNextCart), nextType) : []);
-    } catch {
-      setWashCart([]);
+    if (washVehicleLocked) return;
+    if (nextType !== washCarType) {
+      try {
+        const currentKey = washCarType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+        window.sessionStorage.setItem(currentKey, JSON.stringify(normalizeWashCart(washCart)));
+        const nextKey = nextType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+        const savedNextCart = window.sessionStorage.getItem(nextKey);
+        setWashCart(savedNextCart ? normalizeWashCartForType(JSON.parse(savedNextCart), nextType) : []);
+      } catch {
+        setWashCart([]);
+      }
+      setWashCarType(nextType);
     }
-    setWashCarType(nextType);
+    setWashVehicleLocked(true);
+    window.sessionStorage.setItem('local_car_wash_vehicle_locked_v1', 'true');
     window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
     setTotalRefreshed(false);
     setShowTotalBilling(false);
   }
 
   function addWashItem(option, priceOption) {
+    setWashVehicleLocked(true);
+    window.sessionStorage.setItem('local_car_wash_vehicle_locked_v1', 'true');
     window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
     setTotalRefreshed(false);
     const baseId = option.title + '::' + priceOption.label;
@@ -402,6 +434,33 @@ export default function CustomerRequestStart() {
       { id, title: option.title, variant: priceOption.label, basePrice: priceOption.price, addons, price: unitPrice, qty: 1 },
     ]);
     toast.success(option.title + (addons.length ? ' with ' + addons.map((addon) => addon.label).join(', ') : '') + ' added to cart.');
+  }
+
+  function cancelCurrentVehicleDraft() {
+    if (isCarWash) {
+      setWashCart([]);
+      setWashVehicleLocked(false);
+      setIncludePickupDrop(false);
+      setShowCarWashQuoteReview(false);
+      setTotalRefreshed(false);
+      setShowTotalBilling(false);
+      [
+        'local_car_wash_vehicle_locked_v1',
+        'local_car_wash_cart_small_v1',
+        'local_car_wash_cart_suv_v1',
+        'local_car_wash_cart_v2',
+        'local_car_wash_reviewed_total_v1',
+        'local_car_wash_total_refreshed_v1',
+        'local_car_wash_pickup_v1',
+      ].forEach((key) => window.sessionStorage.removeItem(key));
+    }
+    if (isCarService) {
+      setSelectedCarServicePackage(null);
+      setShowCarServiceQuoteReview(false);
+      window.sessionStorage.removeItem('local_car_service_selected_package_v1');
+    }
+    setShowVehicleChangeConfirm(false);
+    toast.success('Current draft cleared. You can now choose another vehicle type.');
   }
 
   function changeWashQty(id, delta) {
@@ -643,6 +702,8 @@ export default function CustomerRequestStart() {
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
       toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : tr('Request shared with eligible nearby Service Providers.', language));
       if (isCarWash) {
+        setWashVehicleLocked(false);
+        window.sessionStorage.removeItem('local_car_wash_vehicle_locked_v1');
         setSubmittedWashOrder({
           requestId: res.data[0].Id,
           items: normalizedWashCart.map((item) => ({ title: item.title, variant: item.variant, quantity: item.qty, unitPrice: item.price, lineTotal: item.price * item.qty })),
@@ -653,6 +714,10 @@ export default function CustomerRequestStart() {
           locationText: location.text,
         });
         return;
+      }
+      if (isCarService) {
+        setSelectedCarServicePackage(null);
+        window.sessionStorage.removeItem('local_car_service_selected_package_v1');
       }
       navigate('/requests/' + res.data[0].Id);
     } finally {
@@ -714,6 +779,12 @@ export default function CustomerRequestStart() {
               <p className="mt-1 text-sm text-muted-foreground">Compare package coverage and listed prices for your vehicle type. Final work and price are confirmed before service starts.</p>
             </div>
           </div>
+          {selectedCarServicePackage && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+              <span>Vehicle locked: <strong>{selectedCarServicePackage.vehicleType}</strong>. Choose another package for this vehicle or cancel this draft to change vehicle type.</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowVehicleChangeConfirm(true)}>Cancel Booking &amp; Change Vehicle</Button>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
               <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
@@ -730,14 +801,16 @@ export default function CustomerRequestStart() {
                   <div className="space-y-3">
                     {pkg.prices.map((price) => {
                       const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
+                      const priceVehicleType = /SUV|Big Car/i.test(price.label) ? 'suv' : 'small';
+                      const blockedByVehicleLock = Boolean(selectedCarServiceVehicleType && selectedCarServiceVehicleType !== priceVehicleType);
                       return (
                         <div key={price.label} className={'rounded-lg border px-3 py-3 ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'bg-primary/5')}>
                           <div className="flex items-center justify-between gap-3">
                             <span className="flex items-center gap-2 text-sm font-semibold"><ApperIcon name={/SUV|Big Car/i.test(price.label) ? 'Truck' : 'CarFront'} size={18} className="text-primary" />{price.label}</span>
                             <span className="shrink-0 text-lg font-extrabold">₹{price.price.toLocaleString('en-IN')}</span>
                           </div>
-                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} className="mt-3 min-h-10 w-full rounded-xl" onClick={() => setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered })}>
-                            <ApperIcon name={isSelected ? 'CheckCircle2' : 'ArrowRight'} size={16} />{isSelected ? 'Package selected' : 'Choose package'}
+                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} disabled={blockedByVehicleLock} className="mt-3 min-h-10 w-full rounded-xl" onClick={() => setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered })}>
+                            <ApperIcon name={isSelected ? 'CheckCircle2' : 'ArrowRight'} size={16} />{isSelected ? 'Package selected' : blockedByVehicleLock ? 'Vehicle type locked' : 'Choose package'}
                           </Button>
                         </div>
                       );
@@ -766,8 +839,9 @@ export default function CustomerRequestStart() {
               <button
                 type="button"
                 aria-pressed={washCarType === 'small'}
+                disabled={washVehicleLocked && washCarType !== 'small'}
                 onClick={() => switchWashCarType('small')}
-                className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
+                className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <div className="flex h-28 w-full items-center justify-center overflow-hidden bg-white p-1 sm:h-36">
                   <img
@@ -783,8 +857,9 @@ export default function CustomerRequestStart() {
               <button
                 type="button"
                 aria-pressed={washCarType === 'suv'}
+                disabled={washVehicleLocked && washCarType !== 'suv'}
                 onClick={() => switchWashCarType('suv')}
-                className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
+                className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <div className="flex h-28 w-full items-center justify-center overflow-hidden bg-white p-1 sm:h-36">
                   <img
@@ -798,6 +873,12 @@ export default function CustomerRequestStart() {
                 {washCarType === 'suv' && <span className="flex items-center justify-center gap-1 pb-2 text-xs font-semibold text-primary"><ApperIcon name="CheckCircle2" size={15} /> Selected</span>}
               </button>
             </div>
+            {washVehicleLocked && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/80 p-3 text-sm">
+                <span className="text-muted-foreground">Vehicle type is locked for this Car Wash draft.</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowVehicleChangeConfirm(true)}>Cancel Booking &amp; Change Vehicle</Button>
+              </div>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {CAR_WASH_OPTIONS.map((option) => (
@@ -1009,7 +1090,7 @@ export default function CustomerRequestStart() {
           {(location || isCarWash || isCarService) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : isCarService ? () => setShowCarServiceQuoteReview(true) : createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isCarService && !selectedCarServicePackage) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
                 {creating ? tr('Sharing request…', language) : isCarWash ? 'Book My Car Wash' : isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
@@ -1019,6 +1100,22 @@ export default function CustomerRequestStart() {
           )}
         </Card>
       </div>
+      {isCarService && showCarServiceQuoteReview && selectedCarServicePackage && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowCarServiceQuoteReview(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="car-service-quote-title" className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border bg-background p-5 shadow-xl sm:rounded-2xl sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">LOCAL · Car Service</p><h2 id="car-service-quote-title" className="mt-1 text-xl font-extrabold">Review Your Car Service Booking</h2><p className="mt-1 text-sm text-muted-foreground">Check your selected vehicle, package and listed price before submitting.</p></div>
+              <Button type="button" variant="ghost" size="icon" onClick={() => setShowCarServiceQuoteReview(false)} aria-label="Close quote review"><ApperIcon name="X" size={18} /></Button>
+            </div>
+            <div className="mt-5 rounded-xl border p-4">
+              <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Vehicle type</p><p className="mt-1 font-semibold">{selectedCarServicePackage.vehicleType}</p><p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Selected package</p><p className="mt-1 text-lg font-bold">{selectedCarServicePackage.title}</p><p className="mt-1 text-sm text-muted-foreground">{selectedCarServicePackage.checkup}</p></div><strong className="shrink-0 text-xl">₹{selectedCarServicePackage.price.toLocaleString('en-IN')}</strong></div>
+              <div className="mt-4 border-t pt-3"><p className="text-sm font-semibold">What's included</p><ul className="mt-2 space-y-2 text-sm text-muted-foreground">{selectedCarServicePackage.covered.map((item) => <li key={item} className="flex gap-2"><ApperIcon name="Check" size={15} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>)}</ul></div>
+            </div>
+            <div className="mt-4 rounded-lg bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">This is the listed package price, not a final invoice. LOCAL Customer Care will confirm availability and any additional work or revised price with you before service starts.</div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2"><Button type="button" variant="outline" onClick={() => setShowCarServiceQuoteReview(false)} disabled={creating}>Back to packages</Button><Button type="button" onClick={createRequest} disabled={creating || !selectedCarServicePackage || !location || location.serviceable === false}>{creating ? 'Sending request…' : 'Confirm & Book Your Appointment'}</Button></div>
+          </section>
+        </div>
+      )}
       {isCarWash && showCarWashQuoteReview && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowCarWashQuoteReview(false); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="car-wash-quote-title" className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border bg-background p-5 shadow-xl sm:rounded-2xl sm:p-6">
@@ -1037,6 +1134,15 @@ export default function CustomerRequestStart() {
             </div>
             <div className="mt-4 rounded-lg bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">This is an estimate, not a final invoice or payment request. LOCAL Customer Care will confirm the details and any revised quote with you before work begins. Any revised amount requires your approval.</div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2"><Button type="button" variant="outline" onClick={() => setShowCarWashQuoteReview(false)} disabled={creating}>Back to packages</Button><Button type="button" onClick={createRequest} disabled={creating || washCartSummary.items.length === 0 || !location || location.serviceable === false}>{creating ? 'Sending request…' : 'Confirm & Book My Car Wash'}</Button></div>
+          </section>
+        </div>
+      )}
+      {showVehicleChangeConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowVehicleChangeConfirm(false); }}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="vehicle-change-confirm-title" className="w-full max-w-md rounded-t-2xl border bg-background p-5 shadow-xl sm:rounded-2xl sm:p-6">
+            <h2 id="vehicle-change-confirm-title" className="text-lg font-extrabold">Cancel Booking &amp; Change Vehicle?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Changing your vehicle will clear the current {isCarWash ? 'Car Wash selections and quote' : 'Car Service package and quote review'}. Nothing has been submitted to Customer Care yet. Do you want to continue?</p>
+            <div className="mt-5 grid grid-cols-2 gap-3"><Button type="button" variant="outline" onClick={() => setShowVehicleChangeConfirm(false)}>Keep Current Booking</Button><Button type="button" onClick={cancelCurrentVehicleDraft}>Yes, Change Vehicle</Button></div>
           </section>
         </div>
       )}
