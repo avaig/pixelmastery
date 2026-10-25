@@ -235,8 +235,16 @@ export default function CustomerRequestStart() {
   const isInsuranceClaim = vehicle === 'car' && requestedService === 'Insurance Claim Assistance';
   const [washCart, setWashCart] = useState(() => {
     try {
-      const saved = window.sessionStorage.getItem('local_car_wash_cart_v2');
-      return saved ? normalizeWashCart(JSON.parse(saved)) : [];
+      const savedType = window.sessionStorage.getItem('local_car_wash_type_v1') || 'small';
+      const typeSpecificKey = savedType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+      const typeSpecificCart = window.sessionStorage.getItem(typeSpecificKey);
+      if (typeSpecificCart !== null) return normalizeWashCart(JSON.parse(typeSpecificCart));
+      // Legacy shared cart belongs to Hatchback/Sedan only. Never carry it into the SUV category.
+      if (savedType === 'small') {
+        const legacyCart = window.sessionStorage.getItem('local_car_wash_cart_v2');
+        return legacyCart ? normalizeWashCart(JSON.parse(legacyCart)) : [];
+      }
+      return [];
     } catch {
       return [];
     }
@@ -290,6 +298,8 @@ export default function CustomerRequestStart() {
     const currentCart = normalizeWashCart(washCart);
     const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0) + CAR_WASH_PLATFORM_FEE;
+    const activeCartKey = washCarType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+    window.sessionStorage.setItem(activeCartKey, JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(currentCart));
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(nextTotal));
@@ -331,12 +341,32 @@ export default function CustomerRequestStart() {
 
   useEffect(() => {
     try {
+      const typeSpecificKey = washCarType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+      window.sessionStorage.setItem(typeSpecificKey, JSON.stringify(normalizedWashCart));
+      // Keep the legacy key aligned to the active category for existing booking integrations.
       window.sessionStorage.setItem('local_car_wash_cart_v2', JSON.stringify(normalizedWashCart));
       window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     } catch {
       // The cart still works for the current page if session storage is unavailable.
     }
-  }, [normalizedWashCart, includePickupDrop]);
+  }, [normalizedWashCart, includePickupDrop, washCarType]);
+
+  function switchWashCarType(nextType) {
+    if (nextType === washCarType) return;
+    try {
+      const currentKey = washCarType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+      window.sessionStorage.setItem(currentKey, JSON.stringify(normalizeWashCart(washCart)));
+      const nextKey = nextType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
+      const savedNextCart = window.sessionStorage.getItem(nextKey);
+      setWashCart(savedNextCart ? normalizeWashCart(JSON.parse(savedNextCart)) : []);
+    } catch {
+      setWashCart([]);
+    }
+    setWashCarType(nextType);
+    window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
+    setTotalRefreshed(false);
+    setShowTotalBilling(false);
+  }
 
   function addWashItem(option, priceOption) {
     window.sessionStorage.removeItem('local_car_wash_total_refreshed_v1');
@@ -721,7 +751,7 @@ export default function CustomerRequestStart() {
               <button
                 type="button"
                 aria-pressed={washCarType === 'small'}
-                onClick={() => setWashCarType('small')}
+                onClick={() => switchWashCarType('small')}
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'small' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <div className="relative h-28 w-full overflow-hidden bg-white sm:h-36">
@@ -739,7 +769,7 @@ export default function CustomerRequestStart() {
               <button
                 type="button"
                 aria-pressed={washCarType === 'suv'}
-                onClick={() => setWashCarType('suv')}
+                onClick={() => switchWashCarType('suv')}
                 className={'overflow-hidden rounded-xl border-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (washCarType === 'suv' ? 'border-primary bg-background shadow-md' : 'border-border bg-background/70 hover:border-primary/40')}
               >
                 <div className="relative h-28 w-full overflow-hidden bg-white sm:h-36">
