@@ -27,6 +27,20 @@ function formatTimestamp(value) {
   return Number.isNaN(date.getTime()) ? 'Not recorded' : date.toLocaleString('en-IN');
 }
 
+function readCarEssentialsApproval(description) {
+  const marker = 'LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  const raw = source.slice(index + marker.length).split('\\n')[0].trim();
+  try {
+    const approval = JSON.parse(raw);
+    return approval && approval.approved === true && /^\\d{6}$/.test(String(approval.otp ?? '')) ? approval : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function JobsDetail() {
   const { id } = useParams();
   const user = useSelector((state) => state.user.user);
@@ -104,6 +118,8 @@ export default function JobsDetail() {
   const isCarService = /car service|service package|economy service|normal service|major service|point checkup/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? ''));
   const isCarCare = isCarWash || isCarService;
   const isCarEssentialsDelivery = /car essentials delivery|car essentials/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
+  const carEssentialsApproval = isCarEssentialsDelivery ? readCarEssentialsApproval(serviceRequest?.problem_description_c) : null;
+  const carEssentialsDeliveryOtp = /^\\d{6}$/.test(String(job?.service_start_otp_c ?? '')) ? String(job.service_start_otp_c) : String(carEssentialsApproval?.otp ?? '');
   const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
   const isBatteryJumpStart = /battery jump start/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
@@ -653,6 +669,21 @@ export default function JobsDetail() {
       const requestId = job.request_c?.Id ?? job.request_c;
       const responseId = job.response_c?.Id ?? job.response_c;
       const technicianId = job.technician_c?.Id ?? job.technician_c;
+      const requestResult = await sdk.table('service_requests_c').select(['Id', 'problem_description_c']).get(requestId);
+      if (!requestResult.success || !requestResult.data) throw new Error(requestResult.message || 'Could not load the customer-approved delivery OTP.');
+      const approval = readCarEssentialsApproval(requestResult.data.problem_description_c);
+      if (!approval || String(approval.otp) !== providerOtpDraft) {
+        toast.error('This code does not match the current customer-approved delivery OTP. Ask the customer to open the job screen and refresh.');
+        return;
+      }
+      if (approval.otpExpiresAt && Date.now() > new Date(approval.otpExpiresAt).getTime()) {
+        toast.error('The delivery OTP has expired. Please contact LOCAL Admin to issue a replacement.');
+        return;
+      }
+      if (approval.otpUsed === true) {
+        toast.error('This delivery OTP has already been used. Refresh the booking or contact LOCAL Admin.');
+        return;
+      }
       const related = await sdk.table('jobs_c')
         .select(['Id', 'request_c', 'response_c', 'technician_c', 'service_start_otp_c', 'service_start_otp_verified_at_c'])
         .where(eq('request_c', requestId)).page(1, 100).fetch();
@@ -666,11 +697,8 @@ export default function JobsDetail() {
       });
       const currentRecord = sameProviderJobs.find((item) => String(item.Id) === String(job.Id));
       if (!currentRecord) throw new Error('This job could not be matched to the current provider assignment. Refresh and try again.');
-      const matchingRecord = sameProviderJobs.find((item) => String(item.service_start_otp_c ?? '') === providerOtpDraft);
-      if (!matchingRecord) {
-        toast.error('This code does not match the latest OTP saved for this booking. Ask Admin to synchronize the delivery OTP, then refresh both screens.');
-        return;
-      }
+      // The request approval is the authoritative OTP source. Older job rows may not
+      // have been synchronized yet, so do not reject a valid customer-approved code.
       const now = new Date().toISOString();
       // Reconcile this provider row to the exact code the customer has, then mark delivery.
       const result = await sdk.table('jobs_c').update({
@@ -682,6 +710,16 @@ export default function JobsDetail() {
         billing_status_c: 'Delivered — Awaiting Customer Confirmation',
       });
       if (!result?.success || !result.data?.length) throw new Error(result?.messages?.[0] || result?.message || 'Delivery could not be recorded. Refresh the job and retry.');
+      // Mark the request-side OTP used so it cannot be reused on another duplicate job.
+      const updatedApproval = { ...approval, otpUsed: true, otpUsedAt: now };
+      const description = String(requestResult.data.problem_description_c ?? '');
+      const marker = 'LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:';
+      const markerIndex = description.lastIndexOf(marker);
+      if (markerIndex >= 0) {
+        const updatedDescription = description.slice(0, markerIndex) + marker + JSON.stringify(updatedApproval);
+        const approvalSaved = await sdk.table('service_requests_c').update({ Id: requestId, problem_description_c: updatedDescription });
+        if (!approvalSaved.success || !approvalSaved.data?.length) toast.error('Delivery was recorded, but the OTP usage record could not be updated. Notify LOCAL Admin.');
+      }
       toast.success('Delivery OTP verified. Order marked delivered; waiting for customer receipt confirmation.');
       setProviderOtpDraft('');
       await run();
@@ -919,7 +957,7 @@ export default function JobsDetail() {
             {isProvider && job.status_c === 'Assigned' && !['Ready for Delivery', 'Out for Delivery', 'Delivered — Awaiting Customer Confirmation', 'Delivered'].includes(job.provider_travel_status_c) && <div className="rounded-lg border border-border bg-muted/20 p-4"><h3 className="font-semibold">Next action: prepare the order</h3><p className="mt-1 text-sm text-muted-foreground">Check the vehicle compatibility, confirm all approved items are in stock, and pack the exact items listed in the approved quote. Do not change the agreed price or substitute products without customer approval.</p><Button className="mt-3" onClick={() => updateJob({ provider_travel_status_c: 'Ready for Delivery', billing_status_c: 'Order Ready for Delivery' }, 'Order marked ready for delivery. The customer can see the updated status.')} disabled={working}><ApperIcon name="PackageCheck" size={16} /> {working ? 'Saving…' : 'Mark Order Ready for Delivery'}</Button></div>}
             {isProvider && job.status_c === 'Assigned' && job.provider_travel_status_c === 'Ready for Delivery' && <div className="rounded-lg border border-border bg-muted/20 p-4"><h3 className="font-semibold">Next action: begin delivery</h3><p className="mt-1 text-sm text-muted-foreground">Take the order to the customer’s saved delivery location. Ask the customer to keep the LOCAL delivery OTP private until the items are physically handed over.</p><Button className="mt-3" onClick={() => updateJob({ provider_travel_status_c: 'Out for Delivery', billing_status_c: 'Out for Delivery' }, 'Delivery started. The customer can see that the order is on its way.')} disabled={working}><ApperIcon name="Truck" size={16} /> {working ? 'Saving…' : 'Start Delivery'}</Button></div>}
             {isProvider && job.status_c === 'Assigned' && job.provider_travel_status_c === 'Out for Delivery' && <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4"><h3 className="font-semibold">Next action: verify delivery OTP</h3><p className="mt-1 text-sm text-muted-foreground">Enter the six-digit code only after you have handed the approved items to the customer. Successful verification records delivery and asks the customer to confirm receipt.</p>{!job.service_start_otp_c && <p className="mt-2 text-sm font-medium text-highlight">Waiting for the customer to generate the delivery OTP from their LOCAL job screen.</p>}<div className="mt-3 flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={providerOtpDraft} onChange={(event) => setProviderOtpDraft(event.target.value.replace(/\D/g, '').slice(0, 6))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-center text-lg tracking-[0.3em] sm:max-w-48" placeholder="6-digit delivery OTP" aria-label="Customer delivery OTP" disabled={!job.service_start_otp_c} /><Button onClick={verifyCarEssentialsDeliveryOtp} disabled={working || !job.service_start_otp_c || providerOtpDraft.length !== 6}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Verifying…' : 'Verify OTP & Mark Delivered'}</Button></div></div>}
-            {isCustomer && job.status_c !== 'Completed' && job.status_c !== 'Cancelled' && job.provider_travel_status_c !== 'Delivered — Awaiting Customer Confirmation' && <div className="rounded-lg border border-success-border bg-success-muted p-4"><h3 className="font-semibold text-success">Your delivery OTP</h3><p className="mt-1 text-sm">Share this code with the Service Provider only after your order has physically arrived and you have checked the items.</p>{job.service_start_otp_c ? <p className="my-3 text-center text-3xl font-bold tracking-[0.35em] text-success">{job.service_start_otp_c}</p> : <p className="mt-2 text-sm text-highlight">LOCAL Admin has not generated the delivery OTP yet. The code will appear here once Admin generates it.</p>}<p className="text-xs text-muted-foreground">This OTP is shown in the LOCAL app for testing. SMS/WhatsApp delivery is not connected yet.</p></div>}
+            {isCustomer && job.status_c !== 'Completed' && job.status_c !== 'Cancelled' && job.provider_travel_status_c !== 'Delivered — Awaiting Customer Confirmation' && <div className="rounded-lg border border-success-border bg-success-muted p-4"><h3 className="font-semibold text-success">Your delivery OTP</h3><p className="mt-1 text-sm">Share this code with the Service Provider only after your order has physically arrived and you have checked the items.</p>{carEssentialsDeliveryOtp ? <p className="my-3 text-center font-mono text-4xl font-bold tracking-[0.35em] text-success" aria-label="Delivery OTP">{carEssentialsDeliveryOtp}</p> : <p className="mt-2 text-sm text-highlight">The approved quote's delivery OTP is not available. Reopen the approved service request or contact LOCAL Admin.</p>}{carEssentialsApproval?.otpExpiresAt && <p className="text-center text-xs text-muted-foreground">Valid until {formatTimestamp(carEssentialsApproval.otpExpiresAt)}</p>}<p className="text-xs text-muted-foreground">Share this code only after checking the delivered items. SMS/WhatsApp delivery is not connected yet.</p></div>}
             {isAdmin && isCarEssentialsDelivery && job.status_c === 'Assigned' && ['Ready for Delivery', 'Out for Delivery'].includes(job.provider_travel_status_c) && <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4"><h3 className="font-semibold">Admin action: generate / synchronize delivery OTP</h3><p className="mt-1 text-sm text-muted-foreground">LOCAL Admin controls the delivery OTP. This also synchronizes older duplicate job records for the same request and accepted provider, so customer and provider screens show the same code.</p><Button className="mt-3" onClick={generateCarEssentialsDeliveryOtp} disabled={working}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Synchronizing…' : job.service_start_otp_c ? 'Synchronize Delivery OTP' : 'Generate Delivery OTP'}</Button></div>}
             {job.provider_travel_status_c === 'Delivered — Awaiting Customer Confirmation' && (isCustomer || isAdmin) && <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4"><h3 className="font-semibold">Delivery recorded — customer confirmation required</h3><p className="mt-1 text-sm text-muted-foreground">The Service Provider verified the delivery OTP. Check that all approved items and quantities were received before confirming.</p>{isCustomer && <div className="mt-3 flex flex-wrap gap-2"><Button onClick={confirmCustomerCompletion} disabled={working || job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review'}><ApperIcon name="CheckCircle2" size={16} /> Confirm Delivery Received</Button><Button variant="destructive" onClick={reportIssue} disabled={working}>Report Missing / Incorrect Items</Button></div>}</div>}
             {job.status_c === 'Completed' && <div className="rounded-lg border border-success-border bg-success-muted p-4"><h3 className="font-semibold text-success">Delivery confirmed</h3><p className="mt-1 text-sm text-success">The customer confirmed receipt. Final payment of {displayMoney(job.agreed_price_c)} is now due.</p></div>}
