@@ -306,6 +306,8 @@ export default function CustomerRequestStart() {
       ? 'Submit your request. LOCAL Customer Care will confirm driver availability, your schedule and the applicable charges before confirming your booking.'
       : isCarWash
         ? 'Submit your selected menu quote. LOCAL Customer Care will call to confirm details and pickup/drop, then send any revised quote for your approval before work starts.'
+        : isBikeCareRequest
+          ? 'Submit your request to LOCAL Central Dispatch. Customer Care will call to confirm availability, service charges and next steps. No bidding and no payment is collected at this stage.'
         : pricingMode === 'Fixed Price'
         ? 'See the listed price and book without waiting for bids.'
         : pricingMode === 'Urgent Dispatch'
