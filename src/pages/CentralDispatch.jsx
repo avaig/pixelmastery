@@ -61,8 +61,8 @@ function readCarWashMarkerJson(description, marker) {
     if (inString) {
       if (escaped) escaped = false;
       else if (ch === '\\\\') escaped = true;
-      else if (ch === '\"') inString = false;
-    } else if (ch === '\"') inString = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
     else if (ch === '{') depth += 1;
     else if (ch === '}') {
       depth -= 1;
