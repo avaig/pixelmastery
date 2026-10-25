@@ -788,7 +788,7 @@ export default function CustomerRequestStart() {
           </div>
         </section>
       )}
-      <section className="mx-auto mb-4 max-w-4xl"><h2 className="text-xl font-semibold">Book Your Service with LOCAL</h2></section><div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <Card className="border-2 border-primary/20 p-6">
           <div className="flex items-center gap-4">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
