@@ -797,13 +797,9 @@ export default function CustomerRequestStart() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
               <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
-                <div className="relative h-40 sm:h-44">
-                  <img src={pkg.image} alt={pkg.title + ' automotive service'} loading="lazy" className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">{pkg.checkup}</p>
-                    <h3 className="mt-1 text-xl font-bold">{pkg.title}</h3>
-                  </div>
+                <div className="border-b bg-primary/5 px-4 py-4 sm:px-5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">{pkg.checkup}</p>
+                  <h3 className="mt-1 text-xl font-bold text-foreground">{pkg.title}</h3>
                 </div>
                 <div className="flex flex-1 flex-col p-4 sm:p-5">
                   <div className="mb-3 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-muted-foreground"><span>{carServiceCarType === 'suv' ? 'SUV / Big Car' : 'Hatchback / Sedan'}</span><span>Listed price</span></div>
