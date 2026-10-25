@@ -17,13 +17,13 @@ const services = [
     title: 'Bike Repair & Roadside Assistance',
     description: 'Battery, puncture, chain, clutch, fuel and towing help',
     icon: 'Wrench',
-    href: '/customer/vehicle/bike',
+    href: '/customer/request?vehicle=bike&issue=Other%20Issue&service=Bike%20Repair%20%26%20Roadside%20Assistance',
   },
   {
     title: 'Bike Maintenance',
     description: 'Routine bike inspection and servicing',
     icon: 'Settings',
-    href: '/customer/request?vehicle=bike&issue=Other%20Issue&service=Bike%20Service',
+    href: '/customer/request?vehicle=bike&issue=Other%20Issue&service=Bike%20Maintenance',
   },
 ];
 

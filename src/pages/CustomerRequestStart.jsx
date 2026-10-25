@@ -228,6 +228,7 @@ export default function CustomerRequestStart() {
   const isCarFlatPuncture = vehicle === 'car' && /flat tyre \/ puncture/i.test(issue || requestedService);
   const [creating, setCreating] = useState(false);
   const [submittedWashOrder, setSubmittedWashOrder] = useState(null);
+  const [submittedBikeCareRequest, setSubmittedBikeCareRequest] = useState(null);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
   const [punctureDispatchConsent, setPunctureDispatchConsent] = useState(false);
   const isProfessionalDriverService = ['Car Driver on Demand', 'Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
@@ -290,6 +291,7 @@ export default function CustomerRequestStart() {
   const [showCarServiceQuoteReview, setShowCarServiceQuoteReview] = useState(false);
   const isCarWash = vehicle === 'car' && requestedService === 'Car Wash';
   const isCarService = vehicle === 'car' && requestedService === 'Car Service';
+  const isBikeCareRequest = vehicle === 'bike' && ['Bike Repair & Roadside Assistance', 'Bike Maintenance'].includes(requestedService);
   const selectedCarServiceVehicleType = selectedCarServicePackage
     ? (/SUV|Big Car/i.test(selectedCarServicePackage.vehicleType) ? 'suv' : 'small')
     : null;
@@ -689,7 +691,7 @@ export default function CustomerRequestStart() {
         service_category_c: category.Id,
         required_capability_c: requiredCapability.Id,
         problem_description_c: (requestedService
-          ? (isCarWash ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + '; LOCAL Platform Fee: ₹' + CAR_WASH_PLATFORM_FEE + ' (once per booking)' + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Service subtotal: ₹' + washCartSummary.subtotal.toLocaleString('en-IN') + '. Customer menu estimate including platform fee' + (includePickupDrop ? ' and indicative Pickup & Drop' : '') + ': ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. LOCAL Platform Fee: ₹' + CAR_SERVICE_PLATFORM_FEE + ' (once per booking). Indicative total including platform fee: ₹' + (Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : requestedService) + ' for their car.'
+          ? (isCarWash ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + '; LOCAL Platform Fee: ₹' + CAR_WASH_PLATFORM_FEE + ' (once per booking)' + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Service subtotal: ₹' + washCartSummary.subtotal.toLocaleString('en-IN') + '. Customer menu estimate including platform fee' + (includePickupDrop ? ' and indicative Pickup & Drop' : '') + ': ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. LOCAL Platform Fee: ₹' + CAR_SERVICE_PLATFORM_FEE + ' (once per booking). Indicative total including platform fee: ₹' + (Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : isBikeCareRequest ? requestedService + '. Customer requested a callback from LOCAL Customer Care. No bike model details or bidding are required. Confirm availability and the full service price, including the ₹25 LOCAL Platform Fee, with the customer before confirming payment.' : requestedService) + (vehicle === 'bike' ? '.' : ' for their car.')
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
@@ -711,7 +713,7 @@ export default function CustomerRequestStart() {
         return;
       }
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
-      toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : tr('Request shared with eligible nearby Service Providers.', language));
+      toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : tr('Request shared with eligible nearby Service Providers.', language));
       if (isCarWash) {
         setWashVehicleLocked(false);
         window.sessionStorage.removeItem('local_car_wash_vehicle_locked_v1');
@@ -730,10 +732,58 @@ export default function CustomerRequestStart() {
         setSelectedCarServicePackage(null);
         window.sessionStorage.removeItem('local_car_service_selected_package_v1');
       }
+      if (isBikeCareRequest) {
+        setSubmittedBikeCareRequest({
+          requestId: res.data[0].Id,
+          service: requestedService,
+          locationText: location.text,
+        });
+        return;
+      }
       navigate('/requests/' + res.data[0].Id);
     } finally {
       setCreating(false);
     }
+  }
+
+  if (submittedBikeCareRequest) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6">
+        <Card className="overflow-hidden rounded-2xl border border-border p-0 shadow-sm">
+          <div className="bg-primary px-5 py-5 text-primary-foreground sm:px-7">
+            <div className="flex items-center gap-3">
+              <ApperIcon name="CheckCircle2" size={28} />
+              <div>
+                <h1 className="text-xl font-extrabold sm:text-2xl">Request Sent to LOCAL</h1>
+                <p className="mt-1 text-sm opacity-90">Your bike service request is now with Central Dispatch.</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-5 p-5 sm:p-7">
+            <div className="rounded-xl border p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Request reference</p>
+              <p className="mt-1 break-all text-sm font-bold">{submittedBikeCareRequest.requestId}</p>
+              <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
+                <span className="text-sm text-muted-foreground">Selected service</span>
+                <strong className="text-right text-sm">{submittedBikeCareRequest.service}</strong>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Service location</span>
+                <strong className="max-w-[60%] text-right text-sm">{submittedBikeCareRequest.locationText || 'Confirmed location'}</strong>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">New Request</span>
+              </div>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-4 text-sm leading-relaxed text-muted-foreground">
+              LOCAL Customer Care will call you to confirm service availability, the total price and the ₹25 LOCAL Platform Fee. No payment is due now. The booking and payment steps will be confirmed with you before the service is arranged.
+            </div>
+            <Button className="w-full" onClick={() => navigate('/customer/bike-care')}>Back to Bike Care & Assistance</Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   if (submittedWashOrder) {

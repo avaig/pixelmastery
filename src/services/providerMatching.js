@@ -73,6 +73,8 @@ export const ISSUE_CAPABILITY = {
   'car:Emergency Driver': 'Emergency Driver',
   'car:Emergency Car Rental': 'Car Rental',
   'bike:Emergency Car Rental': 'Car Rental',
+  'bike:Bike Repair & Roadside Assistance': 'Bike Roadside Assistance',
+  'bike:Bike Maintenance': 'Bike Mechanic',
   'car:Battery / Won’t Start': 'Car Battery Assistance',
   // Customer-facing label used by VehicleIssueSelect.jsx.
   'car:Battery Jump Start': 'Car Battery Assistance',
