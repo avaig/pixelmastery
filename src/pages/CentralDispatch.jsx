@@ -730,11 +730,11 @@ export default function CentralDispatch() {
 
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2">
           <Button variant="ghost" onClick={() => setSelectedRequestId(null)} className="-ml-3">
             <ApperIcon name="ArrowLeft" size={16} /> Back to requests
           </Button>
-          <Button variant="outline" onClick={run} disabled={loading}>
+          <Button variant="outline" onClick={run} disabled={loading} className="ml-auto">
             <ApperIcon name="RefreshCw" size={16} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>
         </div>
