@@ -938,13 +938,11 @@ export default function CustomerRequestStart() {
           {(location || isCarWash || isCarService) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              {(isCarWash || isCarService) && <div className="mt-4 rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground"><ApperIcon name="MapPin" size={15} /> We’ll use your saved customer location. LOCAL Customer Care will confirm whether your car will be picked up or brought to the workshop.</div>}
               <Button className="mt-5 w-full" onClick={createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && washCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
                 {creating ? tr('Sharing request…', language) : isCarWash ? 'Book Your Car Wash' : isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
               {(isCarWash || isCarService) && !location && <p className="mt-2 text-center text-xs text-amber-700">Your saved location isn’t available. Please update your location in your profile before booking.</p>}
-              {(isCarWash || isCarService) && <p className="mt-2 text-center text-xs text-muted-foreground">LOCAL Customer Care will call to confirm service details and the final quote before assigning a provider.</p>}
             </>
           )}
         </Card>
