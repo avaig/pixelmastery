@@ -293,12 +293,12 @@ export default function Home() {
     <div className="min-h-svh bg-white text-[#102c4d]">
       <CustomerLocationGate required={!isProvider && !isAdmin} allowProviderBypass />
       <header className="relative z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-8 lg:px-10">
+        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-3 py-2 sm:h-20 sm:flex-nowrap sm:px-8 sm:py-0 lg:px-10">
           <Link to="/" className="shrink-0">
             <img
               src={LOCAL_LOGO}
               alt="LOCAL — Happy to Help"
-              className="h-12 w-auto sm:h-12"
+              className="h-10 w-auto max-w-[38vw] sm:h-12 sm:max-w-none"
             />
           </Link>
 
