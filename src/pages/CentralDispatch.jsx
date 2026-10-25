@@ -144,12 +144,13 @@ export default function CentralDispatch() {
     const reconcileApprovedCarWashJobs = async () => {
       let changed = false;
       for (const request of data.requests) {
-        if (cancelled || !['Confirmed', 'Completed'].includes(String(request.status_c ?? '')) || getStructuredServiceDetails(request).type !== 'Car Wash') continue;
+        if (cancelled || getStructuredServiceDetails(request).type !== 'Car Wash') continue;
         const quote = readCarWashQuote(request.problem_description_c);
         const approval = readCarWashApproval(request.problem_description_c);
         if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) continue;
         const linkedJob = data.jobs.find((job) => String(job.request_c?.Id ?? job.request_c ?? '') === String(request.Id));
         if (!linkedJob || Number(linkedJob.agreed_price_c) === Number(quote.total)) continue;
+        // The customer's exact approved quote is authoritative for Car Wash, not the original catalog/package price.
         const changes = { Id: linkedJob.Id, agreed_price_c: Number(quote.total), original_provider_quote_c: Number(quote.total) };
         if (linkedJob.payment_status_c !== 'Final Payment Paid') {
           changes.remaining_amount_c = Number(quote.total);
@@ -742,7 +743,7 @@ export default function CentralDispatch() {
                   <div><p className="text-xs text-muted-foreground">Job status</p><div className="mt-1"><StatusBadge value={linkedJob.status_c || 'Unknown'} /></div></div>
                   <div><p className="text-xs text-muted-foreground">Payment status</p><div className="mt-1"><StatusBadge value={linkedJob.payment_status_c || 'Not recorded'} /></div></div>
                   <div><p className="text-xs text-muted-foreground">Billing status</p><p className="mt-1 font-medium">{linkedJob.billing_status_c || 'Not recorded'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Final agreed amount</p><p className="mt-1 font-semibold">₹{Number(linkedJob.agreed_price_c ?? 0).toLocaleString('en-IN')}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Final agreed amount</p><p className="mt-1 font-semibold">₹{Number(hasApprovedWashQuote ? approvedWashQuote.total : linkedJob.agreed_price_c ?? 0).toLocaleString('en-IN')}</p>{hasApprovedWashQuote && Number(linkedJob.agreed_price_c) !== Number(approvedWashQuote.total) && <p className="mt-1 text-xs text-amber-700">Approved quote ₹{Number(approvedWashQuote.total).toLocaleString('en-IN')} is being synced to this job record.</p>}</div>
                   <div><p className="text-xs text-muted-foreground">Payment method / reference</p><p className="mt-1 font-medium">{linkedJob.payment_method_c || 'Not recorded'}{linkedJob.payment_reference_c ? ' · ' + linkedJob.payment_reference_c : ''}</p></div>
                   <div><p className="text-xs text-muted-foreground">Provider payout</p><p className="mt-1 font-medium">{linkedJob.payout_status_c || 'Not recorded'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Car returned</p><p className="mt-1 font-medium">{linkedJob.returned_at_c ? new Date(linkedJob.returned_at_c).toLocaleString('en-IN') : 'Not recorded'}</p></div>
