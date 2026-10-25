@@ -772,6 +772,8 @@ export default function CentralDispatch() {
 
 
 
+                    <div><label className="mb-1 block text-sm font-medium">Negotiation Value / Discount (₹)</label><Input type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.target.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); }} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop Value (₹)</label><Input type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)} onChange={(e) => { const value = e.target.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), reason: e.target.value}}))} /></div>
                   </div>
                   <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
