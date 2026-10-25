@@ -64,8 +64,8 @@ export default function JobsDetail() {
       const quoteIndex = description.lastIndexOf(quoteMarker);
       const approvalIndex = description.lastIndexOf(approvalMarker);
       if (quoteIndex < 0 || approvalIndex < 0) return null;
-      const quote = JSON.parse(description.slice(quoteIndex + quoteMarker.length).split('\n')[0]);
-      const approval = JSON.parse(description.slice(approvalIndex + approvalMarker.length).split('\n')[0]);
+      const quote = JSON.parse(description.slice(quoteIndex + quoteMarker.length).split('\\n')[0]);
+      const approval = JSON.parse(description.slice(approvalIndex + approvalMarker.length).split('\\n')[0]);
       if (approval?.approved !== true || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) return null;
       return quote;
     } catch { return null; }

@@ -308,7 +308,7 @@ export default function CentralDispatch() {
       const result = await sdk.table('service_requests_c').update({
         Id: request.Id,
         status_c: 'Quoted',
-        problem_description_c: clean + '\\nLOCAL_CAR_WASH_QUOTE_JSON:' + JSON.stringify(quote),
+        problem_description_c: clean + '\nLOCAL_CAR_WASH_QUOTE_JSON:' + JSON.stringify(quote),
       });
       if (!result.data?.length) throw new Error(result.messages?.[0] || 'Revised quote could not be saved.');
       toast.success('Revised quote sent to the customer for approval.');

@@ -429,7 +429,7 @@ export default function RequestDetail() {
     try {
       const clean = String(request.problem_description_c ?? '').split('LOCAL_CAR_WASH_QUOTE_JSON:')[0].split('LOCAL_CAR_WASH_APPROVAL_JSON:')[0].trimEnd();
       const approval = { approved: true, quoteId: carWashQuote.quoteId, total: Number(carWashQuote.total), approvedAt: new Date().toISOString() };
-      const updated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\\nLOCAL_CAR_WASH_QUOTE_JSON:' + JSON.stringify(carWashQuote) + '\\nLOCAL_CAR_WASH_APPROVAL_JSON:' + JSON.stringify(approval) });
+      const updated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\nLOCAL_CAR_WASH_QUOTE_JSON:' + JSON.stringify(carWashQuote) + '\nLOCAL_CAR_WASH_APPROVAL_JSON:' + JSON.stringify(approval) });
       if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Quote approval could not be saved.');
       toast.success('Final quote approved. LOCAL Customer Care can now arrange pickup and drop.');
       await run();
