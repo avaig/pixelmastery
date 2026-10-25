@@ -827,7 +827,7 @@ export default function CustomerRequestStart() {
                     </div>
                   ))}
                   {includePickupDrop && <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>Pickup &amp; Drop</span><span className="font-semibold">₹100</span></div>}
-                  <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><div className="flex min-w-0 items-center gap-1.5"><span className="font-semibold">Estimated total</span><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={refreshEstimatedTotal} aria-label="Refresh booking total" title="Refresh booking total"><ApperIcon name="RefreshCw" size={16} /></Button></div><span className="shrink-0 text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
+                  <Button type="button" onClick={refreshEstimatedTotal} className="mt-3 flex w-full items-center justify-between rounded-lg border border-primary bg-primary px-3 py-3 text-primary-foreground shadow-sm hover:bg-primary/90"><span className="font-bold">Estimated total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></Button>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
