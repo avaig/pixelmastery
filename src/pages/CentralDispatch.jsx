@@ -773,7 +773,6 @@ export default function CentralDispatch() {
 
 
 
-                    <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), reason: e.target.value}}))} /></div>
                   </div>
 
 
