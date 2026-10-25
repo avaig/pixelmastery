@@ -80,7 +80,7 @@ export default function JobsDetail() {
         const ch = raw[i];
         if (inString) {
           if (escaped) escaped = false;
-          else if (ch === '\\\\') escaped = true;
+          else if (ch === '\\') escaped = true;
           else if (ch === '"') inString = false;
         } else if (ch === '"') inString = true;
         else if (ch === '{') depth += 1;
@@ -125,6 +125,8 @@ export default function JobsDetail() {
   const carWashServiceTotal = isCarWash ? (approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : carWashBasePrice + carWashExtrasTotal) : Number(job?.agreed_price_c ?? 0);
   const carWashPlatformFee = isCarWash ? Number(approvedCarWashQuote?.platformFee ?? 25) : 0;
   const carWashCustomerTotal = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.total) + carWashExtrasTotal : carWashServiceTotal + carWashPlatformFee;
+  const displayedAgreedPrice = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : Number(job?.agreed_price_c ?? 0);
+  const displayedAmountDue = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.total) + carWashExtrasTotal : Number(job?.customer_payable_now_c ?? job?.agreed_price_c ?? 0);
   const awaitingSince = job?.completion_requested_at_c ? new Date(job.completion_requested_at_c).getTime() : 0;
   const adminReviewDue = (job?.status_c === 'Awaiting Customer Confirmation' || (isCarEssentialsDelivery && job?.provider_travel_status_c === 'Delivered — Awaiting Customer Confirmation')) && awaitingSince > 0 && Date.now() - awaitingSince >= 24 * 60 * 60 * 1000;
   let savedInspection = null;
