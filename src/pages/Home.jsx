@@ -370,7 +370,7 @@ export default function Home() {
               {tr('LOCAL Help in', language)} {city}
             </div>
 
-            <h1 className="mx-auto mt-4 max-w-3xl text-4xl font-black leading-none tracking-tight text-[#102c4d] sm:mt-6 sm:text-6xl lg:text-7xl">
+            <h1 className="mx-auto mt-4 max-w-3xl text-3xl font-black leading-none tracking-tight text-[#102c4d] sm:mt-6 sm:text-5xl lg:text-6xl">
               {tr('Happy to Help', language)}
               <span
                 aria-hidden="true"
@@ -386,7 +386,7 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-3 max-w-2xl px-2 text-base font-semibold tracking-wide text-slate-600 sm:mt-4 sm:text-xl">
-              {tr('Time Is Money. We Save Both.', language)}
+              {tr('Services At Your Doorstep', language)}
             </p>
 
             <div id="services" className="mx-auto mt-5 max-w-3xl sm:mt-8">
