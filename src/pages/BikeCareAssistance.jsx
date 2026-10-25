@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import ApperIcon from '@/components/ApperIcon';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { getLanguage, tr } from '@/services/i18n';
 
 export const route = {
@@ -8,6 +9,8 @@ export const route = {
   layout: 'owner',
   access: "profile === 'Customer_c'",
 };
+
+const CUSTOMER_CARE_PHONE = '';
 
 const services = [
   {
@@ -63,6 +66,28 @@ export default function BikeCareAssistance() {
             </Card>
           </button>
         ))}
+      </div>
+
+      <div className="mt-4 sm:mt-5">
+        {CUSTOMER_CARE_PHONE ? (
+          <Button asChild type="button" variant="outline" className="w-full">
+            <a href={'tel:' + CUSTOMER_CARE_PHONE}>
+              <ApperIcon name="Phone" size={17} />
+              Call Customer Care
+            </a>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled
+            title="Customer Care phone number has not been configured"
+          >
+            <ApperIcon name="Phone" size={17} />
+            Call Customer Care
+          </Button>
+        )}
       </div>
     </div>
   );
