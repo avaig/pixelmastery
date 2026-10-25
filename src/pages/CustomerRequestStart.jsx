@@ -797,25 +797,23 @@ export default function CustomerRequestStart() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
               <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
-                <div className="border-b bg-primary/5 px-4 py-4 sm:px-5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">{pkg.checkup}</p>
-                  <h3 className="mt-1 text-xl font-bold text-foreground">{pkg.title}</h3>
+                <div className="border-b bg-primary/5 px-4 py-4 text-center sm:px-5">
+                  <h3 className="text-xl font-bold text-foreground">{pkg.title}</h3>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-600">{pkg.checkup}</p>
                 </div>
                 <div className="flex flex-1 flex-col p-4 sm:p-5">
-                  <div className="mb-3 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-muted-foreground"><span>{carServiceCarType === 'suv' ? 'SUV / Big Car' : 'Hatchback / Sedan'}</span><span>Listed price</span></div>
                   <div className="space-y-3">
                     {pkg.prices.filter((price) => carServiceCarType === 'suv' ? /SUV|Big Car/i.test(price.label) : !/SUV|Big Car/i.test(price.label)).map((price) => {
                       const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
                       const blockedByVehicleLock = Boolean(selectedCarServiceVehicleType && selectedCarServiceVehicleType !== carServiceCarType);
                       return (
-                        <div key={price.label} className={'rounded-lg border px-3 py-3 ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'bg-primary/5')}>
+                        <div key={price.label} className={'rounded-lg border px-3 py-3 transition-colors ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border/70 bg-background')}>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-sm font-semibold"><ApperIcon name={/SUV|Big Car/i.test(price.label) ? 'Truck' : 'CarFront'} size={18} className="text-primary" />{price.label}</span>
-                            <span className="shrink-0 text-lg font-extrabold">₹{price.price.toLocaleString('en-IN')}</span>
+                            <span className="text-lg font-extrabold">₹{price.price.toLocaleString('en-IN')}</span>
+                            <button type="button" aria-label={isSelected ? 'Unselect package' : 'Select package'} aria-pressed={isSelected} disabled={blockedByVehicleLock && !isSelected} onClick={() => { if (isSelected) { setSelectedCarServicePackage(null); } else { setCarServiceVehicleLocked(true); setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered }); } }} className={'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 ' + (isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 bg-background hover:border-primary')}>
+                              {isSelected && <ApperIcon name="Check" size={18} />}
+                            </button>
                           </div>
-                          <Button type="button" size="sm" variant={isSelected ? 'default' : 'outline'} disabled={blockedByVehicleLock} className="mt-3 min-h-10 w-full rounded-xl" onClick={() => { setCarServiceCarType(carServiceCarType); setCarServiceVehicleLocked(true); setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered }); }}>
-                            <ApperIcon name={isSelected ? 'CheckCircle2' : 'ArrowRight'} size={16} />{isSelected ? 'Package selected' : blockedByVehicleLock ? 'Vehicle type locked' : 'Choose package'}
-                          </Button>
                         </div>
                       );
                     })}
