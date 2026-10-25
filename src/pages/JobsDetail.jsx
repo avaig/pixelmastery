@@ -56,6 +56,20 @@ export default function JobsDetail() {
     ? sdk.table('service_requests_c').select(['Id', 'Name', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'customer_c']).get(requestId).then((res) => res.data ?? null)
     : Promise.resolve(null), [requestId]);
 
+  const approvedCarWashQuote = (() => {
+    const description = String(serviceRequest?.problem_description_c ?? '');
+    const quoteMarker = 'LOCAL_CAR_WASH_QUOTE_JSON:';
+    const approvalMarker = 'LOCAL_CAR_WASH_APPROVAL_JSON:';
+    try {
+      const quoteIndex = description.lastIndexOf(quoteMarker);
+      const approvalIndex = description.lastIndexOf(approvalMarker);
+      if (quoteIndex < 0 || approvalIndex < 0) return null;
+      const quote = JSON.parse(description.slice(quoteIndex + quoteMarker.length).split('\\n')[0]);
+      const approval = JSON.parse(description.slice(approvalIndex + approvalMarker.length).split('\\n')[0]);
+      if (approval?.approved !== true || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) return null;
+      return quote;
+    } catch { return null; }
+  })();
   const isProvider = user?.profile === 'ServiceProvider_c';
   const isCustomer = user?.profile === 'Customer_c';
   const isAdmin = user?.profile === 'Admin_c';
@@ -81,9 +95,9 @@ export default function JobsDetail() {
   const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved');
   const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending');
   const carWashExtrasTotal = carWashApprovedExtras.reduce((sum, item) => sum + Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1), 0);
-  const carWashServiceTotal = isCarWash ? carWashBasePrice + carWashExtrasTotal : Number(job?.agreed_price_c ?? 0);
-  const carWashPlatformFee = isCarWash ? 25 : 0;
-  const carWashCustomerTotal = carWashServiceTotal + carWashPlatformFee;
+  const carWashServiceTotal = isCarWash ? (approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : carWashBasePrice + carWashExtrasTotal) : Number(job?.agreed_price_c ?? 0);
+  const carWashPlatformFee = isCarWash ? Number(approvedCarWashQuote?.platformFee ?? 25) : 0;
+  const carWashCustomerTotal = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.total) + carWashExtrasTotal : carWashServiceTotal + carWashPlatformFee;
   const awaitingSince = job?.completion_requested_at_c ? new Date(job.completion_requested_at_c).getTime() : 0;
   const adminReviewDue = (job?.status_c === 'Awaiting Customer Confirmation' || (isCarEssentialsDelivery && job?.provider_travel_status_c === 'Delivered — Awaiting Customer Confirmation')) && awaitingSince > 0 && Date.now() - awaitingSince >= 24 * 60 * 60 * 1000;
   let savedInspection = null;
@@ -471,20 +485,20 @@ export default function JobsDetail() {
       acGroups = [];
     }
     const localFee = Number(job.local_service_fee_amount_c ?? 0);
-    const discount = Number(job.customer_discount_amount_c ?? 0);
+    const discount = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.discount ?? 0) : Number(job.customer_discount_amount_c ?? 0);
     const tax = Number(job.customer_tax_amount_c ?? 0);
     const bookingCommitment = Number(job.booking_commitment_amount_c ?? 0);
     // Battery Jump Start follows the no-advance policy; ignore legacy calculated commitment fields unless a real payment was recorded.
     const bookingPaid = isBatteryJumpStart ? 0 : bookingCommitment;
     const finalPaid = Number(job.remaining_amount_c === 0 ? job.customer_payable_now_c ?? 0 : 0);
-    const platformFee = 25;
-    const totalPayable = Math.max(0, servicePrice - discount + tax + platformFee);
+    const platformFee = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.platformFee ?? 25) : 25;
+    const totalPayable = isCarWash && approvedCarWashQuote ? Number(approvedCarWashQuote.total) + carWashExtrasTotal : Math.max(0, servicePrice - discount + tax + platformFee);
     const totalPaid = Math.min(totalPayable, bookingPaid + finalPaid);
     const balance = Math.max(0, totalPayable - totalPaid);
     const money = (value) => '₹' + Number(value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const safe = (value) => String(value ?? '—').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
     const acServiceRows = acGroups.map((group) => `<tr><td>${safe(group.acType + ' — ' + group.serviceType + (group.notes ? ': ' + group.notes : ''))} × ${safe(group.quantity)}</td><td>Included in agreed total</td></tr>`).join('');
-    const carWashInvoiceRows = isCarWash ? `<tr><td>Original fixed Car Wash package</td><td>${money(carWashBasePrice)}</td></tr>${carWashApprovedExtras.map((item) => `<tr><td>Additional service / part — ${safe(item.description)} × ${safe(item.quantity)}</td><td>${money(Number(item.unitPrice) * Number(item.quantity))}</td></tr>`).join('')}` : '';
+    const carWashInvoiceRows = isCarWash ? `${approvedCarWashQuote ? `<tr><td>Customer Quoted Amount</td><td>${money(approvedCarWashQuote.serviceSubtotal)}</td></tr>${Number(approvedCarWashQuote.pickupDropCharge ?? 0) > 0 ? `<tr><td>Pick up and drop</td><td>${money(approvedCarWashQuote.pickupDropCharge)}</td></tr>` : ''}` : `<tr><td>Original fixed Car Wash package</td><td>${money(carWashBasePrice)}</td></tr>`}${carWashApprovedExtras.map((item) => `<tr><td>Additional service / part — ${safe(item.description)} × ${safe(item.quantity)}</td><td>${money(Number(item.unitPrice) * Number(item.quantity))}</td></tr>`).join('')}` : '';
     const serviceRows = isCarWash ? carWashInvoiceRows : isAcService && acServiceRows ? `${acServiceRows}<tr><td>Agreed AC service total</td><td>${money(servicePrice)}</td></tr>` : `<tr><td>Service Offered — ${safe(serviceName)}</td><td>${money(servicePrice)}</td></tr>`;
     const invoiceWindow = window.open('', '_blank', 'width=900,height=700');
     if (!invoiceWindow) {
