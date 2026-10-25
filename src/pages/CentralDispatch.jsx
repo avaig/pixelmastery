@@ -142,6 +142,7 @@ export default function CentralDispatch() {
     if (!data?.requests?.length || !data?.jobs?.length) return;
     let cancelled = false;
     const reconcileApprovedCarWashJobs = async () => {
+      let changed = false;
       for (const request of data.requests) {
         if (cancelled || !['Confirmed', 'Completed'].includes(String(request.status_c ?? '')) || getStructuredServiceDetails(request).type !== 'Car Wash') continue;
         const quote = readCarWashQuote(request.problem_description_c);
@@ -149,10 +150,16 @@ export default function CentralDispatch() {
         if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) continue;
         const linkedJob = data.jobs.find((job) => String(job.request_c?.Id ?? job.request_c ?? '') === String(request.Id));
         if (!linkedJob || Number(linkedJob.agreed_price_c) === Number(quote.total)) continue;
-        const result = await sdk.table('jobs_c').update({ Id: linkedJob.Id, agreed_price_c: Number(quote.total), original_provider_quote_c: Number(quote.total), remaining_amount_c: Number(quote.total), customer_payable_now_c: Number(quote.total) });
-        if (!result.data?.length) console.warn('Could not sync approved Car Wash quote for job', linkedJob.Id, result.messages?.[0]);
+        const changes = { Id: linkedJob.Id, agreed_price_c: Number(quote.total), original_provider_quote_c: Number(quote.total) };
+        if (linkedJob.payment_status_c !== 'Final Payment Paid') {
+          changes.remaining_amount_c = Number(quote.total);
+          changes.customer_payable_now_c = Number(quote.total);
+        }
+        const result = await sdk.table('jobs_c').update(changes);
+        if (result.data?.length) changed = true;
+        else console.warn('Could not sync approved Car Wash quote for job', linkedJob.Id, result.messages?.[0]);
       }
-      if (!cancelled) await run();
+      if (!cancelled && changed) await run();
     };
     reconcileApprovedCarWashJobs();
     return () => { cancelled = true; };
