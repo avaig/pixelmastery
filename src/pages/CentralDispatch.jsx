@@ -247,8 +247,8 @@ export default function CentralDispatch() {
     }
   }
 
-  function refreshCarWashQuote(request, details) {
-    const current = carWashQuoteInputs[request.Id] ?? {};
+  function refreshCarWashQuote(request, details, visibleInput = null) {
+    const current = visibleInput ?? carWashQuoteInputs[request.Id] ?? {};
     const previous = readCarWashQuote(request.problem_description_c);
     const subtotal = Number(details.total || 0);
     const discountRaw = String(current.discount ?? previous?.discount ?? 0);
@@ -783,7 +783,7 @@ export default function CentralDispatch() {
                     <div className="flex justify-between gap-3"><span>Pickup & Drop Value</span><strong>₹{pickupChargeValue.toLocaleString('en-IN')}</strong></div>
                     <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
                     <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{quoteTotalValue.toLocaleString('en-IN')}</strong></div>
-                    <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details)}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
+                    <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details, {...(carWashQuoteInputs[request.Id] || {}), discount: input.discount ?? "0", pickupCharge: input.pickupCharge ?? "0"})}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
                     {!refreshed && <p className="text-xs text-amber-700">Enter Negotiation Value and Pickup & Drop Value (leave blank for ₹0), then refresh before sending.</p>}
                   </div>
 
