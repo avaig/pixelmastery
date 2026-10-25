@@ -808,7 +808,7 @@ export default function CustomerRequestStart() {
                       const blockedByVehicleLock = Boolean(selectedCarServiceVehicleType && selectedCarServiceVehicleType !== carServiceCarType);
                       return (
                         <div key={price.label} className={'w-full rounded-xl border px-4 py-3 transition-colors ' + (isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border/70 bg-background')}>
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex w-full items-center justify-between gap-3">
                             <span className="text-lg font-extrabold">₹{price.price.toLocaleString('en-IN')}</span>
                             <button type="button" aria-label={isSelected ? 'Unselect package' : 'Select package'} aria-pressed={isSelected} disabled={blockedByVehicleLock && !isSelected} onClick={() => { if (isSelected) { setSelectedCarServicePackage(null); } else { setCarServiceVehicleLocked(true); setSelectedCarServicePackage({ title: pkg.title, checkup: pkg.checkup, vehicleType: price.label, price: price.price, covered: pkg.covered }); } }} className={'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 ' + (isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 bg-background hover:border-primary')}>
                               {isSelected && <ApperIcon name="Check" size={18} />}
