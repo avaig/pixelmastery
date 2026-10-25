@@ -60,15 +60,21 @@ export default function JobsDetail() {
     const description = String(serviceRequest?.problem_description_c ?? '');
     const quoteMarker = 'LOCAL_CAR_WASH_QUOTE_JSON:';
     const approvalMarker = 'LOCAL_CAR_WASH_APPROVAL_JSON:';
-    try {
-      const quoteIndex = description.lastIndexOf(quoteMarker);
-      const approvalIndex = description.lastIndexOf(approvalMarker);
-      if (quoteIndex < 0 || approvalIndex < 0) return null;
-      const quote = JSON.parse(description.slice(quoteIndex + quoteMarker.length).split('\\n')[0]);
-      const approval = JSON.parse(description.slice(approvalIndex + approvalMarker.length).split('\\n')[0]);
-      if (approval?.approved !== true || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) return null;
-      return quote;
-    } catch { return null; }
+    const extractJsonAfter = (marker, stopMarkers = []) => {
+      const index = description.lastIndexOf(marker);
+      if (index < 0) return null;
+      let raw = description.slice(index + marker.length);
+      for (const stopMarker of stopMarkers) {
+        const stopIndex = raw.indexOf(stopMarker);
+        if (stopIndex >= 0) raw = raw.slice(0, stopIndex);
+      }
+      raw = raw.split('\\\\n')[0].split('\\n')[0].trim();
+      try { return JSON.parse(raw); } catch { return null; }
+    };
+    const quote = extractJsonAfter(quoteMarker, [approvalMarker]);
+    const approval = extractJsonAfter(approvalMarker);
+    if (!quote || !approval || approval.approved !== true || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) return null;
+    return quote;
   })();
   const isProvider = user?.profile === 'ServiceProvider_c';
   const isCustomer = user?.profile === 'Customer_c';
@@ -92,8 +98,8 @@ export default function JobsDetail() {
   try { carWashItems = job?.car_wash_extra_items_c ? JSON.parse(job.car_wash_extra_items_c) : []; } catch { carWashItems = []; }
   if (!Array.isArray(carWashItems)) carWashItems = [];
   const carWashBasePrice = Number(job?.original_car_wash_price_c ?? job?.original_provider_quote_c ?? job?.agreed_price_c ?? 0);
-  const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved');
-  const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending');
+  const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved' && !/^(discount offered|negotiation value|negotiation value \/ discount|pick\s*up\s*(?:&|and)\s*drop|pickup\s*(?:&|and)\s*drop|local platform fee)$/i.test(String(item.description ?? '').trim()));
+  const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending' && !/^(discount offered|negotiation value|negotiation value \/ discount|pick\s*up\s*(?:&|and)\s*drop|pickup\s*(?:&|and)\s*drop|local platform fee)$/i.test(String(item.description ?? '').trim()));
   const carWashExtrasTotal = carWashApprovedExtras.reduce((sum, item) => sum + Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1), 0);
   const carWashServiceTotal = isCarWash ? (approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : carWashBasePrice + carWashExtrasTotal) : Number(job?.agreed_price_c ?? 0);
   const carWashPlatformFee = isCarWash ? Number(approvedCarWashQuote?.platformFee ?? 25) : 0;
