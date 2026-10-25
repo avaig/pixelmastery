@@ -249,36 +249,30 @@ export default function CentralDispatch() {
 
   function refreshCarWashQuote(request, details) {
     const current = carWashQuoteInputs[request.Id] ?? {};
-    const discountRaw = String(current.discount ?? readCarWashQuote(request.problem_description_c)?.discount ?? 0);
-    const pickupChoice = String(current.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')).toLowerCase();
-    const pickupRaw = String(current.pickupCharge ?? readCarWashQuote(request.problem_description_c)?.pickupDropCharge ?? details.pickupDropAmount ?? 100);
-    if (pickupChoice === 'ask') {
-      toast.error('Select Yes or No for Pickup & Drop before refreshing the quote.');
-      return;
-    }
+    const previous = readCarWashQuote(request.problem_description_c);
     const subtotal = Number(details.total || 0);
-    const requestedDiscount = Number(discountRaw);
-    if (!Number.isFinite(requestedDiscount) || requestedDiscount < 0 || requestedDiscount > subtotal) {
-      toast.error('Enter a discount between ₹0 and the service subtotal.');
+    const discountRaw = String(current.discount ?? previous?.discount ?? 0);
+    const pickupRaw = String(current.pickupCharge ?? previous?.pickupDropCharge ?? 0);
+    const discount = Number(discountRaw);
+    const pickupDropCharge = Number(pickupRaw);
+    if (!Number.isFinite(discount) || discount < 0 || discount > subtotal) {
+      toast.error('Negotiation value must be between ₹0 and the service total.');
       return;
     }
-    const requestedPickupCharge = Number(pickupRaw);
-    if (pickupChoice === 'yes' && (!Number.isFinite(requestedPickupCharge) || requestedPickupCharge < 0)) {
-      toast.error('Enter a valid Pickup & Drop charge.');
+    if (!Number.isFinite(pickupDropCharge) || pickupDropCharge < 0) {
+      toast.error('Pickup & Drop value must be ₹0 or more.');
       return;
     }
-    const discount = requestedDiscount;
-    const pickupDropCharge = pickupChoice === 'yes' ? requestedPickupCharge : 0;
     const calculation = {
       discount,
-      pickupDrop: pickupChoice === 'yes',
+      pickupDrop: pickupDropCharge > 0,
       pickupDropCharge,
       platformFee: 25,
       serviceSubtotal: subtotal,
-      total: Math.max(0, subtotal - discount) + 25 + pickupDropCharge,
+      total: subtotal - discount + pickupDropCharge + 25,
       refreshedAt: Date.now(),
     };
-    setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: discountRaw, pickupDrop: pickupChoice, pickupCharge: pickupRaw}}));
+    setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: discountRaw, pickupCharge: pickupRaw}}));
     setCarWashCalculatedQuotes((old) => ({...old, [request.Id]: calculation}));
     toast.success('Quote total refreshed.');
   }
@@ -783,14 +777,15 @@ export default function CentralDispatch() {
                   <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
                     <div className="flex justify-between gap-3"><span>Service subtotal</span><strong>₹{Number(details.total || 0).toLocaleString('en-IN')}</strong></div>
 
+                    <div className="flex justify-between gap-3"><span>Negotiation Value</span><strong>−₹{discountValue.toLocaleString('en-IN')}</strong></div>
+                    <div className="flex justify-between gap-3"><span>Pickup & Drop Value</span><strong>₹{pickupChargeValue.toLocaleString('en-IN')}</strong></div>
                     <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
-
                     <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{quoteTotalValue.toLocaleString('en-IN')}</strong></div>
                     <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details)}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
-                    {!refreshed && <p className="text-xs text-amber-700">Review the service subtotal and refresh the total before sending.</p>}
+                    {!refreshed && <p className="text-xs text-amber-700">Enter Negotiation Value and Pickup & Drop Value (leave blank for ₹0), then refresh before sending.</p>}
                   </div>
                   {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
-                  <Button className="w-full" disabled={Boolean(busyKey) || !refreshed || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
+                  <Button className="w-full" disabled={Boolean(busyKey) || !refreshed} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
               })()}

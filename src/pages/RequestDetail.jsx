@@ -729,10 +729,10 @@ export default function RequestDetail() {
             <h3 className="font-semibold">LOCAL Customer Care quote</h3>
             {carWashQuote ? <>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-3"><span>Selected services</span><strong>₹{Number(carWashQuote.serviceSubtotal).toLocaleString('en-IN')}</strong></div>
-                <div className="flex justify-between gap-3"><span>Negotiated discount</span><strong>−₹{Number(carWashQuote.discount || 0).toLocaleString('en-IN')}</strong></div>
+                <div className="flex justify-between gap-3"><span>Service Total</span><strong>₹{Number(carWashQuote.serviceSubtotal).toLocaleString('en-IN')}</strong></div>
+                <div className="flex justify-between gap-3"><span>Negotiation Value</span><strong>−₹{Number(carWashQuote.discount || 0).toLocaleString('en-IN')}</strong></div>
+                <div className="flex justify-between gap-3"><span>Pickup &amp; Drop Value</span><strong>₹{Number(carWashQuote.pickupDropCharge || 0).toLocaleString('en-IN')}</strong></div>
                 <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹{Number(carWashQuote.platformFee || 25).toLocaleString('en-IN')}</strong></div>
-                <div className="flex justify-between gap-3"><span>Pickup &amp; Drop</span><strong>{carWashQuote.pickupDrop ? '₹' + Number(carWashQuote.pickupDropCharge || 0).toLocaleString('en-IN') : 'Not required'}</strong></div>
                 <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Final quote (v{carWashQuote.version || 1})</span><strong>₹{Number(carWashQuote.total).toLocaleString('en-IN')}</strong></div>
               </div>
               <p className="text-xs text-muted-foreground">{carWashQuoteApproved ? 'You approved this quote.' : carWashQuote.status === 'Sent to Customer' ? 'Please review the final amount before approving.' : 'Waiting for Customer Care to send the quote.'}</p>
