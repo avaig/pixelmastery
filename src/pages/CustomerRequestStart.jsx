@@ -801,7 +801,7 @@ export default function CustomerRequestStart() {
                   <h3 className="text-xl font-bold text-foreground">{pkg.title}</h3>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-600">{pkg.checkup}</p>
                 </div>
-                <div className="flex flex-1 flex-col p-4 sm:p-5">
+                <div className="flex flex-col p-3 sm:p-4">
                   <div className="space-y-3">
                     {pkg.prices.filter((price) => carServiceCarType === 'suv' ? /SUV|Big Car/i.test(price.label) : !/SUV|Big Car/i.test(price.label)).map((price) => {
                       const isSelected = selectedCarServicePackage?.title === pkg.title && selectedCarServicePackage?.vehicleType === price.label;
@@ -819,7 +819,7 @@ export default function CustomerRequestStart() {
                     })}
                   </div>
                 </div>
-                  <div className="mt-5 border-t border-border pt-4">
+                  <div className="mt-2 border-t border-border pt-2">
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-bold"><ApperIcon name="ClipboardCheck" size={17} className="text-primary" />What's included</h4>
                     <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
                       {pkg.covered.map((item) => <li key={item} className="flex items-start gap-2"><ApperIcon name="Check" size={15} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>)}
