@@ -752,23 +752,7 @@ export default function CentralDispatch() {
                 return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                   <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Review the service total and send the final quote to the customer.</p></div>
                   {quote && <div className="rounded-lg border bg-background p-3 text-sm"><div className="flex justify-between gap-3"><span>Last quote (v{quote.version || 1})</span><strong>₹{Number(quote.total).toLocaleString('en-IN')}</strong></div><p className="mt-1 text-muted-foreground">{approved ? 'Customer approved this exact quote.' : quote.status === 'Sent to Customer' ? 'Awaiting customer approval.' : 'Quote needs to be sent.'}</p></div>}
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1"><label className="block text-sm font-medium">Negotiation Value / Discount (₹)</label><input type="number" min="0" max={serviceSubtotal} className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm" value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.currentTarget.value; const next = {...input, discount: value}; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); const calculation = calculateCarWashQuote(details, next); if (!calculation.error) setCarWashCalculatedQuotes((old) => ({...old, [request.Id]: calculation})); }} /><p className="text-xs text-muted-foreground">Discount subtracted from service total.</p></div>
-                    <div className="space-y-1"><label className="block text-sm font-medium">Pickup & Drop Value (₹)</label><input type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)} onChange={(e) => { const value = e.currentTarget.value; const next = {...input, pickupCharge: value}; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); const calculation = calculateCarWashQuote(details, next); if (!calculation.error) setCarWashCalculatedQuotes((old) => ({...old, [request.Id]: calculation})); }} /><p className="text-xs text-muted-foreground">Additional charge; blank means ₹0.</p></div>
-                  </div>
-                  {(() => {
-                    const live = calculateCarWashQuote(details, input);
-                    const display = live.error ? null : live;
-                    return <div className="rounded-lg border bg-background p-4 space-y-3">
-                      <div className="flex justify-between gap-3"><span>Service Total</span><strong>₹{serviceSubtotal.toLocaleString('en-IN')}</strong></div>
-                      <div className="flex justify-between gap-3"><span>Negotiation Value</span><strong>−₹{Number(display?.discount ?? 0).toLocaleString('en-IN')}</strong></div>
-                      <div className="flex justify-between gap-3"><span>Pickup & Drop Value</span><strong>+₹{Number(display?.pickupDropCharge ?? 0).toLocaleString('en-IN')}</strong></div>
-                      <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
-                      <div className="flex justify-between gap-3 border-t pt-3 text-base font-bold"><span>Quote Total</span><strong>₹{Number(display?.total ?? (serviceSubtotal + 25)).toLocaleString('en-IN')}</strong></div>
-                      {live.error && <p className="text-sm text-destructive">{live.error}</p>}
-                      <Button type="button" variant="outline" className="w-full" onClick={() => refreshCarWashQuote(request, details, input)}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
-                    </div>;
-                  })()}
+
 
 
                   <Button className="w-full" disabled={Boolean(busyKey)} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
