@@ -542,13 +542,16 @@ export default function CentralDispatch() {
         toast.info('This request is already finalized or closed.');
         return;
       }
-      if (getStructuredServiceDetails(request).type === 'Car Wash') {
+      const isCarWashRequest = getStructuredServiceDetails(request).type === 'Car Wash';
+      let approvedCarWashQuote = null;
+      if (isCarWashRequest) {
         const quote = readCarWashQuote(request.problem_description_c);
         const approval = readCarWashApproval(request.problem_description_c);
-        if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total)) {
+        if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) || !Number.isFinite(Number(quote.total))) {
           toast.error('Car Wash booking cannot be confirmed until the customer approves the latest revised quote.');
           return;
         }
+        approvedCarWashQuote = quote;
       }
       if (acceptedAssignment.status_c !== 'Selected' || !/Central LOCAL assignment invitation/i.test(String(acceptedAssignment.message_c ?? ''))) {
         toast.error('Only a provider who accepted a Central LOCAL assignment can be confirmed.');
@@ -557,7 +560,7 @@ export default function CentralDispatch() {
       const isCarEssentials = /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? '') + ' ' + String(request.problem_description_c ?? ''));
       const isRsaQuote = isRsaQuoteRequest(request) && !isCarEssentials;
       const fixedPriceRequest = isRsaQuote ? false : isFixedPriceRequest(request);
-      const fixedPrice = fixedPriceRequest ? getFixedPrice(request) : null;
+      const fixedPrice = isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : fixedPriceRequest ? getFixedPrice(request) : null;
       const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || isCarEssentials || isRsaQuote;
       if (isRsaQuote) {
         const quote = readRsaQuote(acceptedAssignment.message_c);
@@ -593,8 +596,10 @@ export default function CentralDispatch() {
         const currentQuote = isCarEssentials ? readCarEssentialsQuote(acceptedAssignment.message_c) : isRsaQuote ? readRsaQuote(acceptedAssignment.message_c) : null;
         const updateExistingJob = await sdk.table('jobs_c').update({
           Id: existingJob.Id,
-          agreed_price_c: (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.agreed_price_c,
-          original_provider_quote_c: (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
+          agreed_price_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.agreed_price_c,
+          original_provider_quote_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
+          remaining_amount_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : undefined,
+          customer_payable_now_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : undefined,
           billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
           service_start_otp_c: isCarEssentials ? null : existingJob.service_start_otp_c,
           admin_review_note_c: isCarEssentials
@@ -615,7 +620,9 @@ export default function CentralDispatch() {
         response_c: acceptedAssignment.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
         technician_c: acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c,
-        agreed_price_c: providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? fixedPrice ?? 0) : fixedPrice,
+        agreed_price_c: isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? fixedPrice ?? 0) : fixedPrice,
+        remaining_amount_c: isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : undefined,
+        customer_payable_now_c: isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : undefined,
         original_provider_quote_c: providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? 0) : null,
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
