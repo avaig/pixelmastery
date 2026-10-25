@@ -906,7 +906,7 @@ export default function CustomerRequestStart() {
             </div>
             {serviceTiming === 'Scheduled' && <div className="mt-3"><label htmlFor="requested-service-time" className="text-sm font-medium">Choose date and time</label><Input id="requested-service-time" type="datetime-local" min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Your selected time is a request, not a confirmed appointment. A Service Provider must accept it.</p></div>}
           </>}
-          {!isCarEssentialsDelivery && <>
+          {!isCarEssentialsDelivery && !isCarWash && !isCarService && <>
           <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">Where do you need the service?</div>
           <div className="mt-2 text-sm text-muted-foreground">Choose the location for this booking. It can be different from your saved home or office address. GPS is optional.</div>
           {location && (
@@ -935,14 +935,16 @@ export default function CustomerRequestStart() {
             </Button>
           </form>
           </>}
-          {location && (
+          {(location || isCarWash || isCarService) && (
             <>
-              {isCarEssentialsDelivery && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-5 w-full" onClick={createRequest} disabled={location.serviceable === false || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && washCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
+              {(isCarWash || isCarService) && <div className="mt-4 rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground"><ApperIcon name="MapPin" size={15} /> We’ll use your saved customer location. LOCAL Customer Care will confirm whether your car will be picked up or brought to the workshop.</div>}
+              <Button className="mt-5 w-full" onClick={createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && washCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
-                {creating ? tr('Sharing request…', language) : isCarWash || isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
+                {creating ? tr('Sharing request…', language) : isCarWash ? 'Book Your Car Wash' : isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
-              {(isCarWash || isCarService) && <p className="mt-2 text-center text-xs text-muted-foreground">LOCAL Customer Care will call to confirm service details, the final quote, and any pickup/drop requirements before assigning a provider.</p>}
+              {(isCarWash || isCarService) && !location && <p className="mt-2 text-center text-xs text-amber-700">Your saved location isn’t available. Please update your location in your profile before booking.</p>}
+              {(isCarWash || isCarService) && <p className="mt-2 text-center text-xs text-muted-foreground">LOCAL Customer Care will call to confirm service details and the final quote before assigning a provider.</p>}
             </>
           )}
         </Card>
