@@ -792,7 +792,6 @@ export default function CustomerRequestStart() {
             </div>
             {selectedCarServicePackage && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/80 p-3 text-sm"><span className="text-muted-foreground">Vehicle type is locked for this Car Service booking.</span><Button type="button" variant="outline" size="sm" onClick={() => setShowVehicleChangeConfirm(true)}>Cancel Booking &amp; Change Vehicle</Button></div>}
           </div>
-          </div>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {CAR_SERVICE_PACKAGES.map((pkg) => (
               <Card key={pkg.title} className={'flex h-full flex-col overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg ' + (selectedCarServicePackage?.title === pkg.title ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
