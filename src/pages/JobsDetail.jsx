@@ -134,7 +134,9 @@ export default function JobsDetail() {
   const isCarCare = isCarWash || isCarService;
   const isCarEssentialsDelivery = /car essentials delivery|car essentials/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const carEssentialsApproval = isCarEssentialsDelivery ? readCarEssentialsApproval(serviceRequest?.problem_description_c) : null;
-  const carEssentialsDeliveryOtp = /^\\d{6}$/.test(String(job?.service_start_otp_c ?? '')) ? String(job.service_start_otp_c) : String(carEssentialsApproval?.otp ?? '');
+  const jobDeliveryOtp = String(job?.service_start_otp_c ?? '').trim();
+  const approvalDeliveryOtp = String(carEssentialsApproval?.otp ?? '').trim();
+  const carEssentialsDeliveryOtp = /^\d{6}$/.test(jobDeliveryOtp) ? jobDeliveryOtp : /^\d{6}$/.test(approvalDeliveryOtp) ? approvalDeliveryOtp : '';
   const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
   const isBatteryJumpStart = /battery jump start/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
