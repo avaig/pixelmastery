@@ -159,9 +159,13 @@ function getCarEssentialsRequestNote() {
 function getWashPrice(item) {
   const option = CAR_WASH_OPTIONS.find((entry) => entry.title === item?.title);
   const priceOption = option?.prices.find((entry) => entry.label === item?.variant);
-  const basePrice = Number(item?.basePrice ?? priceOption?.price);
+  // The configured menu price for the exact saved variant is authoritative.
+  // Never trust a stored basePrice: it may have been persisted by an older build
+  // or before the customer switched between Hatchback/Sedan and SUV/Big Car.
+  const basePrice = Number(priceOption?.price);
+  const fallbackPrice = Number(item?.basePrice);
   const extrasTotal = Array.isArray(item?.addons) ? item.addons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0) : 0;
-  return (Number.isFinite(basePrice) && basePrice > 0 ? basePrice : (Number(priceOption?.price) || 0)) + extrasTotal;
+  return (Number.isFinite(basePrice) && basePrice > 0 ? basePrice : (Number.isFinite(fallbackPrice) && fallbackPrice > 0 ? fallbackPrice : 0)) + extrasTotal;
 }
 
 function normalizeWashCart(value) {
@@ -290,7 +294,8 @@ export default function CustomerRequestStart() {
   const washCartSummary = normalizedWashCart.reduce((summary, item) => {
     const unitPrice = getWashPrice(item);
     const lineTotal = unitPrice * item.qty;
-    return { items: summary.items.concat([{ ...item, price: unitPrice, lineTotal }]), subtotal: summary.subtotal + lineTotal };
+    const pricedItem = { ...item, basePrice: getWashPrice({ ...item, addons: [] }), price: unitPrice, lineTotal };
+    return { items: summary.items.concat([pricedItem]), subtotal: summary.subtotal + lineTotal };
   }, { items: [], subtotal: 0 });
   // Count must come from the exact same list that is rendered, never a separately accumulated value.
   const cartItemCount = washCartSummary.items.length;
