@@ -332,7 +332,7 @@ export default function Home() {
               <>
                 <Link
                   to={isAdmin ? '/admin' : isProvider ? '/service-provider' : '/customer'}
-                  className="rounded-full bg-[#102c4d] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5"
+                  className="whitespace-nowrap rounded-full bg-[#102c4d] px-2.5 py-2 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   {tr(isAdmin ? 'Admin Dashboard' : 'My Dashboard', language)}
                 </Link>
