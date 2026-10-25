@@ -808,8 +808,8 @@ export default function CustomerRequestStart() {
               <p className="mt-3 border-t border-primary/15 pt-3 text-sm font-medium">Final amount = Actual diesel cost + Delivery charges</p>
             </div>
           ) : isCarWash ? (
-            <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={18} />Selected Car Wash Packages</span><span>{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}</span></div>
+            <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={16} />Selected Car Wash Packages</span><span className="text-sm">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}</span></div>
               {normalizedWashCart.length ? (
                 <div className="mt-3 space-y-2">
                   {normalizedWashCart.map((item) => (
@@ -822,9 +822,8 @@ export default function CustomerRequestStart() {
                   <div className="flex items-center justify-between gap-3 border-t border-primary/20 pt-3"><span className="font-semibold">Estimated total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></div>
                 </div>
               ) : (
-                <p className="mt-2 text-sm text-muted-foreground">No package selected yet. Select a Car Wash package above to see it listed here.</p>
+                <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
               )}
-              <p className="mt-3 text-xs text-muted-foreground">LOCAL Customer Care will confirm the package and any revised charges with you before work starts.</p>
             </div>
           ) : (
             <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
