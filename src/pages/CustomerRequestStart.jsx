@@ -781,8 +781,8 @@ export default function CustomerRequestStart() {
                 </div>
               </Card>
             ))}
-            <Card className={'flex flex-col self-start rounded-2xl border p-4 shadow-sm ' + (includePickupDrop ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
-              <h3 className="text-lg font-bold">Pickup &amp; Drop On Request</h3>
+            <Card className={'flex flex-col self-start rounded-2xl border p-4 text-center shadow-sm ' + (includePickupDrop ? 'border-primary ring-2 ring-primary/20' : 'border-border/70')}>
+              <h3 className="w-full text-center text-lg font-bold">Pickup &amp; Drop On Request</h3>
             </Card>
           </div>
         </section>
