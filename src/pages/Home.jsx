@@ -302,7 +302,7 @@ export default function Home() {
             />
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-bold">
               <button
                 type="button"
