@@ -694,7 +694,10 @@ export default function CentralDispatch() {
     const linkedJob = getRequestJob(request);
     const activeAssignments = getRequestAssignments(request);
     const acceptedAssignment = activeAssignments.find((item) => item.status_c === 'Selected');
-    const fixedPrice = isFixedPriceRequest(request) ? getFixedPrice(request) : null;
+    const approvedWashQuote = getStructuredServiceDetails(request).type === 'Car Wash' ? readCarWashQuote(request.problem_description_c) : null;
+    const washApproval = approvedWashQuote ? readCarWashApproval(request.problem_description_c) : null;
+    const hasApprovedWashQuote = Boolean(approvedWashQuote && washApproval && String(washApproval.quoteId) === String(approvedWashQuote.quoteId) && Number(washApproval.total) === Number(approvedWashQuote.total) && Number.isFinite(Number(approvedWashQuote.total)));
+    const fixedPrice = hasApprovedWashQuote ? Number(approvedWashQuote.total) : isFixedPriceRequest(request) ? getFixedPrice(request) : null;
     const nearbyCount = eligibleProviders.filter((provider) => {
       const distance = providerDistance(request, provider);
       return distance !== null && distance <= Number(provider.service_radius_km_c ?? 25);
