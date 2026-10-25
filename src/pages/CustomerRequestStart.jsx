@@ -465,6 +465,7 @@ export default function CustomerRequestStart() {
     }
     if (isCarService) {
       setSelectedCarServicePackage(null);
+      setCarServiceVehicleLocked(false);
       setShowCarServiceQuoteReview(false);
       window.sessionStorage.removeItem('local_car_service_selected_package_v1');
     }
