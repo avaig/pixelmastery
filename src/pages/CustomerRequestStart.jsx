@@ -953,7 +953,7 @@ export default function CustomerRequestStart() {
             </div>
           )}
         </Card>
-        <Card className="p-6">
+        <Card className={(isCarWash || isCarService) ? "p-3" : "p-6"}>
           {!isCarWash && !isCarService && <>
             <div className="text-sm font-semibold">When do you need the service?</div>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -994,11 +994,11 @@ export default function CustomerRequestStart() {
           {(location || isCarWash || isCarService) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-5 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isProfessionalDriverService && !driverDisclaimerAccepted) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
                 {creating ? tr('Sharing request…', language) : isCarWash ? 'Book My Car Wash' : isCarService ? 'Book Your Appointment' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
-              {isCarWash && (CUSTOMER_CARE_PHONE ? <Button asChild type="button" variant="outline" className="mt-3 w-full"><a href={'tel:' + CUSTOMER_CARE_PHONE}><ApperIcon name="Phone" size={17} /> Call Customer Care</a></Button> : <Button type="button" variant="outline" className="mt-3 w-full" disabled title="Customer Care phone number has not been configured"><ApperIcon name="Phone" size={17} /> Call Customer Care</Button>)}
+              {isCarWash && (CUSTOMER_CARE_PHONE ? <Button asChild type="button" variant="outline" className="mt-2 w-full"><a href={'tel:' + CUSTOMER_CARE_PHONE}><ApperIcon name="Phone" size={17} /> Call Customer Care</a></Button> : <Button type="button" variant="outline" className="mt-2 w-full" disabled title="Customer Care phone number has not been configured"><ApperIcon name="Phone" size={17} /> Call Customer Care</Button>)}
               {(isCarWash || isCarService) && !location && <p className="mt-2 text-center text-xs text-amber-700">Your saved location isn’t available. Please update your location in your profile before booking.</p>}
             </>
           )}
