@@ -196,6 +196,16 @@ function normalizeWashCart(value) {
     }, []);
 }
 
+// Enforce vehicle-category isolation even for carts saved by older app versions.
+// A stale or legacy entry for the other vehicle type must never reach the quote or booking payload.
+function normalizeWashCartForType(value, vehicleType) {
+  const normalized = normalizeWashCart(value);
+  return normalized.filter((item) => {
+    const isSuvItem = /SUV|Big Car/i.test(item.variant);
+    return vehicleType === 'suv' ? isSuvItem : !isSuvItem;
+  });
+}
+
 export const route = {
   path: '/customer/request',
   layout: 'owner',
@@ -238,11 +248,11 @@ export default function CustomerRequestStart() {
       const savedType = window.sessionStorage.getItem('local_car_wash_type_v1') || 'small';
       const typeSpecificKey = savedType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
       const typeSpecificCart = window.sessionStorage.getItem(typeSpecificKey);
-      if (typeSpecificCart !== null) return normalizeWashCart(JSON.parse(typeSpecificCart));
+      if (typeSpecificCart !== null) return normalizeWashCartForType(JSON.parse(typeSpecificCart), savedType);
       // Legacy shared cart belongs to Hatchback/Sedan only. Never carry it into the SUV category.
       if (savedType === 'small') {
         const legacyCart = window.sessionStorage.getItem('local_car_wash_cart_v2');
-        return legacyCart ? normalizeWashCart(JSON.parse(legacyCart)) : [];
+        return legacyCart ? normalizeWashCartForType(JSON.parse(legacyCart), 'small') : [];
       }
       return [];
     } catch {
@@ -276,7 +286,7 @@ export default function CustomerRequestStart() {
           : 'LOCAL Customer Care will contact you and arrange a suitable provider. Any additional work is explained before you approve it.';
   const language = getLanguage();
   // Single source of truth for every Car Wash cart display and submission calculation.
-  const normalizedWashCart = normalizeWashCart(washCart);
+  const normalizedWashCart = normalizeWashCartForType(washCart, washCarType);
   const washCartSummary = normalizedWashCart.reduce((summary, item) => {
     const unitPrice = getWashPrice(item);
     const lineTotal = unitPrice * item.qty;
@@ -295,7 +305,7 @@ export default function CustomerRequestStart() {
 
   // The highlighted Estimated Total Value control confirms and saves the latest cart total.
   function refreshEstimatedTotal() {
-    const currentCart = normalizeWashCart(washCart);
+    const currentCart = normalizeWashCartForType(washCart, washCarType);
     const nextSubtotal = currentCart.reduce((sum, item) => sum + (getWashPrice(item) * item.qty), 0);
     const nextTotal = nextSubtotal + (includePickupDrop ? 100 : 0) + CAR_WASH_PLATFORM_FEE;
     const activeCartKey = washCarType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
@@ -358,7 +368,7 @@ export default function CustomerRequestStart() {
       window.sessionStorage.setItem(currentKey, JSON.stringify(normalizeWashCart(washCart)));
       const nextKey = nextType === 'suv' ? 'local_car_wash_cart_suv_v1' : 'local_car_wash_cart_small_v1';
       const savedNextCart = window.sessionStorage.getItem(nextKey);
-      setWashCart(savedNextCart ? normalizeWashCart(JSON.parse(savedNextCart)) : []);
+      setWashCart(savedNextCart ? normalizeWashCartForType(JSON.parse(savedNextCart), nextType) : []);
     } catch {
       setWashCart([]);
     }
