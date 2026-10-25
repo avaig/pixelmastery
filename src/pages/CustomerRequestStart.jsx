@@ -270,9 +270,10 @@ export default function CustomerRequestStart() {
   const washCartSummary = normalizedWashCart.reduce((summary, item) => {
     const unitPrice = getWashPrice(item);
     const lineTotal = unitPrice * item.qty;
-    return { items: summary.items.concat([{ ...item, price: unitPrice, lineTotal }]), count: summary.count + 1, subtotal: summary.subtotal + lineTotal };
-  }, { items: [], count: 0, subtotal: 0 });
-  const cartItemCount = washCartSummary.count;
+    return { items: summary.items.concat([{ ...item, price: unitPrice, lineTotal }]), subtotal: summary.subtotal + lineTotal };
+  }, { items: [], subtotal: 0 });
+  // Count must come from the exact same list that is rendered, never a separately accumulated value.
+  const cartItemCount = washCartSummary.items.length;
   const cartSubtotal = washCartSummary.subtotal;
   const [carWashOffer, setCarWashOffer] = useState('');
   const [totalRefreshed, setTotalRefreshed] = useState(() => window.sessionStorage.getItem('local_car_wash_total_refreshed_v1') === 'true');
@@ -817,7 +818,7 @@ export default function CustomerRequestStart() {
             </div>
           ) : isCarWash ? (
             <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={16} />Selected Car Wash Packages</span><span className="text-sm">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}</span></div>
+              <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={16} />Selected Car Wash Packages</span><span className="text-sm">{washCartSummary.items.length} {washCartSummary.items.length === 1 ? 'item' : 'items'}</span></div>
               {washCartSummary.items.length ? (
                 <div className="mt-3 space-y-2">
                   {washCartSummary.items.map((item) => (
