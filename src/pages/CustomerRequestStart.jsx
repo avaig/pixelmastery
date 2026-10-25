@@ -980,6 +980,39 @@ export default function CustomerRequestStart() {
                 <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
               )}
             </div>
+          ) : isCarService ? (
+            <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              {selectedCarServicePackage ? (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><ApperIcon name="CheckCircle2" size={15} /> Package selected</div>
+                      <h3 className="mt-1 text-lg font-extrabold">{selectedCarServicePackage.title}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">{selectedCarServicePackage.checkup}</p>
+                    </div>
+                    <strong className="shrink-0 text-xl">₹{Number(selectedCarServicePackage.price || 0).toLocaleString('en-IN')}</strong>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-primary/15 pt-3 text-sm">
+                    <span className="text-muted-foreground">Vehicle type</span>
+                    <span className="font-semibold">{selectedCarServicePackage.vehicleType}</span>
+                  </div>
+                  <div className="mt-3 border-t border-primary/15 pt-3">
+                    <p className="text-sm font-semibold">What's included</p>
+                    <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                      {(Array.isArray(selectedCarServicePackage.covered) ? selectedCarServicePackage.covered : []).map((item) => (
+                        <li key={item} className="flex items-start gap-2"><ApperIcon name="Check" size={15} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="mt-3 border-t border-primary/15 pt-3 text-xs leading-relaxed text-muted-foreground">Listed package price. Any additional work or revised amount must be explained by LOCAL Customer Care and approved by you before work begins.</p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 font-semibold"><ApperIcon name="ClipboardList" size={18} /> Choose a Car Service package</div>
+                  <p className="mt-1 text-sm text-muted-foreground">Select Economy Service, Normal Service, or Major Service above. Your selected vehicle type, package, inclusions, and listed price will appear here.</p>
+                </>
+              )}
+            </div>
           ) : (
             <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
