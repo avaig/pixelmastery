@@ -68,8 +68,29 @@ export default function JobsDetail() {
         const stopIndex = raw.indexOf(stopMarker);
         if (stopIndex >= 0) raw = raw.slice(0, stopIndex);
       }
-      raw = raw.split('\\\\n')[0].split('\\n')[0].trim();
-      try { return JSON.parse(raw); } catch { return null; }
+      raw = raw.replace(/^(?:\\\\n|\\n|\\r\\n)+/, '').trim();
+      const objectStart = raw.indexOf('{');
+      if (objectStart < 0) return null;
+      raw = raw.slice(objectStart);
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      let end = -1;
+      for (let i = 0; i < raw.length; i += 1) {
+        const ch = raw[i];
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (ch === '\\\\') escaped = true;
+          else if (ch === '"') inString = false;
+        } else if (ch === '"') inString = true;
+        else if (ch === '{') depth += 1;
+        else if (ch === '}') {
+          depth -= 1;
+          if (depth === 0) { end = i + 1; break; }
+        }
+      }
+      if (end < 0) return null;
+      try { return JSON.parse(raw.slice(0, end)); } catch { return null; }
     };
     const quote = extractJsonAfter(quoteMarker, [approvalMarker]);
     const approval = extractJsonAfter(approvalMarker);
@@ -98,8 +119,8 @@ export default function JobsDetail() {
   try { carWashItems = job?.car_wash_extra_items_c ? JSON.parse(job.car_wash_extra_items_c) : []; } catch { carWashItems = []; }
   if (!Array.isArray(carWashItems)) carWashItems = [];
   const carWashBasePrice = Number(job?.original_car_wash_price_c ?? job?.original_provider_quote_c ?? job?.agreed_price_c ?? 0);
-  const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved' && !/^(discount offered|negotiation value|negotiation value \/ discount|pick\s*up\s*(?:&|and)\s*drop|pickup\s*(?:&|and)\s*drop|local platform fee)$/i.test(String(item.description ?? '').trim()));
-  const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending' && !/^(discount offered|negotiation value|negotiation value \/ discount|pick\s*up\s*(?:&|and)\s*drop|pickup\s*(?:&|and)\s*drop|local platform fee)$/i.test(String(item.description ?? '').trim()));
+  const carWashApprovedExtras = carWashItems.filter((item) => item.status === 'Approved' && !/(discount|negotiation|pick\s*up|pickup|platform\s*fee)/i.test(String(item.description ?? '').trim()));
+  const carWashPendingExtras = carWashItems.filter((item) => item.status === 'Pending' && !/(discount|negotiation|pick\s*up|pickup|platform\s*fee)/i.test(String(item.description ?? '').trim()));
   const carWashExtrasTotal = carWashApprovedExtras.reduce((sum, item) => sum + Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1), 0);
   const carWashServiceTotal = isCarWash ? (approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal ?? 0) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : carWashBasePrice + carWashExtrasTotal) : Number(job?.agreed_price_c ?? 0);
   const carWashPlatformFee = isCarWash ? Number(approvedCarWashQuote?.platformFee ?? 25) : 0;
