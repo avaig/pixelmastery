@@ -302,7 +302,8 @@ export default function Home() {
             />
           </Link>
 
-          <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2">
             <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-bold">
               <button
                 type="button"
@@ -335,13 +336,6 @@ export default function Home() {
                 >
                   {tr(isAdmin ? 'Admin Dashboard' : 'My Dashboard', language)}
                 </Link>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-[#102c4d] transition hover:bg-slate-50 sm:px-5 sm:py-2.5"
-                >
-                  {tr('Sign out', language)}
-                </button>
               </>
             ) : (
               <Link
@@ -350,6 +344,16 @@ export default function Home() {
               >
                 {tr('Sign In', language)}
               </Link>
+            )}
+            </div>
+            {session && (
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-[#102c4d] transition hover:bg-slate-50 sm:px-5 sm:py-2.5 sm:text-sm"
+              >
+                {tr('Sign out', language)}
+              </button>
             )}
           </div>
         </div>
