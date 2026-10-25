@@ -38,10 +38,6 @@ export const AUTH_PROFILES = [
       loginDescription: null,
       signupDescription: null,
     },
-    altLinksLeadIn: 'Go to the right portal',
-    altLinks: [
-      { href: '/service-provider/login', label: 'I am Service Provider' }
-    ],
     reportsTo: "Admin",
     hasSignup: true,
   },
@@ -56,10 +52,6 @@ export const AUTH_PROFILES = [
       loginDescription: null,
       signupDescription: null,
     },
-    altLinksLeadIn: 'Go to the right portal',
-    altLinks: [
-      { href: '/customer/login', label: 'I am Customer' }
-    ],
     reportsTo: 'Admin',
     hasSignup: true,
   }
