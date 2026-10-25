@@ -761,9 +761,9 @@ export default function CentralDispatch() {
                 const input = carWashQuoteInputs[request.Id] ?? {};
                 const serviceSubtotal = Number(details.total || 0);
                 const refreshed = carWashCalculatedQuotes[request.Id];
-                const discountValue = refreshed ? refreshed.discount : 0;
+                const discountValue = Number(input.discount ?? quote?.discount ?? 0) || 0;
                 const pickupChoice = 'no';
-                const pickupChargeValue = refreshed ? refreshed.pickupDropCharge : 0;
+                const pickupChargeValue = Number(input.pickupCharge ?? quote?.pickupDropCharge ?? 0) || 0;
                 const quoteTotalValue = refreshed ? refreshed.total : serviceSubtotal + 25;
                 return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                   <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Review the service total and send the final quote to the customer.</p></div>
@@ -772,8 +772,8 @@ export default function CentralDispatch() {
 
 
 
-                    <div><label className="mb-1 block text-sm font-medium">Negotiation Value / Discount (₹)</label><Input type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.target.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); }} /></div>
-                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop Value (₹)</label><Input type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)} onChange={(e) => { const value = e.target.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); }} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Negotiation Value / Discount (₹)</label><Input type="number" min="0" max={details.total || 0} value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = typeof e === 'string' ? e : String(e?.target?.value ?? e?.currentTarget?.value ?? ''); setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); }} /></div>
+                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop Value (₹)</label><Input type="number" min="0" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)} onChange={(e) => { const value = typeof e === 'string' ? e : String(e?.target?.value ?? e?.currentTarget?.value ?? ''); setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), reason: e.target.value}}))} /></div>
                   </div>
                   <div className="space-y-2 rounded-lg border bg-background p-3 text-sm">
