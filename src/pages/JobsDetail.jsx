@@ -809,9 +809,16 @@ export default function JobsDetail() {
               <p className="mt-1 text-sm text-muted-foreground">The original package price stays fixed. Any additional service or part must be proposed in LOCAL and approved by the customer before work begins.</p>
             </div>
             <div className="rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between gap-3"><span className="text-sm">Original fixed Car Wash price</span><strong>{displayMoney(carWashBasePrice)}</strong></div>
+              {approvedCarWashQuote ? <>
+                <div className="flex items-center justify-between gap-3 text-sm"><span>Customer Quoted Amount</span><strong>{displayMoney(approvedCarWashQuote.serviceSubtotal)}</strong></div>
+                {Number(approvedCarWashQuote.discount ?? 0) > 0 && <div className="mt-2 flex items-center justify-between gap-3 text-sm"><span>Discount Offered</span><strong>−{displayMoney(approvedCarWashQuote.discount)}</strong></div>}
+                {Number(approvedCarWashQuote.pickupDropCharge ?? 0) > 0 && <div className="mt-2 flex items-center justify-between gap-3 text-sm"><span>Pick up and drop</span><strong>+{displayMoney(approvedCarWashQuote.pickupDropCharge)}</strong></div>}
+                <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm"><span>LOCAL Platform Fee</span><strong>{displayMoney(approvedCarWashQuote.platformFee ?? 25)}</strong></div>
+              </> : <>
+                <div className="flex items-center justify-between gap-3"><span className="text-sm">Original fixed Car Wash price</span><strong>{displayMoney(carWashBasePrice)}</strong></div>
+                <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm"><span>LOCAL Platform Fee</span><strong>{displayMoney(25)}</strong></div>
+              </>}
               {carWashApprovedExtras.map((item) => <div key={item.id} className="mt-2 flex items-start justify-between gap-3 text-sm"><span>{item.description} × {item.quantity}</span><strong>{displayMoney(Number(item.unitPrice) * Number(item.quantity))}</strong></div>)}
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm"><span>LOCAL Platform Fee</span><strong>{displayMoney(25)}</strong></div>
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-3"><span className="font-semibold">Total payable</span><strong className="text-xl">{displayMoney(carWashCustomerTotal)}</strong></div>
               {carWashPendingExtras.length > 0 && <div className="mt-4 rounded-md border border-highlight/30 bg-highlight/5 p-3"><p className="font-semibold">Revised bill awaiting customer approval</p>{carWashPendingExtras.map((item) => <div key={item.id} className="mt-2 flex items-start justify-between gap-3 text-sm"><span>{item.description} × {item.quantity}</span><strong>{displayMoney(Number(item.unitPrice) * Number(item.quantity))}</strong></div>)}<p className="mt-2 text-xs text-muted-foreground">Do not perform the proposed additional work until the customer approves it in LOCAL.</p>{isCustomer && <div className="mt-3 flex flex-wrap gap-2"><Button onClick={() => respondToCarWashRevision(true)} disabled={working}><ApperIcon name="CheckCircle2" size={16} /> Approve revised bill</Button><Button variant="outline" onClick={() => respondToCarWashRevision(false)} disabled={working}>Decline extra work</Button></div>}</div>}
               {carWashItems.filter((item) => item.status === 'Rejected').map((item) => <p key={item.id} className="mt-2 text-xs text-muted-foreground">Declined: {item.description} — not included in the bill.</p>)}
