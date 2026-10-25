@@ -772,7 +772,7 @@ export default function CentralDispatch() {
                 const pickupChargeValue = refreshed ? refreshed.pickupDropCharge : 0;
                 const quoteTotalValue = refreshed ? refreshed.total : serviceSubtotal + 25;
                 return <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-                  <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Confirm Pickup & Drop during the call. Record any negotiated discount and send the final itemized quote to the customer.</p></div>
+                  <div><h3 className="font-semibold">Customer Care · Revised quote</h3><p className="mt-1 text-sm text-muted-foreground">Review the service total and send the final quote to the customer.</p></div>
                   {quote && <div className="rounded-lg border bg-background p-3 text-sm"><div className="flex justify-between gap-3"><span>Last quote (v{quote.version || 1})</span><strong>₹{Number(quote.total).toLocaleString('en-IN')}</strong></div><p className="mt-1 text-muted-foreground">{approved ? 'Customer approved this exact quote.' : quote.status === 'Sent to Customer' ? 'Awaiting customer approval.' : 'Quote needs to be sent.'}</p></div>}
                   <div className="grid gap-3 sm:grid-cols-2">
 
@@ -784,10 +784,10 @@ export default function CentralDispatch() {
                     <div className="flex justify-between gap-3"><span>Service subtotal</span><strong>₹{Number(details.total || 0).toLocaleString('en-IN')}</strong></div>
 
                     <div className="flex justify-between gap-3"><span>LOCAL Platform Fee</span><strong>₹25</strong></div>
-                    <div className="flex justify-between gap-3"><span>Pickup & Drop</span><strong>{!refreshed ? 'Refresh to calculate' : refreshed.pickupDrop ? '₹' + pickupChargeValue.toLocaleString('en-IN') : 'Not required'}</strong></div>
+
                     <div className="flex justify-between border-t pt-2 text-base"><span className="font-bold">Quote total</span><strong>₹{quoteTotalValue.toLocaleString('en-IN')}</strong></div>
                     <Button type="button" variant="outline" className="w-full" disabled={Boolean(busyKey)} onClick={() => refreshCarWashQuote(request, details)}><ApperIcon name="RefreshCw" size={16} /> Refresh Quote Total</Button>
-                    {!refreshed && <p className="text-xs text-amber-700">Enter the discount and Pickup & Drop choice/charge, then refresh the total before sending.</p>}
+                    {!refreshed && <p className="text-xs text-amber-700">Review the service subtotal and refresh the total before sending.</p>}
                   </div>
                   {(input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask' && <p className="text-xs text-amber-700">Select Yes or No after confirming with the customer. A quote cannot be sent while Pickup & Drop is undecided.</p>}
                   <Button className="w-full" disabled={Boolean(busyKey) || !refreshed || (input.pickupDrop ?? (details.pickupDrop ? 'yes' : 'ask')) === 'ask'} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : 'Send Revised Quote to Customer'}</Button>
