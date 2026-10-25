@@ -773,8 +773,6 @@ export default function CentralDispatch() {
 
 
 
-                    <div><label className="mb-1 block text-sm font-medium">Negotiation Value / Discount (₹)</label><input id={'car-wash-negotiation-' + request.Id} type="number" min="0" max={details.total || 0} className="h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm" value={input.discount ?? String(quote?.discount ?? 0)} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: value}})); }} /></div>
-                    <div><label className="mb-1 block text-sm font-medium">Pickup & Drop Value (₹)</label><input id={'car-wash-pickup-value-' + request.Id} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm" value={input.pickupCharge ?? String(quote?.pickupDropCharge ?? 0)} onChange={(e) => { const value = e.currentTarget.value; setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), pickupCharge: value}})); }} /></div>
                     <div><label className="mb-1 block text-sm font-medium">Reason for revision (optional)</label><Input value={input.reason ?? ''} placeholder="e.g. Customer negotiation" onChange={(e) => setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), reason: e.target.value}}))} /></div>
                   </div>
 
