@@ -837,7 +837,7 @@ export default function CustomerRequestStart() {
             </div>
           ) : isCarWash ? (
             <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><ApperIcon name="ShoppingCart" size={16} />Selected Car Wash Packages</span><span className="text-sm">{washCartSummary.items.length} {washCartSummary.items.length === 1 ? 'item' : 'items'}</span></div>
+              <div className="flex items-center gap-2 font-semibold"><ApperIcon name="ShoppingCart" size={16} />Selected Car Wash Packages</div>
               {washCartSummary.items.length ? (
                 <div className="mt-3 space-y-2">
                   {washCartSummary.items.map((item) => (
