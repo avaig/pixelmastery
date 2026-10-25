@@ -311,7 +311,7 @@ export default function Home() {
                   const next = setLanguage('en');
                   setLanguageState(next);
                 }}
-                className={'rounded-full px-2.5 py-1 transition ' + (language === 'en' ? 'bg-white text-[#102c4d] shadow-sm' : 'text-slate-500 hover:text-[#102c4d]')}
+                className={'rounded-full px-2 py-1 transition ' + (language === 'en' ? 'bg-white text-[#102c4d] shadow-sm' : 'text-slate-500 hover:text-[#102c4d]')}
                 aria-pressed={language === 'en'}
               >
                 EN
@@ -322,7 +322,7 @@ export default function Home() {
                   const next = setLanguage('hi');
                   setLanguageState(next);
                 }}
-                className={'rounded-full px-2.5 py-1 transition ' + (language === 'hi' ? 'bg-white text-[#102c4d] shadow-sm' : 'text-slate-500 hover:text-[#102c4d]')}
+                className={'rounded-full px-2 py-1 transition ' + (language === 'hi' ? 'bg-white text-[#102c4d] shadow-sm' : 'text-slate-500 hover:text-[#102c4d]')}
                 aria-pressed={language === 'hi'}
               >
                 हिन्दी
