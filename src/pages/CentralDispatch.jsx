@@ -247,45 +247,28 @@ export default function CentralDispatch() {
     }
   }
 
+  function calculateCarWashQuote(details, values = {}) {
+    const serviceSubtotal = Number(details.total || 0);
+    const discount = Number(values.discount ?? 0);
+    const pickupDropCharge = Number(values.pickupCharge ?? 0);
+    if (!Number.isFinite(discount) || discount < 0 || discount > serviceSubtotal) return { error: 'Negotiation value must be between ₹0 and the service total.' };
+    if (!Number.isFinite(pickupDropCharge) || pickupDropCharge < 0) return { error: 'Pickup & Drop value must be ₹0 or more.' };
+    return { discount, pickupDrop: pickupDropCharge > 0, pickupDropCharge, platformFee: 25, serviceSubtotal, total: serviceSubtotal - discount + pickupDropCharge + 25, refreshedAt: Date.now() };
+  }
+
   function refreshCarWashQuote(request, details, visibleInput = null) {
     const current = visibleInput ?? carWashQuoteInputs[request.Id] ?? {};
-    const previous = readCarWashQuote(request.problem_description_c);
-    const subtotal = Number(details.total || 0);
-    const discountRaw = String(current.discount ?? previous?.discount ?? 0);
-    const pickupRaw = String(current.pickupCharge ?? previous?.pickupDropCharge ?? 0);
-    const discount = Number(discountRaw);
-    const pickupDropCharge = Number(pickupRaw);
-    if (!Number.isFinite(discount) || discount < 0 || discount > subtotal) {
-      toast.error('Negotiation value must be between ₹0 and the service total.');
-      return;
-    }
-    if (!Number.isFinite(pickupDropCharge) || pickupDropCharge < 0) {
-      toast.error('Pickup & Drop value must be ₹0 or more.');
-      return;
-    }
-    const calculation = {
-      discount,
-      pickupDrop: pickupDropCharge > 0,
-      pickupDropCharge,
-      platformFee: 25,
-      serviceSubtotal: subtotal,
-      total: subtotal - discount + pickupDropCharge + 25,
-      refreshedAt: Date.now(),
-    };
-    setCarWashQuoteInputs((old) => ({...old, [request.Id]: {...(old[request.Id] || {}), discount: discountRaw, pickupCharge: pickupRaw}}));
+    const calculation = calculateCarWashQuote(details, current);
+    if (calculation.error) { toast.error(calculation.error); return; }
     setCarWashCalculatedQuotes((old) => ({...old, [request.Id]: calculation}));
     toast.success('Quote total refreshed.');
   }
 
   async function sendCarWashQuote(request, details) {
     const current = carWashQuoteInputs[request.Id] ?? {};
+    const calculation = calculateCarWashQuote(details, current);
+    if (calculation.error) { toast.error(calculation.error); return; }
     const subtotal = Number(details.total || 0);
-    const existingCalculation = carWashCalculatedQuotes[request.Id];
-    const discount = Math.max(0, Number(current.discount ?? 0) || 0);
-    const pickupCharge = Math.max(0, Number(current.pickupCharge ?? 0) || 0);
-    const calculation = existingCalculation && Number(existingCalculation.serviceSubtotal) === subtotal
-      ? existingCalculation
-      : { discount, pickupDrop: pickupCharge > 0, pickupDropCharge: pickupCharge, platformFee: 25, serviceSubtotal: subtotal, total: subtotal - discount + pickupCharge + 25 };
     const pickupDrop = calculation.pickupDropCharge > 0;
     const finalDiscount = calculation.discount;
     const finalPickupCharge = calculation.pickupDropCharge;
