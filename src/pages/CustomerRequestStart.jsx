@@ -1168,6 +1168,7 @@ export default function CustomerRequestStart() {
             </section>
           )}
           {isProfessionalDriverService && (
+            <>
             <section className="mt-6 rounded-xl border-2 border-primary/25 bg-background p-4 sm:p-5" aria-labelledby="driver-route-title">
               <div className="flex items-start gap-3">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="Route" size={23} /></div>
@@ -1212,6 +1213,7 @@ export default function CustomerRequestStart() {
               </label>
               {!driverDisclaimerAccepted && <p className="mt-2 text-xs font-medium text-amber-700">Required: tick the checkbox to continue with this driver booking.</p>}
             </section>
+            </>
           )}
           {isInsuranceClaim && (
             <div className="mt-6 rounded-xl border-2 border-primary/20 bg-background p-4">
