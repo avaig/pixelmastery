@@ -107,6 +107,34 @@ function isRsaQuoteRequest(request) {
   return !/emergency car rental/i.test(text) && /battery jump start|flat tyre|flat tire|puncture|diesel on demand|key locked|lockout|towing required/i.test(text);
 }
 
+function readDriverRoute(description) {
+  const marker = 'LOCAL_DRIVER_ROUTE_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  const raw = source.slice(index + marker.length).trimStart();
+  const start = raw.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try { const route = JSON.parse(raw.slice(start, i + 1)); return route?.pickup && route?.dropoff ? route : null; }
+        catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
 function getRequestLineItems(request) {
   const rawDescription = String(request?.problem_description_c ?? '');
   const requestName = String(request?.Name ?? '');
@@ -114,7 +142,7 @@ function getRequestLineItems(request) {
   const driverRequestText = requestName + ' ' + capabilityName + ' ' + rawDescription;
   const isDriverRequest = /car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(driverRequestText);
   const description = (isDriverRequest
-    ? rawDescription.split(/LOCAL_DRIVER_BOOKING_(?:QUOTE|APPROVAL)_JSON:/)[0]
+    ? rawDescription.split(/LOCAL_DRIVER_(?:ROUTE|BOOKING_QUOTE|BOOKING_APPROVAL)_JSON:/)[0]
     : rawDescription.split('LOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:')[0]).trim();
   const punctureRequestText = requestName + ' ' + capabilityName + ' ' + description;
   if (/flat tyre|flat tire|puncture/i.test(punctureRequestText)) {
