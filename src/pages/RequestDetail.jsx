@@ -109,8 +109,14 @@ function isRsaQuoteRequest(request) {
 
 function getRequestLineItems(request) {
   const rawDescription = String(request?.problem_description_c ?? '');
-  const description = rawDescription.split('LOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:')[0].trim();
-  const punctureRequestText = String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + description;
+  const requestName = String(request?.Name ?? '');
+  const capabilityName = String(request?.required_capability_c?.Name ?? '');
+  const driverRequestText = requestName + ' ' + capabilityName + ' ' + rawDescription;
+  const isDriverRequest = /car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(driverRequestText);
+  const description = (isDriverRequest
+    ? rawDescription.split(/LOCAL_DRIVER_BOOKING_(?:QUOTE|APPROVAL)_JSON:/)[0]
+    : rawDescription.split('LOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:')[0]).trim();
+  const punctureRequestText = requestName + ' ' + capabilityName + ' ' + description;
   if (/flat tyre|flat tire|puncture/i.test(punctureRequestText)) {
     return [{ name: 'Flat Tyre / Puncture', quantity: 1, price: null, fixed: false }];
   }
