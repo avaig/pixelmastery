@@ -68,15 +68,17 @@ export default function AuthPage({ mode, profileKey = null }) {
     };
   }, [hasUI, connectionFailed, mode, matchedProfile?.profileSlug]);
 
-  // The hosted UI reports success through the session; mirror it into Redux and leave the auth page.
+  // Mirror successful auth into Redux. An existing Customer/Service Provider session must not
+  // redirect away from the Admin login route; only an Admin session may complete that route.
   useEffect(() => {
     return sdk.session.subscribe(() => {
       const user = sdk.session.user();
       if (!user) return;
+      if (effectiveProfileKey === 'admin' && user.profile !== 'Admin_c') return;
       dispatch(setUser(user));
       navigate(redirectAfterAuth, { replace: true });
     });
-  }, [dispatch, navigate, redirectAfterAuth]);
+  }, [dispatch, navigate, redirectAfterAuth, effectiveProfileKey]);
 
   // Fallback form, used only when the SDK exposes no hosted UI.
   const handleSubmit = async (e) => {
