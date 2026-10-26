@@ -252,6 +252,9 @@ export default function RequestDetail() {
   const [bikeParts, setBikeParts] = useState('');
   const [bikeOther, setBikeOther] = useState('0');
   const [bikeNotes, setBikeNotes] = useState('');
+  const [bikeCalculatedSubtotal, setBikeCalculatedSubtotal] = useState(0);
+  const [bikeCalculatedTotal, setBikeCalculatedTotal] = useState(25);
+  const [bikeBillCalculated, setBikeBillCalculated] = useState(false);
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -978,9 +981,9 @@ export default function RequestDetail() {
                               <tr><td className="break-words border-b px-2 py-3 sm:px-3">Labour charges</td><td className="border-b px-2 py-2 sm:px-3"><Input name="bike-labour" aria-label="Labour charges in rupees" type="number" min="0" step="0.01" value={bikeLabour} onChange={(event) => setBikeLabour(event.target.value)} className="w-full min-w-0 px-2 text-right" /></td></tr>
                               <tr><td className="break-words border-b px-2 py-3 sm:px-3">Spare parts</td><td className="border-b px-2 py-2 sm:px-3"><Input name="bike-parts" aria-label="Spare parts in rupees" type="number" min="0" step="0.01" value={bikeParts} onChange={(event) => setBikeParts(event.target.value)} className="w-full min-w-0 px-2 text-right" /></td></tr>
                               <tr><td className="break-words border-b px-2 py-3 sm:px-3">Other charges</td><td className="border-b px-2 py-2 sm:px-3"><Input name="bike-other" aria-label="Other charges in rupees" type="number" min="0" step="0.01" value={bikeOther} onChange={(event) => setBikeOther(event.target.value)} className="w-full min-w-0 px-2 text-right" /></td></tr>
-                              <tr className="bg-muted/20"><td className="break-words px-2 py-3 font-semibold sm:px-3">Service subtotal</td><td className="break-words px-2 py-3 text-right font-semibold sm:px-3">₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</td></tr>
+                              <tr className="bg-muted/20"><td className="break-words px-2 py-3 font-semibold sm:px-3">Service subtotal</td><td className="break-words px-2 py-3 text-right font-semibold sm:px-3">₹{(bikeBillCalculated ? bikeCalculatedSubtotal : Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</td></tr>
                               <tr><td className="break-words px-2 py-3 sm:px-3">LOCAL Platform Fee (fixed)</td><td className="px-2 py-3 text-right sm:px-3">₹25</td></tr>
-                              <tr className="border-t-2 bg-muted/40"><td className="break-words px-2 py-3 font-bold sm:px-3">Final customer bill</td><td className="break-words px-2 py-3 text-right text-base font-bold sm:px-3">₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</td></tr>
+                              <tr className="border-t-2 bg-muted/40"><td className="break-words px-2 py-3 font-bold sm:px-3">Final customer bill</td><td className="break-words px-2 py-3 text-right text-base font-bold sm:px-3">₹{(bikeBillCalculated ? bikeCalculatedTotal : Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</td></tr>
                             </tbody>
                           </table>
                         </div>
@@ -996,11 +999,15 @@ export default function RequestDetail() {
                             toast.error('Enter valid charges in all three rows. Use 0 for any charge that does not apply.');
                             return;
                           }
+                          const subtotal = values.reduce((sum, value) => sum + value, 0);
                           setBikeLabour(labourText);
                           setBikeParts(partsText);
                           setBikeOther(otherText);
                           setBikeNotes(notesText);
-                          toast.success('Bill recalculated from the current table values. Review the final customer bill below.');
+                          setBikeCalculatedSubtotal(subtotal);
+                          setBikeCalculatedTotal(subtotal + 25);
+                          setBikeBillCalculated(true);
+                          toast.success('Bill recalculated: service subtotal ₹' + subtotal.toLocaleString('en-IN') + '; final customer bill ₹' + (subtotal + 25).toLocaleString('en-IN') + '.');
                         }}><span className="inline-flex items-center justify-center gap-2"><ApperIcon name="RefreshCw" size={16} />Calculate Final Bill</span></Button>
                         <Button className="w-full" disabled={working} onClick={(event) => {
                           const form = event.currentTarget.closest('.bike-maintenance-quote-form');
