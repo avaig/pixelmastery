@@ -175,7 +175,7 @@ export default function HomeServices() {
     return (
       <Button
         type="button"
-        className="mt-4 min-h-11 w-full"
+        className="mt-3 min-h-10 w-full"
         onClick={() => requestCallback(service)}
         disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
       >
@@ -189,35 +189,33 @@ export default function HomeServices() {
     <div className="min-h-svh bg-background text-foreground">
       <main className="mx-auto max-w-5xl px-3 py-3 sm:px-6 sm:py-4">
         <section className="grid gap-4 md:grid-cols-2" aria-label="Home service categories">
-          {SERVICES.map((service, index) => (
-            <Card key={service.id} className="flex h-full flex-col rounded-xl border-border p-4 shadow-sm sm:p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <ApperIcon name={service.icon} size={27} />
+          {SERVICES.map((service) => (
+            <Card key={service.id} className="flex h-full flex-col rounded-xl border-border p-3 shadow-sm sm:p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <ApperIcon name={service.icon} size={24} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">0{index + 1}</p>
-                  <h2 className="mt-1 text-lg font-semibold">{service.title}</h2>
+                  <h2 className="text-lg font-semibold leading-tight">{service.title}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{service.subtitle}</p>
                 </div>
               </div>
-              <div className="mt-auto">{renderCallbackButton(service)}</div>
+              {renderCallbackButton(service)}
             </Card>
           ))}
 
-          <Card className="rounded-xl border-border p-4 shadow-sm sm:p-5">
-            <div className="flex items-start gap-4">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ApperIcon name="HousePlug" size={27} />
+          <Card className="rounded-xl border-border p-3 shadow-sm sm:p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ApperIcon name="HousePlug" size={24} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">04</p>
-                <h2 className="mt-1 text-lg font-semibold">Home Appliances</h2>
+                <h2 className="text-lg font-semibold leading-tight">Home Appliances</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Select one or more appliances that need attention.</p>
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {APPLIANCES.map((appliance) => {
                 const selected = selectedAppliances.includes(appliance);
                 return (
