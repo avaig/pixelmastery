@@ -59,6 +59,17 @@ function readCarWashApproval(description) {
   try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
+function readBikeMaintenanceQuote(message) {
+  const marker = 'LOCAL_BIKE_MAINTENANCE_QUOTE_JSON:';
+  const source = String(message ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try {
+    const payload = JSON.parse(source.slice(index + marker.length).trim());
+    return payload && Number.isFinite(Number(payload.serviceTotal)) ? payload : null;
+  } catch { return null; }
+}
+
 function readRsaQuote(message) {
   const marker = 'LOCAL_RSA_QUOTE_JSON:';
   const source = String(message ?? '');
@@ -237,6 +248,10 @@ export default function RequestDetail() {
   const [rsaEta, setRsaEta] = useState('');
   const [rsaCalculatedTotal, setRsaCalculatedTotal] = useState(null);
   const [carEssentialsCustomer, setCarEssentialsCustomer] = useState(null);
+  const [bikeLabour, setBikeLabour] = useState('');
+  const [bikeParts, setBikeParts] = useState('');
+  const [bikeOther, setBikeOther] = useState('0');
+  const [bikeNotes, setBikeNotes] = useState('');
 
   const { data, loading, error, run } = useFetch(async () => {
     const requestRes = await sdk.table('service_requests_c').select(REQUEST_FIELDS).get(id);
@@ -336,6 +351,9 @@ export default function RequestDetail() {
   const rsaServiceChargeValue = isFlatPunctureRequest ? Math.max(0, Number.parseInt(rsaPunctureCount, 10) || 0) * 150 : Number(rsaServiceCharge || 0);
   const rsaExtraChargeValue = isFlatPunctureRequest ? 25 : Number(rsaExtraCharge || 0);
   const rsaCurrentTotal = rsaServiceChargeValue + Number(rsaTravelCharge || 0) + rsaExtraChargeValue;
+  const isBikeMaintenanceRequest = /bike maintenance/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+  const bikeMaintenanceAssignment = responses.find((item) => /Central LOCAL assignment invitation/i.test(String(item.message_c ?? '')) && item.status_c === 'Selected');
+  const bikeMaintenanceQuote = readBikeMaintenanceQuote(bikeMaintenanceAssignment?.message_c);
 
   async function acceptDriverRequest() {
     if (!request?.Id || !isFixedRateDriverRequest || !isTechnician) return;
@@ -513,6 +531,122 @@ export default function RequestDetail() {
       await run();
     } catch (err) {
       toast.error(err.message || 'Could not confirm the customer-approved quote.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function saveBikeMaintenanceQuoteStatus(response, changes, successMessage) {
+    if (!response?.Id || user?.profile !== 'Admin_c') return;
+    const current = readBikeMaintenanceQuote(response.message_c);
+    if (!current) { toast.error('The technician must submit the itemized quotation first.'); return; }
+    setWorking(true);
+    try {
+      const updatedQuote = { ...current, ...changes, updatedAt: new Date().toISOString() };
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_BIKE_MAINTENANCE_QUOTE_JSON:')[0].trimEnd();
+      const result = await sdk.table('technician_responses_c').update({
+        Id: response.Id,
+        message_c: baseMessage + '\\nLOCAL_BIKE_MAINTENANCE_QUOTE_JSON:' + JSON.stringify(updatedQuote),
+      });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Quotation status could not be saved.');
+      toast.success(successMessage);
+      await run();
+    } catch (err) {
+      toast.error(err.message || 'Could not update quotation status.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function markBikeVisitCompleted(response) {
+    if (!isTechnician || !response?.Id || response.status_c !== 'Selected') return;
+    setWorking(true);
+    try {
+      const existing = readBikeMaintenanceQuote(response.message_c);
+      const quote = existing || {
+        quoteId: 'BIKE-' + Date.now().toString(36).toUpperCase(),
+        version: 1,
+        status: 'Visit Completed — Quote Required',
+        items: [],
+        serviceTotal: 0,
+        localConvenienceFee: 25,
+        customerTotal: 25,
+        visitCompletedAt: new Date().toISOString(),
+        adminApprovedAt: null,
+        customerConsentAt: null,
+      };
+      quote.visitCompletedAt = quote.visitCompletedAt || new Date().toISOString();
+      quote.status = quote.status === 'Submitted to Admin' || quote.status === 'Admin Approved' || quote.status === 'Customer Approved'
+        ? quote.status : 'Visit Completed — Quote Required';
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_BIKE_MAINTENANCE_QUOTE_JSON:')[0].trimEnd();
+      const result = await sdk.table('technician_responses_c').update({
+        Id: response.Id,
+        message_c: baseMessage + '\\nLOCAL_BIKE_MAINTENANCE_QUOTE_JSON:' + JSON.stringify(quote),
+      });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Visit status could not be saved.');
+      toast.success('Visit recorded. Submit the itemized quote for LOCAL Admin review.');
+      await run();
+    } catch (err) {
+      toast.error(err.message || 'Could not record the visit.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function submitBikeMaintenanceQuote(response) {
+    if (!isTechnician || !response?.Id) return;
+    const previous = readBikeMaintenanceQuote(response.message_c);
+    if (!previous?.visitCompletedAt) {
+      toast.error('Mark the customer visit completed before submitting a quotation.');
+      return;
+    }
+    const labour = Number(bikeLabour);
+    const parts = Number(bikeParts);
+    const other = Number(bikeOther);
+    if (!Number.isFinite(labour) || labour < 0 || !Number.isFinite(parts) || parts < 0 || !Number.isFinite(other) || other < 0 || labour + parts + other <= 0 || !bikeNotes.trim()) {
+      toast.error('Enter valid labour, parts and other charges, plus inspection findings.');
+      return;
+    }
+    const serviceTotal = labour + parts + other;
+    const quote = {
+      ...previous,
+      quoteId: previous.quoteId || 'BIKE-' + Date.now().toString(36).toUpperCase(),
+      version: Number(previous.version || 0) + 1,
+      items: [
+        { name: 'Labour charges', amount: labour },
+        { name: 'Spare parts', amount: parts },
+        { name: 'Other charges', amount: other },
+      ],
+      notes: bikeNotes.trim(),
+      serviceTotal,
+      localConvenienceFee: 25,
+      customerTotal: serviceTotal + 25,
+      submittedAt: new Date().toISOString(),
+      status: 'Submitted to Admin',
+      adminApprovedAt: null,
+      adminApprovedBy: null,
+      customerConsentAt: null,
+      customerConsentRecordedBy: null,
+    };
+    setWorking(true);
+    try {
+      const baseMessage = String(response.message_c ?? '').split('LOCAL_BIKE_MAINTENANCE_QUOTE_JSON:')[0].trimEnd();
+      const result = await sdk.table('technician_responses_c').update({
+        Id: response.Id,
+        proposed_price_c: quote.customerTotal,
+        original_proposed_price_c: quote.customerTotal,
+        final_agreed_price_c: null,
+        message_c: baseMessage + '\\nLOCAL_BIKE_MAINTENANCE_QUOTE_JSON:' + JSON.stringify(quote),
+      });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Quotation could not be submitted.');
+      toast.success('Itemized quotation sent to LOCAL Customer Care for review.');
+      setBikeLabour('');
+      setBikeParts('');
+      setBikeOther('0');
+      setBikeNotes('');
+      await run();
+    } catch (err) {
+      toast.error(err.message || 'Could not submit the quotation.');
     } finally {
       setWorking(false);
     }
@@ -823,7 +957,27 @@ export default function RequestDetail() {
               <div key={response.Id} className="border-l-4 border-primary bg-muted/30 p-4">
                 <div className="flex flex-col gap-4">
                   <div className="min-w-0 w-full"><div className="flex flex-wrap items-center gap-2"><div className="font-medium">{response.technician_c?.Name ?? 'Service Provider'}</div><StatusBadge value={vendorAccepted ? 'Vendor Accepted' : response.status_c} /></div><div className="mt-1 text-sm text-muted-foreground">{response.availability_c}{isCustomer && response.provider_distance_label_c ? ' • ' + response.provider_distance_label_c + ' from your location' : ''}</div><p className="mt-2 break-words text-sm">{/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) ? (response.status_c === 'Selected' ? 'Provider accepted the assignment. LOCAL must verify visit details and confirm the booking.' : response.status_c === 'Declined' ? 'Provider declined. LOCAL can assign another eligible provider.' : 'LOCAL sent this assignment invitation. Waiting for the provider to accept or decline.') : isFixedRateDriverRequest ? 'Available for this driver request.' : (response.message_c || 'No additional message.')}</p></div>
-                  <div className="w-full min-w-0">{(/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && isCarEssentialsRequest) ? (() => { const responseQuote = readCarEssentialsQuote(response.message_c); return <div className="mt-3 rounded-lg border border-primary/30 bg-background p-3"><div className="font-semibold">Car Essentials itemized quote</div>{responseQuote ? <><div className="mt-2 space-y-1 text-sm">{responseQuote.items.map((item, idx) => <div key={idx} className="flex justify-between gap-3"><span>{item.name} × {item.quantity}</span><span>₹{Number(item.lineTotal).toLocaleString('en-IN')}</span></div>)}<div className="flex justify-between border-t pt-2"><span>Home delivery</span><span>₹{Number(responseQuote.deliveryCharge).toLocaleString('en-IN')}</span></div><div className="flex justify-between font-bold"><span>Total quote</span><span>₹{Number(responseQuote.total).toLocaleString('en-IN')}</span></div></div><p className="mt-2 text-xs text-muted-foreground">Status: {responseQuote.status || 'Submitted to Admin'}</p></> : isTechnician && ['Pending', 'Selected'].includes(response.status_c) ? <><p className="mt-1 text-sm text-muted-foreground">Enter a unit price for every requested product and your home-delivery charge. Submitting this quote also records your acceptance of the assignment, then sends the itemized quote to LOCAL Admin for review.</p>{requestLineItems.map((item, index) => <div key={index} className="mt-2 grid grid-cols-[minmax(0,1fr)_110px] items-center gap-2"><label className="break-words text-sm">{item.name} × {item.quantity}</label><Input type="number" min="0.01" step="0.01" value={quotePrices[index] ?? ''} onChange={(event) => { const value = event.target.value; const nextPrices = { ...quotePrices, [index]: value }; setQuotePrices(nextPrices); setQuoteCalculated(false); const itemsTotal = requestLineItems.reduce((sum, lineItem, lineIndex) => sum + (Number.parseFloat(String(nextPrices[lineIndex] ?? '').replace(/,/g, '')) || 0) * Number(lineItem.quantity || 1), 0); setQuoteTotal(itemsTotal + (Number.parseFloat(String(deliveryCharge ?? '').replace(/,/g, '')) || 0)); }} placeholder="Unit price ₹" /></div>)}<div className="mt-2 grid grid-cols-[minmax(0,1fr)_110px] items-center gap-2"><label className="text-sm font-medium">Home delivery (₹)</label><Input type="number" min="0" step="0.01" value={deliveryCharge} onChange={(event) => { const value = event.target.value; setDeliveryCharge(value); setQuoteCalculated(false); const itemsTotal = requestLineItems.reduce((sum, lineItem, lineIndex) => sum + (Number.parseFloat(String(quotePrices[lineIndex] ?? '').replace(/,/g, '')) || 0) * Number(lineItem.quantity || 1), 0); setQuoteTotal(itemsTotal + (Number.parseFloat(String(value ?? '').replace(/,/g, '')) || 0)); }} placeholder="Delivery ₹" /></div><Button type="button" variant="outline" className="mt-3 w-full" size="sm" onClick={(event) => { const box = event.currentTarget.closest('.rounded-lg'); const fields = Array.from(box?.querySelectorAll('input') ?? []); const nextPrices = {}; requestLineItems.forEach((item, index) => { nextPrices[index] = String(fields[index]?.value ?? ''); }); const nextDelivery = String(fields[requestLineItems.length]?.value ?? ''); const itemsTotal = requestLineItems.reduce((sum, item, index) => sum + (Number.parseFloat(String(nextPrices[index] ?? '').replace(/,/g, '')) || 0) * Number(item.quantity || 1), 0); const total = itemsTotal + (Number.parseFloat(nextDelivery.replace(/,/g, '')) || 0); setQuotePrices(nextPrices); setDeliveryCharge(nextDelivery); setQuoteTotal(total); setQuoteCalculated(true); const totalLabel = box?.querySelector('[data-quote-total]'); if (totalLabel) totalLabel.textContent = 'Total: ₹' + total.toLocaleString('en-IN'); toast.success('Total recalculated: ₹' + total.toLocaleString('en-IN')); }}>Press to Calculate Total Amount</Button><p data-quote-total className="mt-2 text-sm font-semibold">Total: ₹{quoteTotal.toLocaleString('en-IN')}</p><Button className="mt-3 w-full" size="sm" disabled={working || !quoteCalculated} onClick={() => submitCarEssentialsQuote(response)}>{working ? 'Submitting quote…' : 'Submit Itemized Quote'}</Button></> : <p className="mt-2 text-sm text-muted-foreground">Accept the assignment above or enter the quote here to accept and submit it in one step.</p>}</div>; })() : /Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) ? <div className="font-medium">Central assignment — no quote requested</div> : isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour after the first 2 hours. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && !vendorAccepted && !relatedJob && <div className="mt-3 flex flex-wrap gap-2 md:justify-end"><Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}
+                  <div className="w-full min-w-0">{(/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && isBikeMaintenanceRequest) ? (() => {
+                    const quote = readBikeMaintenanceQuote(response.message_c);
+                    const assigned = response.status_c === 'Selected';
+                    return <div className="mt-3 rounded-lg border border-primary/30 bg-background p-4">
+                      <div className="font-semibold">Bike Maintenance — Visit & Quotation</div>
+                      {quote?.visitCompletedAt ? <p className="mt-1 text-xs text-muted-foreground">Visit completed: {new Date(quote.visitCompletedAt).toLocaleString('en-IN')}</p> : null}
+                      {isTechnician && assigned && !quote?.visitCompletedAt && <div className="mt-3"><p className="text-sm text-muted-foreground">Visit the customer and inspect the bike before entering final charges.</p><Button className="mt-2 w-full" disabled={working} onClick={() => markBikeVisitCompleted(response)}>Mark Visit Completed</Button></div>}
+                      {isTechnician && assigned && quote?.visitCompletedAt && quote.status !== 'Submitted to Admin' && quote.status !== 'Admin Approved' && quote.status !== 'Customer Approved' && <div className="mt-3 space-y-3">
+                        <p className="text-sm text-muted-foreground">Enter the itemized quotation. The ₹25 LOCAL convenience fee is added automatically.</p>
+                        <div className="grid grid-cols-2 gap-2"><label className="text-sm">Labour (₹)<Input type="number" min="0" value={bikeLabour} onChange={(event) => setBikeLabour(event.target.value)} /></label><label className="text-sm">Spare parts (₹)<Input type="number" min="0" value={bikeParts} onChange={(event) => setBikeParts(event.target.value)} /></label></div>
+                        <label className="block text-sm">Other charges (₹)<Input type="number" min="0" value={bikeOther} onChange={(event) => setBikeOther(event.target.value)} /></label>
+                        <label className="block text-sm">Inspection findings / work required<textarea className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={bikeNotes} onChange={(event) => setBikeNotes(event.target.value)} placeholder="Describe the issue and recommended work" /></label>
+                        <div className="rounded-md bg-muted/40 p-3 text-sm"><div className="flex justify-between"><span>Service subtotal</span><strong>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</strong></div><div className="mt-1 flex justify-between"><span>LOCAL convenience fee</span><strong>₹25</strong></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Customer total</span><span>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</span></div></div>
+                        <Button className="w-full" disabled={working} onClick={() => submitBikeMaintenanceQuote(response)}>Submit Quote to Customer Care</Button>
+                      </div>}
+                      {quote && <div className="mt-3 space-y-2 text-sm">{(quote.items || []).map((item, index) => <div key={index} className="flex justify-between gap-3"><span>{item.name}</span><span>₹{Number(item.amount).toLocaleString('en-IN')}</span></div>)}{quote.notes && <p className="rounded bg-muted/30 p-2 text-muted-foreground">{quote.notes}</p>}<div className="flex justify-between border-t pt-2"><span>Service subtotal</span><span>₹{Number(quote.serviceTotal || 0).toLocaleString('en-IN')}</span></div><div className="flex justify-between"><span>LOCAL convenience fee</span><span>₹25</span></div><div className="flex justify-between font-bold"><span>Customer total</span><span>₹{Number(quote.customerTotal || 0).toLocaleString('en-IN')}</span></div><p className="text-xs text-muted-foreground">Status: {quote.status}</p></div>}
+                      {user?.profile === 'Admin_c' && quote?.status === 'Submitted to Admin' && <div className="mt-3 space-y-2 rounded-md border p-3"><p className="text-sm">Review the quote, then call the customer and explain the full amount before recording their decision.</p><Button className="w-full" disabled={working} onClick={() => saveBikeMaintenanceQuoteStatus(response, { status: 'Admin Approved', adminApprovedAt: new Date().toISOString(), adminApprovedBy: user?.emailAddress ?? user?.email ?? 'Admin' }, 'Quotation approved. Call the customer to obtain consent.')}>Approve Quotation</Button></div>}
+                      {user?.profile === 'Admin_c' && quote?.status === 'Admin Approved' && <div className="mt-3 space-y-2 rounded-md border border-success/30 p-3"><p className="text-sm">After speaking to the customer, record their explicit consent to the quoted total of ₹{Number(quote.customerTotal).toLocaleString('en-IN')}.</p><Button className="w-full" disabled={working} onClick={() => saveBikeMaintenanceQuoteStatus(response, { status: 'Customer Approved', customerConsentAt: new Date().toISOString(), customerConsentRecordedBy: user?.emailAddress ?? user?.email ?? 'Admin' }, 'Customer consent recorded. Proceed to LOCAL booking confirmation.')}>Record Customer Consent</Button></div>}
+                      {quote?.status === 'Customer Approved' && <p className="mt-3 rounded-md bg-success/10 p-3 text-sm text-success">Admin-approved quote and customer consent are recorded. Repair may proceed at the approved price.</p>}
+                    </div>;
+                  })() : (/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && isCarEssentialsRequest) ? (() => { const responseQuote = readCarEssentialsQuote(response.message_c); return <div className="mt-3 rounded-lg border border-primary/30 bg-background p-3"><div className="font-semibold">Car Essentials itemized quote</div>{responseQuote ? <><div className="mt-2 space-y-1 text-sm">{responseQuote.items.map((item, idx) => <div key={idx} className="flex justify-between gap-3"><span>{item.name} × {item.quantity}</span><span>₹{Number(item.lineTotal).toLocaleString('en-IN')}</span></div>)}<div className="flex justify-between border-t pt-2"><span>Home delivery</span><span>₹{Number(responseQuote.deliveryCharge).toLocaleString('en-IN')}</span></div><div className="flex justify-between font-bold"><span>Total quote</span><span>₹{Number(responseQuote.total).toLocaleString('en-IN')}</span></div></div><p className="mt-2 text-xs text-muted-foreground">Status: {responseQuote.status || 'Submitted to Admin'}</p></> : isTechnician && ['Pending', 'Selected'].includes(response.status_c) ? <><p className="mt-1 text-sm text-muted-foreground">Enter a unit price for every requested product and your home-delivery charge. Submitting this quote also records your acceptance of the assignment, then sends the itemized quote to LOCAL Admin for review.</p>{requestLineItems.map((item, index) => <div key={index} className="mt-2 grid grid-cols-[minmax(0,1fr)_110px] items-center gap-2"><label className="break-words text-sm">{item.name} × {item.quantity}</label><Input type="number" min="0.01" step="0.01" value={quotePrices[index] ?? ''} onChange={(event) => { const value = event.target.value; const nextPrices = { ...quotePrices, [index]: value }; setQuotePrices(nextPrices); setQuoteCalculated(false); const itemsTotal = requestLineItems.reduce((sum, lineItem, lineIndex) => sum + (Number.parseFloat(String(nextPrices[lineIndex] ?? '').replace(/,/g, '')) || 0) * Number(lineItem.quantity || 1), 0); setQuoteTotal(itemsTotal + (Number.parseFloat(String(deliveryCharge ?? '').replace(/,/g, '')) || 0)); }} placeholder="Unit price ₹" /></div>)}<div className="mt-2 grid grid-cols-[minmax(0,1fr)_110px] items-center gap-2"><label className="text-sm font-medium">Home delivery (₹)</label><Input type="number" min="0" step="0.01" value={deliveryCharge} onChange={(event) => { const value = event.target.value; setDeliveryCharge(value); setQuoteCalculated(false); const itemsTotal = requestLineItems.reduce((sum, lineItem, lineIndex) => sum + (Number.parseFloat(String(quotePrices[lineIndex] ?? '').replace(/,/g, '')) || 0) * Number(lineItem.quantity || 1), 0); setQuoteTotal(itemsTotal + (Number.parseFloat(String(value ?? '').replace(/,/g, '')) || 0)); }} placeholder="Delivery ₹" /></div><Button type="button" variant="outline" className="mt-3 w-full" size="sm" onClick={(event) => { const box = event.currentTarget.closest('.rounded-lg'); const fields = Array.from(box?.querySelectorAll('input') ?? []); const nextPrices = {}; requestLineItems.forEach((item, index) => { nextPrices[index] = String(fields[index]?.value ?? ''); }); const nextDelivery = String(fields[requestLineItems.length]?.value ?? ''); const itemsTotal = requestLineItems.reduce((sum, item, index) => sum + (Number.parseFloat(String(nextPrices[index] ?? '').replace(/,/g, '')) || 0) * Number(item.quantity || 1), 0); const total = itemsTotal + (Number.parseFloat(nextDelivery.replace(/,/g, '')) || 0); setQuotePrices(nextPrices); setDeliveryCharge(nextDelivery); setQuoteTotal(total); setQuoteCalculated(true); const totalLabel = box?.querySelector('[data-quote-total]'); if (totalLabel) totalLabel.textContent = 'Total: ₹' + total.toLocaleString('en-IN'); toast.success('Total recalculated: ₹' + total.toLocaleString('en-IN')); }}>Press to Calculate Total Amount</Button><p data-quote-total className="mt-2 text-sm font-semibold">Total: ₹{quoteTotal.toLocaleString('en-IN')}</p><Button className="mt-3 w-full" size="sm" disabled={working || !quoteCalculated} onClick={() => submitCarEssentialsQuote(response)}>{working ? 'Submitting quote…' : 'Submit Itemized Quote'}</Button></> : <p className="mt-2 text-sm text-muted-foreground">Accept the assignment above or enter the quote here to accept and submit it in one step.</p>}</div>; })() : /Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) ? <div className="font-medium">Central assignment — no quote requested</div> : isFixedRateDriverRequest ? <><div className="font-heading text-xl font-semibold">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? '₹300 minimum' : '₹100/hour'}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{/hourly driver/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) ? 'First 2 hours; then ₹100/hour after the first 2 hours. Night halt ₹300 if applicable.' : '8 AM–10 PM. Night halt ₹300 if applicable.'}</div></> : <div className="font-heading text-2xl font-semibold">₹{Number(response.proposed_price_c ?? 0).toLocaleString('en-IN')}</div>}{!isFixedRateDriverRequest && response.original_proposed_price_c != null && Number(response.original_proposed_price_c) !== Number(response.proposed_price_c) && <div className="mt-1 text-xs text-muted-foreground">{tr('Original quote', language)} ₹{Number(response.original_proposed_price_c).toLocaleString('en-IN')}</div>}{isCustomer && response.status_c === 'Pending' && !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && !vendorAccepted && !relatedJob && <div className="mt-3 flex flex-wrap gap-2 md:justify-end"><Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>{isFixedRateDriverRequest ? 'Choose this driver' : tr('Confirm service provider', language)}</Button></div>}
                 {isCustomer && vendorAccepted && !relatedJob && <div className="mt-3 flex w-full min-w-0 flex-col items-start gap-3 rounded-lg border border-success-border bg-success-muted p-3"><p className="break-words text-sm text-success"><strong>Provider accepted.</strong> Final agreed price: ₹{Number(response.final_agreed_price_c ?? response.proposed_price_c).toLocaleString('en-IN')}. Review the booking before confirming.</p><Button className="max-w-full whitespace-normal" size="sm" disabled={working} onClick={() => confirmTechnician(response)}>Select This Provider</Button></div>}{isCustomer && response.status_c === 'Selected' && /Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && !relatedJob && <div className="mt-3 rounded-md border border-success/30 bg-success/5 p-3 text-sm"><strong>Provider accepted the assignment.</strong><p className="mt-1 text-muted-foreground">Central LOCAL is finalizing the booking and will share confirmed visit details. No bidding or price negotiation is involved.</p></div>}{isCustomer && response.status_c === 'Selected' && !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && !relatedJob && <div className="mt-3 flex flex-wrap items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">Provider selected; review and finish booking confirmation.</span><Button size="sm" disabled={working} onClick={() => confirmTechnician(response)}>Confirm Booking</Button></div>}{isTechnician && !/Central LOCAL assignment invitation/i.test(String(response.message_c ?? '')) && <div className="mt-3 text-xs font-semibold text-muted-foreground">{isFixedRateDriverRequest ? 'Waiting for customer selection' : <Link to={'/responses/' + response.Id}>Manage offer</Link>}</div>}</div>
                 </div>
 
