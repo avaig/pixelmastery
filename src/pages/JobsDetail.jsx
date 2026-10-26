@@ -629,9 +629,9 @@ export default function JobsDetail() {
     if (duration === null || !duration.trim()) return;
     const distance = window.prompt('Enter actual distance in km (or N/A if not applicable):', 'N/A');
     if (distance === null) return;
-    const nightHalt = window.prompt('Enter actual night halt / overnight charges in rupees (0 if none):', '0');
+    const nightHalt = window.prompt('Enter only additional night-halt charges NOT already included in the approved quotation (₹; 0 if none):', '0');
     if (nightHalt === null) return;
-    const extras = window.prompt('Enter other customer-approved additional charges in rupees (0 if none):', '0');
+    const extras = window.prompt('Enter other customer-approved additional charges NOT already included in the approved quotation (₹; 0 if none):', '0');
     if (extras === null) return;
     const notes = window.prompt('Enter trip completion notes and explain any extra charges:');
     if (notes === null) return;
