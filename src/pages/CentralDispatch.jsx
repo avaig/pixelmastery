@@ -946,6 +946,23 @@ export default function CentralDispatch() {
                         <p className="mt-1 text-sm font-medium text-foreground">{details.notes && /callback/i.test(details.notes) ? 'Customer Care callback' : request.preferred_time_c === 'ASAP' ? 'Book Now' : 'Service request'}</p>
                       </div>
                     </div>
+                    {isDriverBookingRequest(request) && (() => {
+                      const route = readDriverRoute(request.problem_description_c);
+                      if (!route) return null;
+                      return <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-center gap-2 border-b border-primary/10 pb-3"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="Route" size={18} /></span><div><h4 className="font-semibold">Driver journey details</h4><p className="text-xs text-muted-foreground">Pickup and drop-off supplied by customer</p></div></div>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-lg border bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pickup location</p><p className="mt-1 break-words text-sm font-semibold">{route.pickup.text || 'Not recorded'}</p><p className="mt-1 text-xs text-muted-foreground">{Number(route.pickup.latitude).toFixed(5)}, {Number(route.pickup.longitude).toFixed(5)}</p></div>
+                          <div className="rounded-lg border bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Drop-off location</p><p className="mt-1 break-words text-sm font-semibold">{route.dropoff.text || 'Not recorded'}</p><p className="mt-1 text-xs text-muted-foreground">{Number(route.dropoff.latitude).toFixed(5)}, {Number(route.dropoff.longitude).toFixed(5)}</p></div>
+                        </div>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-lg bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Journey type</p><p className="mt-1 text-sm font-medium">{route.travelType || 'Not specified'} · {route.tripType || 'One-way'}</p></div>
+                          <div className="rounded-lg bg-background p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Additional stops</p>{Array.isArray(route.stops) && route.stops.length ? <ol className="mt-1 list-inside list-decimal space-y-1 text-sm">{route.stops.map((stop, index) => <li key={index}>{stop}</li>)}</ol> : <p className="mt-1 text-sm">No additional stops</p>}</div>
+                        </div>
+                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Customer Care next step</p><p className="mt-1 text-sm leading-5 text-amber-950">Call the customer to confirm pickup time, trip duration, night halt, waiting time and additional charges. Send the quote for customer approval before assigning a driver.</p></div>
+                        <a className="mt-3 inline-flex text-sm font-semibold text-primary underline underline-offset-4" href={'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=' + route.pickup.latitude + '%2C' + route.pickup.longitude + '%3B' + route.dropoff.latitude + '%2C' + route.dropoff.longitude} target="_blank" rel="noreferrer">Open route in map</a>
+                      </div>;
+                    })()}
                     <div className="rounded-lg border border-border bg-muted/10 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer requirement</p>
                       <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground">{details.notes || 'No additional instructions provided.'}</p>
