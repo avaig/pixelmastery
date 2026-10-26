@@ -124,11 +124,31 @@ function readDriverRoute(description) {
   const source = String(description ?? '');
   const index = source.lastIndexOf(marker);
   if (index < 0) return null;
-  const raw = source.slice(index + marker.length).split(/\\\\n|[\\r\\n]/)[0].trim();
-  try {
-    const route = JSON.parse(raw);
-    return route && route.pickup && route.dropoff ? route : null;
-  } catch { return null; }
+  const raw = source.slice(index + marker.length).trimStart();
+  const start = raw.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const route = JSON.parse(raw.slice(start, i + 1));
+          return route && route.pickup && route.dropoff ? route : null;
+        } catch { return null; }
+      }
+    }
+  }
+  return null;
 }
 
 function isDriverBookingRequest(request) {
