@@ -230,6 +230,15 @@ export default function CustomerRequestStart() {
   const [submittedWashOrder, setSubmittedWashOrder] = useState(null);
   const [submittedBikeCareRequest, setSubmittedBikeCareRequest] = useState(null);
   const [driverDisclaimerAccepted, setDriverDisclaimerAccepted] = useState(false);
+  const [driverPickupAddress, setDriverPickupAddress] = useState('');
+  const [driverPickupPoint, setDriverPickupPoint] = useState(null);
+  const [driverDropoffAddress, setDriverDropoffAddress] = useState('');
+  const [driverDropoffPoint, setDriverDropoffPoint] = useState(null);
+  const [driverTripType, setDriverTripType] = useState('One-way');
+  const [driverTravelType, setDriverTravelType] = useState('Within city');
+  const [driverStops, setDriverStops] = useState([]);
+  const [driverStopDraft, setDriverStopDraft] = useState('');
+  const [driverLocationBusy, setDriverLocationBusy] = useState('');
   const [punctureDispatchConsent, setPunctureDispatchConsent] = useState(false);
   const isProfessionalDriverService = ['Car Driver on Demand', 'Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService);
   const [location, setLocation] = useState(() => {
@@ -630,7 +639,75 @@ export default function CustomerRequestStart() {
     }
   }
 
+  async function resolveDriverAddress(address, kind) {
+    const query = String(address || '').trim();
+    if (query.length < 3) {
+      toast.error('Enter a complete pickup or drop-off address.');
+      return;
+    }
+    setDriverLocationBusy(kind);
+    try {
+      const queries = /prayagraj|allahabad|kanpur|lucknow|varanasi|noida|ghaziabad|delhi|mumbai|kolkata|chennai|bengaluru|hyderabad|pune|jaipur|agra/i.test(query)
+        ? [query]
+        : [query + ', Prayagraj, Uttar Pradesh, India', query + ', India'];
+      let matches = [];
+      for (const searchQuery of queries) {
+        const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=3&countrycodes=in&q=' + encodeURIComponent(searchQuery));
+        if (!response.ok) throw new Error('Address search is unavailable');
+        matches = await response.json();
+        if (matches.length) break;
+      }
+      if (!matches.length) {
+        toast.error('Address not found. Add the locality and city, then try again.');
+        return;
+      }
+      const match = matches[0];
+      const point = { text: String(match.display_name).split(',').slice(0, 4).join(', '), latitude: Number(match.lat), longitude: Number(match.lon) };
+      if (kind === 'pickup') {
+        setDriverPickupPoint(point);
+        setDriverPickupAddress(point.text);
+      } else {
+        setDriverDropoffPoint(point);
+        setDriverDropoffAddress(point.text);
+      }
+      toast.success(kind === 'pickup' ? 'Pickup location confirmed.' : 'Drop-off location confirmed.');
+    } catch {
+      toast.error('Address search is temporarily unavailable. You can enter the full address and retry.');
+    } finally {
+      setDriverLocationBusy('');
+    }
+  }
+
+  function useDriverPickupCurrentLocation() {
+    if (!navigator.geolocation) {
+      toast.error('Location is not available in this browser. Enter the pickup address manually.');
+      return;
+    }
+    setDriverLocationBusy('gps');
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const point = { text: 'Current location', latitude: position.coords.latitude, longitude: position.coords.longitude };
+      try {
+        const response = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + point.latitude + '&lon=' + point.longitude);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.display_name) point.text = String(result.display_name).split(',').slice(0, 4).join(', ');
+        }
+      } catch { /* GPS coordinates remain usable even if reverse geocoding is unavailable. */ }
+      setDriverPickupPoint(point);
+      setDriverPickupAddress(point.text);
+      setDriverLocationBusy('');
+      toast.success('Current location set as pickup.');
+    }, () => {
+      setDriverLocationBusy('');
+      toast.error('Location permission was not granted. Enter the pickup address manually.');
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  }
+
   async function createRequest() {
+    if (isProfessionalDriverService && (!driverPickupPoint || !driverDropoffPoint)) {
+      toast.error('Please confirm both pickup and drop-off locations before sending your driver request.');
+      return;
+    }
     if (isCarFlatPuncture && !punctureDispatchConsent) {
       toast.error('Please accept the puncture pricing and cancellation policy before dispatch.');
       return;
@@ -696,7 +773,7 @@ export default function CustomerRequestStart() {
           ? (isCarWash ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + '; LOCAL Platform Fee: ₹' + CAR_WASH_PLATFORM_FEE + ' (once per booking)' + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Service subtotal: ₹' + washCartSummary.subtotal.toLocaleString('en-IN') + '. Customer menu estimate including platform fee' + (includePickupDrop ? ' and indicative Pickup & Drop' : '') + ': ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. LOCAL Platform Fee: ₹' + CAR_SERVICE_PLATFORM_FEE + ' (once per booking). Indicative total including platform fee: ₹' + (Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : isBikeCareRequest ? requestedService + '. Customer requested a callback from LOCAL Customer Care. No bike model details or bidding are required. Confirm availability and the full service price, including the ₹25 LOCAL Platform Fee, with the customer before confirming payment.' : requestedService) + (vehicle === 'bike' ? '.' : ' for their car.')
           : isOtherIssue
             ? problemDetails.trim()
-            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
+            : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isProfessionalDriverService ? '\\nLOCAL_DRIVER_ROUTE_JSON:' + JSON.stringify({ pickup: driverPickupPoint, dropoff: driverDropoffPoint, tripType: driverTripType, travelType: driverTravelType, stops: driverStops, quoteWorkflow: 'Customer Care reviews route and trip details, sends quote for customer approval, and assigns a driver only after customer approval.' }) : '') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
         location_c: location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
