@@ -299,7 +299,7 @@ export default function CustomerRequestStart() {
   const isUrgentService = ['Emergency Driver', 'Ambulance'].includes(requestedService) || /jump|battery|tyre|towing|fuel|roadside|breakdown|accident/i.test(issue + ' ' + requestedService);
   // Only classify Car Wash as fixed-price here because this screen currently has an explicit package rate card.
   // Driver rates must be configured before those services can honestly be presented as fixed-price bookings.
-  const pricingMode = isUrgentService ? 'Urgent Dispatch' : (isCarWash ? 'Fixed Price' : (isProfessionalDriverService ? 'Driver Booking & Confirmation' : 'Provider Quote'));
+  const pricingMode = isUrgentService ? 'Urgent Dispatch' : (isCarWash ? 'Fixed Price' : 'Provider Quote');
   const pricingModeDescription = isCarFlatPuncture
     ? 'Prioritize nearby available help for faster assistance. No bidding.'
     : isProfessionalDriverService
@@ -715,7 +715,7 @@ export default function CustomerRequestStart() {
         return;
       }
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
-      toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : tr('Request shared with eligible nearby Service Providers.', language));
+      toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : isProfessionalDriverService ? 'Driver request sent to LOCAL Customer Care. We will confirm driver availability, schedule and charges.' : tr('Request shared with eligible nearby Service Providers.', language));
       if (isCarWash) {
         setWashVehicleLocked(false);
         window.sessionStorage.removeItem('local_car_wash_vehicle_locked_v1');
