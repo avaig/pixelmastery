@@ -119,6 +119,18 @@ function readDriverApproval(description) {
   try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
 }
 
+function readDriverRoute(description) {
+  const marker = 'LOCAL_DRIVER_ROUTE_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  const raw = source.slice(index + marker.length).split(/\\\\n|[\\r\\n]/)[0].trim();
+  try {
+    const route = JSON.parse(raw);
+    return route && route.pickup && route.dropoff ? route : null;
+  } catch { return null; }
+}
+
 function isDriverBookingRequest(request) {
   return /car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
 }
@@ -473,6 +485,7 @@ export default function CentralDispatch() {
     const text = String(value ?? '')
       .split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0]
       .split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0]
+      .split('LOCAL_DRIVER_ROUTE_JSON:')[0]
       .split('LOCAL_AC_REQUEST_JSON:')[0]
       .split('LOCAL_RSA_APPROVAL_JSON:')[0]
       .split('LOCAL_RSA_QUOTE_JSON:')[0]
