@@ -1000,7 +1000,7 @@ export default function RequestDetail() {
                           setBikeOther(otherText);
                           setBikeNotes(notesText);
                           toast.success('Bill recalculated from the current table values. Review the final customer bill below.');
-                        }}><span className="inline-flex items-center justify-center gap-2"><RefreshCw className="h-4 w-4" />Calculate Final Bill</span></Button>
+                        }}><span className="inline-flex items-center justify-center gap-2"><ApperIcon name="RefreshCw" size={16} />Calculate Final Bill</span></Button>
                         <Button className="w-full" disabled={working} onClick={(event) => {
                           const form = event.currentTarget.closest('.bike-maintenance-quote-form');
                           submitBikeMaintenanceQuote(response, {
