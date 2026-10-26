@@ -30,6 +30,32 @@ export const nav = {
 
 const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'scheduled_at_c', 'pricing_mode_c', 'pricing_mode_description_c', 'CreatedOn'];
 
+function readDriverTripMetadata(note, marker) {
+  const source = String(note ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  const raw = source.slice(index + marker.length);
+  const start = raw.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(raw.slice(start, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
 function readCarEssentialsQuote(message) {
   const marker = 'LOCAL_CAR_ESSENTIALS_QUOTE_JSON:';
   const source = String(message ?? '');
@@ -214,7 +240,7 @@ export default function CentralDispatch() {
       sdk.table('service_requests_c').select(REQUEST_FIELDS).orderByDesc('CreatedOn').page(1, 500).fetch(),
       sdk.table('technician_profiles_c').select(PROVIDER_FIELDS).page(1, 1000).fetch(),
       sdk.table('technician_responses_c').select(['Id', 'Name', 'request_c', 'technician_c', 'status_c', 'availability_c', 'message_c', 'proposed_price_c']).page(1, 2000).fetch(),
-      sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'technician_c', 'agreed_price_c', 'local_service_fee_amount_c', 'customer_payable_now_c', 'status_c', 'payment_status_c', 'billing_status_c', 'payment_method_c', 'payment_reference_c', 'payout_status_c', 'returned_at_c', 'customer_completion_confirmed_at_c', 'dispute_status_c', 'service_start_otp_c', 'service_start_otp_verified_at_c']).page(1, 2000).fetch(),
+      sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'technician_c', 'agreed_price_c', 'local_service_fee_amount_c', 'customer_payable_now_c', 'status_c', 'payment_status_c', 'billing_status_c', 'payment_method_c', 'payment_reference_c', 'payout_status_c', 'returned_at_c', 'customer_completion_confirmed_at_c', 'dispute_status_c', 'service_start_otp_c', 'service_start_otp_verified_at_c', 'admin_review_note_c', 'original_provider_quote_c']).page(1, 2000).fetch(),
     ]);
     if (!requestRes.success || !providerRes.success || !responseRes.success || !jobsRes.success) throw new Error('Central dispatch data could not be loaded. Check table permissions and try again.');
     return { requests: requestRes.data ?? [], providers: providerRes.data ?? [], responses: responseRes.data ?? [], jobs: jobsRes.data ?? [] };
@@ -1125,6 +1151,17 @@ export default function CentralDispatch() {
   return (
     <div id="central-dispatch-page-top" className="min-w-0 space-y-5 text-slate-900 scroll-mt-20">
       <PageHeader eyebrow="" title="Central Dispatch" description="Manage and assign customer service requests" />
+      {data && (() => {
+        const pendingDriverBills = jobs.filter((job) => {
+          const label = String(job.Name ?? '') + ' ' + String(job.request_c?.Name ?? '');
+          if (!/car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|professional car driver/i.test(label) || job.status_c !== 'Completed') return false;
+          const completion = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:');
+          const review = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_REVIEW_JSON:');
+          return Boolean(completion && review?.approved !== true);
+        });
+        if (!pendingDriverBills.length) return null;
+        return <Card className="border-amber-300 bg-amber-50/60 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="rounded-lg bg-amber-100 p-2 text-amber-800"><ApperIcon name="FileCheck2" size={22} /></div><div className="min-w-0 flex-1"><h2 className="text-lg font-semibold text-slate-900">Driver final bills — awaiting Admin review</h2><p className="mt-1 text-sm text-slate-600">Service Providers have submitted trip details. Open each bill to review the amount, call the customer, record consent, and release the payment option.</p><div className="mt-4 space-y-3">{pendingDriverBills.map((job) => { const completion = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:'); return <div key={job.Id} className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-semibold text-slate-900">{job.Name || 'Driver on Demand trip'}</p><p className="mt-1 text-sm text-slate-600">Trip duration: {completion.duration || '—'} · Distance: {completion.distanceKm || '—'}</p><p className="mt-1 text-base font-bold text-slate-900">Customer total: ₹{Number(completion.customerTotal ?? 0).toLocaleString('en-IN')}</p><p className="mt-1 text-xs text-amber-800">Submitted {completion.submittedAt ? new Date(completion.submittedAt).toLocaleString('en-IN') : 'for review'}</p></div><Button asChild className="shrink-0"><Link to={'/jobs/' + job.Id}><ApperIcon name="ClipboardCheck" size={16} /> Review bill & share</Link></Button></div>; })}</div></div></div></Card>;
+      })()}
       {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
         <>
           <div className="mb-5 grid grid-cols-4 gap-2">
