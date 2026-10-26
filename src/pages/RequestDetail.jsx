@@ -168,9 +168,8 @@ function getRequestLineItems(request) {
     if (coveredMatch) coveredMatch[1].split(';').map((part) => part.trim()).filter(Boolean).forEach((part) => items.push({ name: part, quantity: 'Included / if required', price: null, fixed: true }));
     if (items.length) return items;
   }
-  const driverRequestText = String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + description;
-  if (/car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(driverRequestText)) {
-    const driverClean = description.split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0].split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0].split('LOCAL_RSA_APPROVAL_JSON:')[0].split('LOCAL_RSA_QUOTE_JSON:')[0].split('LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:')[0].split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].split('LOCAL_CANCELLATION_JSON:')[0].replace(/\\n/g, ' ').trim();
+  if (isDriverRequest) {
+    const driverClean = description.split('LOCAL_RSA_APPROVAL_JSON:')[0].split('LOCAL_RSA_QUOTE_JSON:')[0].split('LOCAL_CAR_ESSENTIALS_APPROVAL_JSON:')[0].split('LOCAL_CAR_ESSENTIALS_QUOTE_JSON:')[0].split('LOCAL_CANCELLATION_JSON:')[0].replace(/\\n/g, ' ').trim();
     const customerDescription = driverClean.replace(/^Customer (?:requested|selected)\s*/i, '').replace(/\s+for their car\.?$/i, '').trim();
     return [{ name: customerDescription || 'Car Driver on Demand', quantity: 1, price: null, fixed: false }];
   }
