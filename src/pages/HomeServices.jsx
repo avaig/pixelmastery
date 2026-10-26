@@ -187,23 +187,7 @@ export default function HomeServices() {
 
   return (
     <div className="min-h-svh bg-background text-foreground">
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
-        <div className="flex items-center justify-between gap-3">
-          <Button type="button" variant="outline" onClick={() => navigate('/')}>
-            <ApperIcon name="ArrowLeft" size={17} />
-            Back to LOCAL
-          </Button>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">LOCAL · Home Service</span>
-        </div>
-
-        <header className="max-w-2xl space-y-2">
-          <p className="text-sm font-semibold text-primary">Local needs. Local solutions.</p>
-          <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">What service do you need?</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            Choose a service and request a callback. Our Customer Care team will understand the details and arrange the right help.
-          </p>
-        </header>
-
+      <main className="mx-auto max-w-5xl px-3 py-3 sm:px-6 sm:py-4">
         <section className="grid gap-4 md:grid-cols-2" aria-label="Home service categories">
           {SERVICES.map((service, index) => (
             <Card key={service.id} className="flex h-full flex-col rounded-xl border-border p-4 shadow-sm sm:p-5">
@@ -264,20 +248,6 @@ export default function HomeServices() {
           </Card>
         </section>
 
-        <section className="rounded-xl border border-border bg-muted/40 p-4 sm:p-5">
-          <div className="flex items-start gap-3">
-            <ApperIcon name="Headset" size={22} className="mt-0.5 shrink-0 text-primary" />
-            <div>
-              <h2 className="font-semibold">What happens next?</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Request received → Customer Care calls you → appointment booked → suitable technician assigned → work completed → payment recorded.
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                No detailed form is needed now. Please discuss the problem and appointment time with Customer Care on the call.
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
     </div>
   );
