@@ -52,7 +52,8 @@ export default function AuthPage({ mode, profileKey = null }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const hasUI = Boolean(sdk.session.ui);
+  // Use the built-in credential form for Admin because the hosted Admin login UI is rendering an empty container.
+  const hasUI = Boolean(sdk.session.ui) && effectiveProfileKey !== 'admin';
   const connectionFailed = sdk.session.initFailed;
 
   // Apper's hosted Member UI renders into #authentication; the profile slug scopes it to this portal.
