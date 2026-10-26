@@ -476,6 +476,8 @@ export default function CentralDispatch() {
 
   function getCleanRequestNotes(value) {
     const text = String(value ?? '')
+      .split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0]
+      .split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0]
       .split('LOCAL_AC_REQUEST_JSON:')[0]
       .split('LOCAL_RSA_APPROVAL_JSON:')[0]
       .split('LOCAL_RSA_QUOTE_JSON:')[0]
