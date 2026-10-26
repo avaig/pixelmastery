@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader, StatusBadge } from '@/components/local/EntityPages';
 import { toast } from 'sonner';
 import { getDistanceKm, formatDistance, getProviderCapabilities, providerCanHandleRequest } from '@/services/providerMatching';
+import { calculateDriverOnDemandTariff } from '@/services/pricing';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -472,16 +473,19 @@ export default function CentralDispatch() {
     const tripDetails = String(draft.tripDetails ?? routeSummary).trim();
     const pickupDate = String(draft.pickupDate ?? '').trim();
     const pickupTime = String(draft.pickupTime ?? '').trim();
-    const duration = String(draft.duration ?? '').trim();
-    const schedule = [pickupDate, pickupTime, duration].filter(Boolean).join(' · ');
-    const nightHalt = String(draft.nightHalt ?? '').trim();
-    const serviceAmount = Number(draft.serviceAmount);
+    const durationHours = Number(draft.durationHours);
+    const schedule = [pickupDate, pickupTime, `${durationHours} hour(s)`].filter(Boolean).join(' · ');
+    const travellers = String(draft.travellers ?? '').trim();
     const otherCharges = Number(draft.otherCharges ?? 0);
     const notes = String(draft.terms ?? '').trim();
-    if (!travelType || !tripDetails || !pickupDate || !pickupTime || !duration || !nightHalt) { toast.error('Complete travel type, route, pickup date, pickup time, trip duration and night-halt details before sending the quote.'); return; }
-    if (!Number.isFinite(serviceAmount) || serviceAmount <= 0 || !Number.isFinite(otherCharges) || otherCharges < 0) { toast.error('Enter a service charge greater than ₹0 and valid additional charges.'); return; }
+    if (!travelType || !tripDetails || !pickupDate || !pickupTime || !Number.isFinite(durationHours) || durationHours <= 0) { toast.error('Confirm travel type, route, pickup date, pickup time and trip duration before sending the quote.'); return; }
+    if (!Number.isFinite(otherCharges) || otherCharges < 0) { toast.error('Enter valid additional charges (₹0 or more).'); return; }
+    let tariff;
+    try { tariff = calculateDriverOnDemandTariff({ pickupDate, pickupTime, durationHours }); }
+    catch (error) { toast.error(error.message || 'Could not calculate the published tariff.'); return; }
+    const serviceAmount = tariff.serviceAmount;
     const previousQuote = readDriverQuote(request.problem_description_c);
-    const quote = { quoteId: 'DRV-' + Date.now().toString(36).toUpperCase(), version: Number(previousQuote?.version ?? 0) + 1, travelType, tripDetails, schedule, nightHalt, serviceAmount, otherCharges, localFee: 25, customerTotal: serviceAmount + otherCharges + 25, terms: notes, status: 'Sent to Customer', createdAt: new Date().toISOString() };
+    const quote = { quoteId: 'DRV-' + Date.now().toString(36).toUpperCase(), version: Number(previousQuote?.version ?? 0) + 1, travelType, tripDetails, schedule, pickupDate, pickupTime, durationHours, travellers, tariff, serviceAmount, otherCharges, localFee: tariff.localFee, customerTotal: serviceAmount + otherCharges + tariff.localFee, terms: notes, status: 'Sent to Customer', createdAt: new Date().toISOString() };
     const clean = String(request.problem_description_c ?? '').split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0].split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0].trimEnd();
     setBusyKey('driver-quote:' + request.Id);
     try {
