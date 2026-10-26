@@ -508,11 +508,11 @@ export default function RequestDetail() {
 
   async function approveDriverBookingQuote() {
     if (!isCustomer || !request?.Id || !driverBookingQuote || driverBookingQuote.status !== 'Sent to Customer' || driverBookingQuoteApproved) return;
-    if (!window.confirm('Approve LOCAL driver quotation for ₹' + Number(driverBookingQuote.customerTotal).toLocaleString('en-IN') + ', including the ₹25 LOCAL convenience fee?')) return;
+    if (!window.confirm('Approve the LOCAL Driver on Demand ESTIMATED quotation of ₹' + Number(driverBookingQuote.customerTotal).toLocaleString('en-IN') + ', including the ₹25 LOCAL convenience fee and the published hourly/night rates? This is an estimate, not a fixed-price cap. The final bill will be based on the verified actual trip hours using these approved rates.')) return;
     setWorking(true);
     try {
       const clean = String(request.problem_description_c ?? '').split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0].split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0].trimEnd();
-      const approval = { approved: true, quoteId: driverBookingQuote.quoteId, total: Number(driverBookingQuote.customerTotal), approvedAt: new Date().toISOString() };
+      const approval = { approved: true, approvalType: 'Estimated Quotation and Pricing Rules', quoteId: driverBookingQuote.quoteId, total: Number(driverBookingQuote.customerTotal), approvedAt: new Date().toISOString(), acceptedPricingRules: true, finalBillBasis: 'Verified actual driver working hours using the displayed tariff' };
       const updated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\\nLOCAL_DRIVER_BOOKING_QUOTE_JSON:' + JSON.stringify(driverBookingQuote) + '\\nLOCAL_DRIVER_BOOKING_APPROVAL_JSON:' + JSON.stringify(approval) });
       if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Driver quote approval could not be saved.');
       toast.success('Driver quotation approved. LOCAL can now check driver availability and assign a driver.');
