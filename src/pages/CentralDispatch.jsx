@@ -215,15 +215,6 @@ function formatCancellationTime(value) {
 const PROVIDER_FIELDS = ['Id', 'Name', 'email_c', 'phone_c', 'status_c', 'verification_status_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c'];
 
 export default function CentralDispatch() {
-  useEffect(() => {
-    // The app shell can retain a nested scroll position; explicitly focus the dispatch page top after mount.
-    const frame = requestAnimationFrame(() => {
-      const top = document.getElementById('central-dispatch-page-top');
-      if (top) top.scrollIntoView({ block: 'start', behavior: 'auto' });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
   const [search, setSearch] = useState('');
   const [requestFilter, setRequestFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');

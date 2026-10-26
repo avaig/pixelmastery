@@ -18,18 +18,19 @@ export default function OwnerLayout() {
   const { user, logout, homeRoute, navItems, navGroups, initials, displayName, counts } = useOwnerLayoutData();
   const location = useLocation();
 
-  // Reset every likely page scroll container, including the document and app content.
+  // Reset the document and any nested app content that may own the active scroll position.
   function scrollPageToTop() {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    document.querySelectorAll('main, [data-page-scroll], [class*="overflow-y-auto"], [class*="overflow-auto"]').forEach((element) => { element.scrollTop = 0; });
-    requestAnimationFrame(() => {
+    const resetScroll = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-      document.querySelectorAll('main, [data-page-scroll], [class*="overflow-y-auto"], [class*="overflow-auto"]').forEach((element) => { element.scrollTop = 0; });
-    });
+      document.querySelectorAll('main, [data-page-scroll], [class*="overflow-y-auto"], [class*="overflow-auto"]').forEach((element) => {
+        element.scrollTop = 0;
+      });
+    };
+    resetScroll();
+    requestAnimationFrame(resetScroll);
+    requestAnimationFrame(() => requestAnimationFrame(resetScroll));
   }
 
   useEffect(() => {
@@ -121,15 +122,8 @@ export default function OwnerLayout() {
                 end={item.to === homeRoute || item.to === '/admin' || item.to === '/admin/provider-onboarding'}
                 onClick={() => {
                   setMobileOpen(false);
-                  // On the active dispatch route, target its own anchor directly. When entering it from
-                  // another route, CentralDispatch also scrolls to this anchor after mounting.
-                  if (item.to === '/admin/dispatch') {
-                    const top = document.getElementById('central-dispatch-page-top');
-                    if (top) top.scrollIntoView({ block: 'start', behavior: 'auto' });
-                    else scrollPageToTop();
-                  } else {
-                    scrollPageToTop();
-                  }
+                  // Always reset scroll, including when the user clicks the already-active nav item.
+                  scrollPageToTop();
                 }}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
