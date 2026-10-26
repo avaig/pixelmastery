@@ -2,6 +2,58 @@ function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
+/**
+ * LOCAL Driver on Demand published tariff.
+ * The first 8 hours cost ₹800. Additional time is charged at ₹50/hour
+ * before 10 PM and ₹100/hour from 10 PM onward. Any booking whose actual
+ * scheduled span reaches 10 PM or later incurs the ₹300 night charge once.
+ * Partial additional hours are prorated to the minute.
+ */
+export function calculateDriverOnDemandTariff({ pickupDate, pickupTime, durationHours }) {
+  const hours = Number(durationHours);
+  if (!pickupDate || !pickupTime || !Number.isFinite(hours) || hours <= 0 || hours > 720) {
+    throw new Error('Enter a valid pickup date, pickup time and duration in hours.');
+  }
+
+  const start = new Date(`${pickupDate}T${pickupTime}:00`);
+  if (Number.isNaN(start.getTime())) throw new Error('Pickup date or time is invalid.');
+  const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
+  const totalMinutes = Math.round(hours * 60);
+  const baseMinutes = Math.min(480, totalMinutes);
+  let additionalDayAmount = 0;
+  let additionalNightAmount = 0;
+  let nightChargeApplies = false;
+
+  for (let minute = baseMinutes; minute < totalMinutes; minute += 1) {
+    const current = new Date(start.getTime() + minute * 60 * 1000);
+    const minutesToNextHour = 1;
+    const localMinutes = current.getHours() * 60 + current.getMinutes();
+    if (localMinutes >= 22 * 60) {
+      additionalNightAmount += 100 / 60 * minutesToNextHour;
+      nightChargeApplies = true;
+    } else {
+      additionalDayAmount += 50 / 60 * minutesToNextHour;
+    }
+  }
+
+  const baseAmount = 800;
+  const nightCharge = nightChargeApplies ? 300 : 0;
+  const serviceAmount = roundMoney(baseAmount + additionalDayAmount + additionalNightAmount + nightCharge);
+  const localFee = 25;
+  return {
+    baseAmount,
+    additionalDayAmount: roundMoney(additionalDayAmount),
+    additionalNightAmount: roundMoney(additionalNightAmount),
+    nightCharge,
+    nightChargeApplies,
+    durationHours: hours,
+    scheduledEndAt: end.toISOString(),
+    serviceAmount,
+    localFee,
+    customerTotal: roundMoney(serviceAmount + localFee),
+  };
+}
+
 export function getBookingCommitmentAmount(finalPrice, serviceMode = 'Normal') {
   const agreed = Math.max(0, Number(finalPrice) || 0);
   if (agreed === 0) return 0;
