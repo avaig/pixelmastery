@@ -61,8 +61,8 @@ export default function DriverFinalBills() {
     return result.data ?? [];
   }, []);
   const pendingBills = useMemo(() => (data ?? []).map((job) => {
-    const label = String(job.Name ?? '') + ' ' + String(job.request_c?.Name ?? '');
-    if (!/car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|professional car driver/i.test(label) || job.status_c !== 'Completed') return null;
+    // The completion marker is the source of truth. Do not depend on a display name or
+    // exact status label: older job records may have a generic name/status lookup.
     const completion = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:');
     const review = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_REVIEW_JSON:');
     if (!completion || review?.approved === true) return null;
