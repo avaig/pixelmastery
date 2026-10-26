@@ -310,6 +310,14 @@ export default function CentralDispatch() {
   }
 
   async function findNearby(request) {
+    if (isDriverBookingRequest(request)) {
+      const quote = readDriverQuote(request.problem_description_c);
+      const approval = readDriverApproval(request.problem_description_c);
+      if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.customerTotal)) {
+        toast.error('Driver search is locked until the customer approves the Customer Care quotation.');
+        return;
+      }
+    }
     setBusyKey(request.Id);
     try {
       const candidates = await getCandidates(request);
@@ -789,7 +797,7 @@ export default function CentralDispatch() {
         agreed_price_c: resolvedServicePrice,
         remaining_amount_c: resolvedServicePrice,
         local_service_fee_amount_c: 25,
-        customer_payable_now_c: resolvedServicePrice + 25,
+        customer_payable_now_c: isDriverRequest && driverQuote ? Number(driverQuote.customerTotal) : resolvedServicePrice + 25,
         original_provider_quote_c: providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? 0) : null,
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
@@ -990,6 +998,7 @@ export default function CentralDispatch() {
             <Card className="p-5">
               <div className="flex items-center gap-2"><ApperIcon name="Settings2" size={19} /><h3 className="font-semibold">{getStructuredServiceDetails(request).type === 'Car Wash' ? 'Pickup & Drop Assignment' : 'Assignment controls'}</h3></div>
               <p className="mt-1 text-sm text-muted-foreground">{getStructuredServiceDetails(request).type === 'Car Wash' ? 'After customer approval, select a verified person for manual pickup and return coordination.' : 'Choose a verified provider or invite the nearest eligible provider. No bidding or counter-offers.'}</p>
+              {isDriverBookingRequest(request) && (() => { const quote = readDriverQuote(request.problem_description_c); const approval = readDriverApproval(request.problem_description_c); const approved = Boolean(quote && approval && String(approval.quoteId) === String(quote.quoteId) && Number(approval.total) === Number(quote.customerTotal)); return <div className="mt-4 rounded-lg border border-primary/25 bg-primary/5 p-4"><h4 className="font-semibold">Car Driver — Customer Care Requirements & Quote</h4><p className="mt-1 text-sm text-muted-foreground">Call the customer first. Record local/outstation route, timing, duration and night halt before pricing. Do not search for or assign a driver until the customer approves the quote.</p>{quote ? <div className="mt-3 space-y-1 text-sm"><p><b>Travel:</b> {quote.travelType} · {quote.schedule}</p><p><b>Route:</b> {quote.tripDetails}</p><p><b>Night halt:</b> {quote.nightHalt}</p><p><b>Terms:</b> {quote.terms || 'No additional terms'}</p><div className="mt-2 rounded-md border bg-background p-3"><div className="flex justify-between"><span>Driver service charges</span><b>₹{Number(quote.serviceAmount).toLocaleString('en-IN')}</b></div><div className="flex justify-between"><span>Other trip charges</span><b>₹{Number(quote.otherCharges).toLocaleString('en-IN')}</b></div><div className="flex justify-between"><span>LOCAL convenience fee</span><b>₹25</b></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Customer total</span><span>₹{Number(quote.customerTotal).toLocaleString('en-IN')}</span></div></div><p className={approved ? 'mt-2 text-emerald-700' : 'mt-2 text-amber-700'}>{approved ? 'Customer approved this quotation.' : 'Waiting for customer approval.'}</p></div> : <p className="mt-3 text-sm text-amber-700">No quotation sent yet.</p>}<Button className="mt-3 w-full" variant="outline" disabled={Boolean(busyKey) || approved || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? ''))} onClick={() => saveDriverQuote(request)}>{quote ? 'Revise & resend quotation' : 'Record travel requirements & send quote'}</Button></div>; })()}
               <div className="mt-4 space-y-3">
                 {getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total) ? <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Manual assignment is locked until the customer approves the latest revised quote.</p> : <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">Customer approved the current quote. You can now assign the pickup-and-drop person.</p>; })()}
                 <div>
@@ -999,10 +1008,10 @@ export default function CentralDispatch() {
                     <SelectContent>{eligibleProviders.map((provider) => <SelectItem key={provider.Id} value={provider.Id}>{provider.Name}{providerDistance(request, provider) !== null ? ' · ' + formatDistance(providerDistance(request, provider)) : ''}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <Button className="w-full" variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || (getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total); })())} onClick={() => manualAssign(request)}>
+                <Button className="w-full" variant="outline" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || (isDriverBookingRequest(request) && (() => { const quote = readDriverQuote(request.problem_description_c); const approval = readDriverApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.customerTotal); })()) || (getStructuredServiceDetails(request).type === 'Car Wash' && (() => { const quote = readCarWashQuote(request.problem_description_c); const approval = readCarWashApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.total); })())} onClick={() => manualAssign(request)}>
                   <ApperIcon name="UserCheck" size={16} /> {busyKey === request.Id + ':' + providerChoice[request.Id] ? 'Sending invitation…' : getStructuredServiceDetails(request).type === 'Car Wash' ? 'Assign Pickup & Drop Person' : 'Assign manually'}
                 </Button>
-                <Button className="w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || getStructuredServiceDetails(request).type === 'Car Wash'} onClick={() => findNearby(request)}>
+                <Button className="w-full" disabled={Boolean(busyKey) || ['Confirmed', 'Completed', 'Cancelled'].includes(String(request.status_c ?? '')) || getStructuredServiceDetails(request).type === 'Car Wash' || (isDriverBookingRequest(request) && (() => { const quote = readDriverQuote(request.problem_description_c); const approval = readDriverApproval(request.problem_description_c); return !quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.customerTotal); })())} onClick={() => findNearby(request)}>
                   <ApperIcon name="MapPinned" size={16} /> {busyKey === request.Id ? 'Checking nearby…' : 'Find Nearby & Invite'}
                 </Button>
               </div>
