@@ -78,6 +78,22 @@ function readRsaQuote(message) {
   try { const payload = JSON.parse(source.slice(index + marker.length).trim()); return payload && Number.isFinite(Number(payload.total)) ? payload : null; } catch { return null; }
 }
 
+function readDriverBookingQuote(description) {
+  const marker = 'LOCAL_DRIVER_BOOKING_QUOTE_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Number.isFinite(Number(payload.customerTotal)) ? payload : null; } catch { return null; }
+}
+
+function readDriverBookingApproval(description) {
+  const marker = 'LOCAL_DRIVER_BOOKING_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
 function readRsaApproval(description) {
   const marker = 'LOCAL_RSA_APPROVAL_JSON:';
   const source = String(description ?? '');
@@ -319,7 +335,10 @@ export default function RequestDetail() {
   const requestLineItems = getRequestLineItems(request);
   const isCarWashRequest = /car wash/i.test(String(request?.Name ?? '')) || /Car Wash services/i.test(String(request?.problem_description_c ?? ''));
   const isAcRequest = /AC Technician/i.test(String(request?.Name ?? '')) || String(request?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
-  const isDriverRequest = /hourly driver|full-day driver|full day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+  const isDriverRequest = /car driver on demand|driver on demand|hourly driver|full-day driver|full day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+  const driverBookingQuote = isDriverRequest ? readDriverBookingQuote(request?.problem_description_c) : null;
+  const driverBookingApproval = isDriverRequest ? readDriverBookingApproval(request?.problem_description_c) : null;
+  const driverBookingQuoteApproved = Boolean(driverBookingQuote && driverBookingApproval && String(driverBookingApproval.quoteId) === String(driverBookingQuote.quoteId) && Number(driverBookingApproval.total) === Number(driverBookingQuote.customerTotal));
   const isFixedRateDriverRequest = /hourly driver|full-day driver|full day driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
   const carWashMenuTotal = requestLineItems.reduce((sum, item) => sum + (Number(item.price ?? 0)), 0);
   const carWashQuote = readCarWashQuote(request?.problem_description_c);
@@ -445,6 +464,21 @@ export default function RequestDetail() {
       if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'RSA quotation could not be saved.');
       toast.success('Quotation submitted to LOCAL Admin for review.'); await run();
     } catch (err) { toast.error(err.message || 'Could not submit the quotation.'); }
+    finally { setWorking(false); }
+  }
+
+  async function approveDriverBookingQuote() {
+    if (!isCustomer || !request?.Id || !driverBookingQuote || driverBookingQuote.status !== 'Sent to Customer' || driverBookingQuoteApproved) return;
+    if (!window.confirm('Approve LOCAL driver quotation for ₹' + Number(driverBookingQuote.customerTotal).toLocaleString('en-IN') + ', including the ₹25 LOCAL convenience fee?')) return;
+    setWorking(true);
+    try {
+      const clean = String(request.problem_description_c ?? '').split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0].split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0].trimEnd();
+      const approval = { approved: true, quoteId: driverBookingQuote.quoteId, total: Number(driverBookingQuote.customerTotal), approvedAt: new Date().toISOString() };
+      const updated = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\\nLOCAL_DRIVER_BOOKING_QUOTE_JSON:' + JSON.stringify(driverBookingQuote) + '\\nLOCAL_DRIVER_BOOKING_APPROVAL_JSON:' + JSON.stringify(approval) });
+      if (!updated.data?.length) throw new Error(updated.messages?.[0] || 'Driver quote approval could not be saved.');
+      toast.success('Driver quotation approved. LOCAL can now check driver availability and assign a driver.');
+      await run();
+    } catch (err) { toast.error(err.message || 'Could not approve driver quotation.'); }
     finally { setWorking(false); }
   }
 

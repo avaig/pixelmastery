@@ -103,6 +103,26 @@ function readBikeMaintenanceQuote(message) {
   } catch { return null; }
 }
 
+function readDriverQuote(description) {
+  const marker = 'LOCAL_DRIVER_BOOKING_QUOTE_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && Number.isFinite(Number(payload.serviceAmount)) && Number.isFinite(Number(payload.customerTotal)) ? payload : null; } catch { return null; }
+}
+
+function readDriverApproval(description) {
+  const marker = 'LOCAL_DRIVER_BOOKING_APPROVAL_JSON:';
+  const source = String(description ?? '');
+  const index = source.lastIndexOf(marker);
+  if (index < 0) return null;
+  try { const payload = JSON.parse(source.slice(index + marker.length).split('\\n')[0]); return payload && payload.approved === true ? payload : null; } catch { return null; }
+}
+
+function isDriverBookingRequest(request) {
+  return /car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(request?.Name ?? '') + ' ' + String(request?.required_capability_c?.Name ?? '') + ' ' + String(request?.problem_description_c ?? ''));
+}
+
 function readRsaApproval(description) {
   const marker = 'LOCAL_RSA_APPROVAL_JSON:';
   const source = String(description ?? '');
@@ -380,7 +400,48 @@ export default function CentralDispatch() {
     }
   }
 
+  async function saveDriverQuote(request) {
+    const travelType = window.prompt('Customer Care call: travel type (Within city / Outstation / One-way / Round trip / Multiple stops):');
+    if (!travelType?.trim()) return;
+    const tripDetails = window.prompt('Record route, destination, stops and customer travel requirements:');
+    if (!tripDetails?.trim()) return;
+    const schedule = window.prompt('Record travel date, pickup time and expected duration/days:');
+    if (!schedule?.trim()) return;
+    const nightHalt = window.prompt('Night halt required? If yes, record number of nights and agreed arrangements. If no, enter No:', 'No');
+    if (nightHalt === null) return;
+    const serviceText = window.prompt('Enter agreed driver service charges in rupees (excluding LOCAL fee):');
+    if (serviceText === null) return;
+    const serviceAmount = Number(serviceText);
+    const extraText = window.prompt('Enter agreed trip expenses/other charges in rupees (enter 0 if none):', '0');
+    if (extraText === null) return;
+    const otherCharges = Number(extraText);
+    const notes = window.prompt('Record inclusions, extra-hour/km rates, toll/parking/food/accommodation terms and other conditions:');
+    if (notes === null) return;
+    if (!Number.isFinite(serviceAmount) || serviceAmount <= 0 || !Number.isFinite(otherCharges) || otherCharges < 0) {
+      toast.error('Enter a service charge greater than ₹0 and valid additional charges.');
+      return;
+    }
+    const quote = { quoteId: 'DRV-' + Date.now().toString(36).toUpperCase(), version: 1, travelType: travelType.trim(), tripDetails: tripDetails.trim(), schedule: schedule.trim(), nightHalt: nightHalt.trim(), serviceAmount, otherCharges, localFee: 25, customerTotal: serviceAmount + otherCharges + 25, terms: notes.trim(), status: 'Sent to Customer', createdAt: new Date().toISOString() };
+    const clean = String(request.problem_description_c ?? '').split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0].split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0].trimEnd();
+    setBusyKey('driver-quote:' + request.Id);
+    try {
+      const result = await sdk.table('service_requests_c').update({ Id: request.Id, status_c: 'Quoted', problem_description_c: clean + '\\nLOCAL_DRIVER_BOOKING_QUOTE_JSON:' + JSON.stringify(quote) });
+      if (!result.data?.length) throw new Error(result.messages?.[0] || 'Driver quotation could not be saved.');
+      toast.success('Travel requirements and quotation saved. Customer must approve before driver assignment.');
+      await run();
+    } catch (err) { toast.error(err.message || 'Could not save driver quotation.'); }
+    finally { setBusyKey(''); }
+  }
+
   async function manualAssign(request) {
+    if (isDriverBookingRequest(request)) {
+      const quote = readDriverQuote(request.problem_description_c);
+      const approval = readDriverApproval(request.problem_description_c);
+      if (!quote || !approval || String(approval.quoteId) !== String(quote.quoteId) || Number(approval.total) !== Number(quote.customerTotal)) {
+        toast.error('Driver assignment is locked until Customer Care sends the quotation and the customer approves that exact total.');
+        return;
+      }
+    }
     const details = getStructuredServiceDetails(request);
     if (details.type === 'Car Wash') {
       const quote = readCarWashQuote(request.problem_description_c);
@@ -627,6 +688,13 @@ export default function CentralDispatch() {
         return;
       }
       const isCarWashRequest = getStructuredServiceDetails(request).type === 'Car Wash';
+      const isDriverRequest = isDriverBookingRequest(request);
+      const driverQuote = isDriverRequest ? readDriverQuote(request.problem_description_c) : null;
+      const driverApproval = isDriverRequest ? readDriverApproval(request.problem_description_c) : null;
+      if (isDriverRequest && (!driverQuote || !driverApproval || String(driverApproval.quoteId) !== String(driverQuote.quoteId) || Number(driverApproval.total) !== Number(driverQuote.customerTotal))) {
+        toast.error('Driver booking cannot be confirmed until Customer Care sends a quotation and the customer approves the exact total.');
+        return;
+      }
       const isBikeMaintenanceRequest = /bike maintenance/i.test(String(request.Name ?? '') + ' ' + String(request.required_capability_c?.Name ?? '') + ' ' + String(request.problem_description_c ?? ''));
       if (isBikeMaintenanceRequest) {
         const bikeQuote = readBikeMaintenanceQuote(acceptedAssignment.message_c);
@@ -669,7 +737,7 @@ export default function CentralDispatch() {
           return;
         }
       }
-      const resolvedServicePrice = isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : fixedPriceRequest ? Number(fixedPrice) : isCarEssentials ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total) : isRsaQuote ? Number(readRsaQuote(acceptedAssignment.message_c)?.total) : isBikeMaintenanceRequest ? Number(readBikeMaintenanceQuote(acceptedAssignment.message_c)?.serviceTotal) : Number(acceptedAssignment.final_agreed_price_c ?? acceptedAssignment.proposed_price_c);
+      const resolvedServicePrice = isDriverRequest && driverQuote ? Number(driverQuote.serviceAmount) + Number(driverQuote.otherCharges) : isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : fixedPriceRequest ? Number(fixedPrice) : isCarEssentials ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total) : isRsaQuote ? Number(readRsaQuote(acceptedAssignment.message_c)?.total) : isBikeMaintenanceRequest ? Number(readBikeMaintenanceQuote(acceptedAssignment.message_c)?.serviceTotal) : Number(acceptedAssignment.final_agreed_price_c ?? acceptedAssignment.proposed_price_c);
       if (!Number.isFinite(resolvedServicePrice) || resolvedServicePrice <= 0) {
         toast.error('Booking cannot be confirmed without a valid agreed service price greater than ₹0. Contact the customer/provider, record the agreed quote, and confirm only after the customer approves it.');
         return;
@@ -697,7 +765,7 @@ export default function CentralDispatch() {
           original_provider_quote_c: resolvedServicePrice,
           remaining_amount_c: resolvedServicePrice,
           local_service_fee_amount_c: 25,
-          customer_payable_now_c: resolvedServicePrice + 25,
+          customer_payable_now_c: isDriverRequest && driverQuote ? Number(driverQuote.customerTotal) : resolvedServicePrice + 25,
           billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
           service_start_otp_c: isCarEssentials ? null : existingJob.service_start_otp_c,
           admin_review_note_c: isCarEssentials
