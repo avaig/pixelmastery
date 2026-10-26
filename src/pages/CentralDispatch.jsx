@@ -227,20 +227,26 @@ export default function CentralDispatch() {
   const [carWashCalculatedQuotes, setCarWashCalculatedQuotes] = useState({});
   const [driverQuoteDrafts, setDriverQuoteDrafts] = useState({});
   const { data, loading, error, run } = useFetch(async () => {
-    const [requestRes, providerRes, responseRes, jobsRes] = await Promise.all([
+    const [requestRes, providerRes, responseRes, jobsRes, customerRes] = await Promise.all([
       sdk.table('service_requests_c').select(REQUEST_FIELDS).orderByDesc('CreatedOn').page(1, 500).fetch(),
       sdk.table('technician_profiles_c').select(PROVIDER_FIELDS).page(1, 1000).fetch(),
       sdk.table('technician_responses_c').select(['Id', 'Name', 'request_c', 'technician_c', 'status_c', 'availability_c', 'message_c', 'proposed_price_c']).page(1, 2000).fetch(),
       sdk.table('jobs_c').select(['Id', 'Name', 'request_c', 'technician_c', 'agreed_price_c', 'local_service_fee_amount_c', 'customer_payable_now_c', 'status_c', 'payment_status_c', 'billing_status_c', 'payment_method_c', 'payment_reference_c', 'payout_status_c', 'returned_at_c', 'customer_completion_confirmed_at_c', 'dispute_status_c', 'service_start_otp_c', 'service_start_otp_verified_at_c', 'admin_review_note_c', 'original_provider_quote_c']).page(1, 2000).fetch(),
+      sdk.table('customer_profiles_c').select(['Id', 'Name', 'phone_c', 'email_c', 'location_c']).page(1, 2000).fetch(),
     ]);
-    if (!requestRes.success || !providerRes.success || !responseRes.success || !jobsRes.success) throw new Error('Central dispatch data could not be loaded. Check table permissions and try again.');
-    return { requests: requestRes.data ?? [], providers: providerRes.data ?? [], responses: responseRes.data ?? [], jobs: jobsRes.data ?? [] };
+    if (!requestRes.success || !providerRes.success || !responseRes.success || !jobsRes.success || !customerRes.success) throw new Error('Central dispatch data could not be loaded. Check table permissions and try again.');
+    return { requests: requestRes.data ?? [], providers: providerRes.data ?? [], responses: responseRes.data ?? [], jobs: jobsRes.data ?? [], customers: customerRes.data ?? [] };
   }, []);
 
   const requests = data?.requests ?? [];
   const providers = data?.providers ?? [];
   const responses = data?.responses ?? [];
   const jobs = data?.jobs ?? [];
+  const customers = data?.customers ?? [];
+  function getRequestCustomer(request) {
+    const customerId = String(request?.customer_c?.Id ?? request?.customer_c ?? '');
+    return customers.find((customer) => String(customer.Id) === customerId) ?? request?.customer_c ?? null;
+  }
   useEffect(() => {
     if (!data?.requests?.length || !data?.jobs?.length) return;
     let cancelled = false;
@@ -899,8 +905,10 @@ export default function CentralDispatch() {
       const distance = providerDistance(request, provider);
       return distance !== null && distance <= Number(provider.service_radius_km_c ?? 25);
     }).length;
-    const customerName = request.customer_c?.Name ?? 'Customer';
-    const customerPhone = request.customer_c?.phone_c ?? request.customer_c?.Phone ?? '';
+    const customerProfile = getRequestCustomer(request);
+    const customerName = customerProfile?.Name ?? 'Customer';
+    const customerPhone = customerProfile?.phone_c ?? customerProfile?.Phone ?? customerProfile?.mobile_c ?? '';
+    const customerEmail = customerProfile?.email_c ?? customerProfile?.Email ?? '';
     const cancellationDetails = readCancellationDetails(request.problem_description_c);
 
     return (
@@ -932,7 +940,7 @@ export default function CentralDispatch() {
                 </div>
               </div>
               <div className="grid gap-4 border-y py-4 sm:grid-cols-2">
-                <div><p className="text-xs text-muted-foreground">Customer</p><p className="mt-1 font-medium">{customerName}</p>{customerPhone && <p className="text-sm text-muted-foreground">{customerPhone}</p>}</div>
+                <div><p className="text-xs text-muted-foreground">Customer contact</p><p className="mt-1 font-medium">{customerName}</p>{customerPhone ? <a href={'tel:' + String(customerPhone).replace(/[^+\d]/g, '')} className="mt-1 inline-flex items-center gap-2 font-semibold text-primary underline-offset-4 hover:underline"><ApperIcon name="Phone" size={15} /> {customerPhone} · Call customer</a> : <p className="mt-1 text-sm font-medium text-amber-700">Phone number not saved in customer profile</p>}{customerEmail && <p className="mt-1 text-sm text-muted-foreground">{customerEmail}</p>}</div>
                 <div><p className="text-xs text-muted-foreground">Service location</p><p className="mt-1 font-medium">{request.location_c || 'Location missing'}</p>{request.latitude_c != null && request.longitude_c != null && <p className="text-xs text-muted-foreground">GPS location available</p>}</div>
                 <div><p className="text-xs text-muted-foreground">Requested time</p><p className="mt-1 font-medium">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Not specified'}</p>{request.scheduled_at_c && <p className="text-sm text-muted-foreground">{new Date(request.scheduled_at_c).toLocaleString('en-IN')}</p>}</div>
                 <div><p className="text-xs text-muted-foreground">Nearby eligible providers</p><p className="mt-1 font-medium">{nearbyCount} with recorded location</p></div>
@@ -1171,8 +1179,9 @@ export default function CentralDispatch() {
               const distance = assignedProvider ? providerDistance(request, assignedProvider) : null;
               const lifecycle = displayLifecycle(request, linkedJob, acceptedAssignment);
               const providerName = linkedJob?.technician_c?.Name ?? assignedProvider?.Name ?? activeAssignments[0]?.technician_c?.Name ?? 'Not assigned yet';
-              const customerName = request.customer_c?.Name ?? 'Customer details unavailable';
-              const customerPhone = request.customer_c?.phone_c ?? request.customer_c?.Phone ?? request.customer_c?.mobile_c ?? '';
+              const customerProfile = getRequestCustomer(request);
+              const customerName = customerProfile?.Name ?? 'Customer details unavailable';
+              const customerPhone = customerProfile?.phone_c ?? customerProfile?.Phone ?? customerProfile?.mobile_c ?? '';
               const capabilityName = request.required_capability_c?.Name ?? request.service_category_c?.Name ?? 'Service';
               const total = linkedJob?.agreed_price_c ?? fixedPrice;
               return <Card key={request.Id} className="overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
@@ -1182,7 +1191,7 @@ export default function CentralDispatch() {
                     <div className="min-w-0"><h2 className="break-words font-semibold leading-5 text-slate-900">{request.Name}</h2><p className="mt-1 text-xs text-slate-500">{formatCreated(request.CreatedOn)}</p><span className="mt-2 inline-flex max-w-full rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{capabilityName}</span></div>
                   </div>
                   <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="MapPin" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{request.location_c || 'Location not recorded'}</span></p><p className="flex items-start gap-2 text-sm font-semibold text-slate-800"><ApperIcon name="IndianRupee" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{(total !== null && total !== undefined ? '₹' + Number(total).toLocaleString('en-IN') : request.pricing_mode_c === 'Fixed Price' ? 'Price review needed' : 'Inspection charge / estimate')}{/wash/i.test(capabilityName) && /Pickup\s*&\s*Drop\s*—?\s*₹?\s*100/i.test(String(request.problem_description_c ?? '')) ? ' (incl. Pickup & Drop ₹100)' : ''}</span></p><p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="CalendarDays" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.scheduled_at_c ? new Date(request.scheduled_at_c).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : request.preferred_time_c || 'Time not recorded'}</span></p></div>
-                  <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-center gap-2 text-xs text-slate-500"><ApperIcon name="UserRound" size={15} /> Customer</p><p className="flex items-start gap-2 text-sm font-medium text-slate-800"><ApperIcon name="User" size={15} className="mt-0.5 shrink-0 text-slate-500" /><span>{customerName}</span></p>{customerPhone && <p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="Phone" size={15} className="mt-0.5 shrink-0 text-slate-500" /><span>{customerPhone}</span></p>}</div>
+                  <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-center gap-2 text-xs text-slate-500"><ApperIcon name="UserRound" size={15} /> Customer</p><p className="flex items-start gap-2 text-sm font-medium text-slate-800"><ApperIcon name="User" size={15} className="mt-0.5 shrink-0 text-slate-500" /><span>{customerName}</span></p>{customerPhone ? <a href={'tel:' + String(customerPhone).replace(/[^+\d]/g, '')} className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ApperIcon name="Phone" size={15} /><span>{customerPhone} · Call</span></a> : <p className="text-xs font-medium text-amber-700">Customer phone number missing</p>}</div>
                   <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="text-xs text-slate-500">Assignment Method</p><span className={'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ' + (activeAssignments.some((item) => /Nearby/i.test(String(item.message_c))) ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-blue-200 bg-blue-50 text-blue-700')}>{activeAssignments.some((item) => /Nearby/i.test(String(item.message_c))) ? 'Nearby Check' : activeAssignments.length ? 'Manual Assignment' : 'Not assigned'}</span><p className="pt-1 text-xs text-slate-500">Assigned Provider</p><p className="flex items-center gap-2 text-sm font-medium text-slate-800"><ApperIcon name="UserRound" size={15} className="shrink-0 text-slate-500" /><span>{providerName}</span></p>{activeAssignments.length > 0 && !['Cancelled', 'Completed'].includes(String(request.status_c ?? '')) && <p className={'flex items-center gap-1.5 text-xs font-medium ' + (acceptedAssignment ? 'text-emerald-700' : 'text-amber-700')}><ApperIcon name={acceptedAssignment ? 'CheckCircle2' : 'Clock3'} size={14} />{acceptedAssignment ? 'Accepted' : 'Awaiting Acceptance'}</p>}{linkedJob && /car essentials delivery/i.test(String(linkedJob.Name ?? '') + ' ' + String(request.required_capability_c?.Name ?? '')) && <div className="rounded-md border border-emerald-200 bg-emerald-50 p-2"><p className="text-xs font-semibold text-emerald-800">Delivery OTP</p>{linkedJob.service_start_otp_c ? <p className="text-xl font-bold tracking-[0.22em] text-emerald-900">{linkedJob.service_start_otp_c}</p> : <p className="text-xs text-emerald-800">Not generated yet</p>}{linkedJob.service_start_otp_verified_at_c && <p className="text-xs text-emerald-800">Verified</p>}</div>}{linkedJob && <p className="text-xs text-slate-500">Payout: {linkedJob.payout_status_c || 'Not recorded'}</p>}</div>
                   <div className="flex flex-col items-stretch justify-center gap-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><span className={'inline-flex items-center justify-center gap-1.5 rounded-full border px-2 py-2 text-center text-xs font-semibold ' + lifecycle.tone}><ApperIcon name={linkedJob?.status_c === 'Completed' && linkedJob?.payment_status_c === 'Final Payment Paid' ? 'CheckCircle2' : acceptedAssignment ? 'CheckCircle2' : 'Clock3'} size={14} />{lifecycle.label}</span><Button className="w-full border-slate-200 text-slate-800" variant="outline" onClick={() => setSelectedRequestId(request.Id)}><ApperIcon name="Eye" size={16} /> View Details <ApperIcon name="ChevronDown" size={14} /></Button></div>
                 </div>
