@@ -593,17 +593,21 @@ export default function RequestDetail() {
     }
   }
 
-  async function submitBikeMaintenanceQuote(response) {
+  async function submitBikeMaintenanceQuote(response, currentValues = null) {
     if (!isTechnician || !response?.Id) return;
     const previous = readBikeMaintenanceQuote(response.message_c);
     if (!previous?.visitCompletedAt) {
       toast.error('Mark the customer visit completed before submitting a quotation.');
       return;
     }
-    const labour = Number(bikeLabour);
-    const parts = Number(bikeParts);
-    const other = Number(bikeOther);
-    if (!Number.isFinite(labour) || labour < 0 || !Number.isFinite(parts) || parts < 0 || !Number.isFinite(other) || other < 0 || labour + parts + other <= 0 || !bikeNotes.trim()) {
+    const labourText = String(currentValues?.labour ?? bikeLabour);
+    const partsText = String(currentValues?.parts ?? bikeParts);
+    const otherText = String(currentValues?.other ?? bikeOther);
+    const notesText = String(currentValues?.notes ?? bikeNotes);
+    const labour = labourText.trim() === '' ? NaN : Number(labourText);
+    const parts = partsText.trim() === '' ? NaN : Number(partsText);
+    const other = otherText.trim() === '' ? NaN : Number(otherText);
+    if (!Number.isFinite(labour) || labour < 0 || !Number.isFinite(parts) || parts < 0 || !Number.isFinite(other) || other < 0 || labour + parts + other <= 0 || !notesText.trim()) {
       toast.error('Enter valid labour, parts and other charges, plus inspection findings.');
       return;
     }
@@ -617,7 +621,7 @@ export default function RequestDetail() {
         { name: 'Spare parts', amount: parts },
         { name: 'Other charges', amount: other },
       ],
-      notes: bikeNotes.trim(),
+      notes: notesText.trim(),
       serviceTotal,
       localConvenienceFee: 25,
       customerTotal: serviceTotal + 25,
@@ -989,11 +993,12 @@ export default function RequestDetail() {
                         <div className="rounded-md bg-muted/40 p-3 text-sm"><div className="flex justify-between"><span>Service subtotal</span><strong>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</strong></div><div className="mt-1 flex justify-between"><span>LOCAL convenience fee</span><strong>₹25</strong></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Customer total</span><span>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</span></div></div>
                         <Button className="w-full" disabled={working} onClick={(event) => {
                           const form = event.currentTarget.closest('.bike-maintenance-quote-form');
-                          setBikeLabour(form?.querySelector('[name="bike-labour"]')?.value ?? '');
-                          setBikeParts(form?.querySelector('[name="bike-parts"]')?.value ?? '');
-                          setBikeOther(form?.querySelector('[name="bike-other"]')?.value ?? '');
-                          setBikeNotes(form?.querySelector('[name="bike-notes"]')?.value ?? '');
-                          submitBikeMaintenanceQuote(response);
+                          submitBikeMaintenanceQuote(response, {
+                            labour: form?.querySelector('[name="bike-labour"]')?.value ?? '',
+                            parts: form?.querySelector('[name="bike-parts"]')?.value ?? '',
+                            other: form?.querySelector('[name="bike-other"]')?.value ?? '',
+                            notes: form?.querySelector('[name="bike-notes"]')?.value ?? '',
+                          });
                         }}>Submit Quote to Customer Care</Button>
                       </div>}
                       {quote && <div className="mt-3 space-y-2 text-sm">{(quote.items || []).map((item, index) => <div key={index} className="flex justify-between gap-3"><span>{item.name}</span><span>₹{Number(item.amount).toLocaleString('en-IN')}</span></div>)}{quote.notes && <p className="rounded bg-muted/30 p-2 text-muted-foreground">{quote.notes}</p>}<div className="flex justify-between border-t pt-2"><span>Service subtotal</span><span>₹{Number(quote.serviceTotal || 0).toLocaleString('en-IN')}</span></div><div className="flex justify-between"><span>LOCAL convenience fee</span><span>₹25</span></div><div className="flex justify-between font-bold"><span>Customer total</span><span>₹{Number(quote.customerTotal || 0).toLocaleString('en-IN')}</span></div><p className="text-xs text-muted-foreground">Status: {quote.status}</p></div>}
