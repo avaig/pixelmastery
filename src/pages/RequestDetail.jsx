@@ -970,9 +970,20 @@ export default function RequestDetail() {
                       {isTechnician && assigned && !quote?.visitCompletedAt && <div className="mt-3"><p className="text-sm text-muted-foreground">Visit the customer and inspect the bike before entering final charges.</p><Button className="mt-2 w-full" disabled={working} onClick={() => markBikeVisitCompleted(response)}>Mark Visit Completed</Button></div>}
                       {isTechnician && assigned && quote?.visitCompletedAt && quote.status !== 'Submitted to Admin' && quote.status !== 'Admin Approved' && quote.status !== 'Customer Approved' && <div className="bike-maintenance-quote-form mt-3 space-y-3">
                         <p className="text-sm text-muted-foreground">Enter each charge, then calculate the final bill. The ₹25 LOCAL convenience fee is added automatically.</p>
-                        <div className="grid grid-cols-2 gap-2"><label className="text-sm">Labour (₹)<Input name="bike-labour" type="number" min="0" step="0.01" value={bikeLabour} onChange={(event) => setBikeLabour(event.target.value)} /></label><label className="text-sm">Spare parts (₹)<Input name="bike-parts" type="number" min="0" step="0.01" value={bikeParts} onChange={(event) => setBikeParts(event.target.value)} /></label></div>
-                        <label className="block text-sm">Other charges (₹)<Input name="bike-other" type="number" min="0" step="0.01" value={bikeOther} onChange={(event) => setBikeOther(event.target.value)} /></label>
-                        <label className="block text-sm">Inspection findings / work required<textarea name="bike-notes" className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={bikeNotes} onChange={(event) => setBikeNotes(event.target.value)} placeholder="Describe the issue and recommended work" /></label>
+                        <div className="overflow-x-auto rounded-md border">
+                          <table className="w-full min-w-[440px] border-collapse text-sm">
+                            <thead className="bg-muted/50"><tr><th className="border-b px-3 py-3 text-left font-semibold">Bike Maintenance — Item</th><th className="w-40 border-b px-3 py-3 text-right font-semibold">Charge (₹)</th></tr></thead>
+                            <tbody>
+                              <tr><td className="border-b px-3 py-3">Labour charges</td><td className="border-b px-3 py-2"><Input name="bike-labour" aria-label="Labour charges in rupees" type="number" min="0" step="0.01" value={bikeLabour} onChange={(event) => setBikeLabour(event.target.value)} className="text-right" /></td></tr>
+                              <tr><td className="border-b px-3 py-3">Spare parts</td><td className="border-b px-3 py-2"><Input name="bike-parts" aria-label="Spare parts in rupees" type="number" min="0" step="0.01" value={bikeParts} onChange={(event) => setBikeParts(event.target.value)} className="text-right" /></td></tr>
+                              <tr><td className="border-b px-3 py-3">Other charges</td><td className="border-b px-3 py-2"><Input name="bike-other" aria-label="Other charges in rupees" type="number" min="0" step="0.01" value={bikeOther} onChange={(event) => setBikeOther(event.target.value)} className="text-right" /></td></tr>
+                              <tr className="bg-muted/20"><td className="px-3 py-3 font-semibold">Service subtotal</td><td className="px-3 py-3 text-right font-semibold">₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</td></tr>
+                              <tr><td className="px-3 py-3">LOCAL Platform Fee (fixed)</td><td className="px-3 py-3 text-right">₹25</td></tr>
+                              <tr className="border-t-2 bg-muted/40"><td className="px-3 py-3 font-bold">Final customer bill</td><td className="px-3 py-3 text-right text-base font-bold">₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <label className="block text-sm font-medium">Inspection findings / work required<textarea name="bike-notes" className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={bikeNotes} onChange={(event) => setBikeNotes(event.target.value)} placeholder="Describe the issue and recommended work" /></label>
                         <Button type="button" variant="outline" className="w-full" disabled={working} onClick={(event) => {
                           const form = event.currentTarget.closest('.bike-maintenance-quote-form');
                           const labourText = form?.querySelector('[name="bike-labour"]')?.value ?? '';
@@ -981,16 +992,15 @@ export default function RequestDetail() {
                           const notesText = form?.querySelector('[name="bike-notes"]')?.value ?? '';
                           const values = [labourText, partsText, otherText].map((value) => value.trim() === '' ? NaN : Number(value));
                           if (values.some((value) => !Number.isFinite(value) || value < 0) || values.reduce((sum, value) => sum + value, 0) <= 0) {
-                            toast.error('Enter valid charges in all three fields. Use 0 for any charge that does not apply.');
+                            toast.error('Enter valid charges in all three rows. Use 0 for any charge that does not apply.');
                             return;
                           }
                           setBikeLabour(labourText);
                           setBikeParts(partsText);
                           setBikeOther(otherText);
                           setBikeNotes(notesText);
-                          toast.success('Final bill calculated. Review the subtotal and ₹25 LOCAL fee below.');
-                        }}>Calculate Final Bill</Button>
-                        <div className="rounded-md bg-muted/40 p-3 text-sm"><div className="flex justify-between"><span>Service subtotal</span><strong>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</strong></div><div className="mt-1 flex justify-between"><span>LOCAL convenience fee</span><strong>₹25</strong></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Customer total</span><span>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</span></div></div>
+                          toast.success('Bill recalculated from the current table values. Review the final customer bill below.');
+                        }}><span className="inline-flex items-center justify-center gap-2"><RefreshCw className="h-4 w-4" />Calculate Final Bill</span></Button>
                         <Button className="w-full" disabled={working} onClick={(event) => {
                           const form = event.currentTarget.closest('.bike-maintenance-quote-form');
                           submitBikeMaintenanceQuote(response, {
