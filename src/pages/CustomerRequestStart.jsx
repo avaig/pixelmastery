@@ -1202,7 +1202,7 @@ export default function CustomerRequestStart() {
           )}
         </Card>
         <Card className={(isCarWash || isCarService) ? "p-3" : "p-6"}>
-          {!isCarWash && !isCarService && <>
+          {!isCarWash && !isCarService && !isProfessionalDriverService && <>
             <div className="text-sm font-semibold">When do you need the service?</div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Button type="button" variant={serviceTiming === 'ASAP' ? 'default' : 'outline'} onClick={() => setServiceTiming('ASAP')}><ApperIcon name="Zap" size={16} /> Book Now</Button>
@@ -1210,7 +1210,7 @@ export default function CustomerRequestStart() {
             </div>
             {serviceTiming === 'Scheduled' && <div className="mt-3"><label htmlFor="requested-service-time" className="text-sm font-medium">Choose date and time</label><Input id="requested-service-time" type="datetime-local" min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Your selected time is a request, not a confirmed appointment. A Service Provider must accept it.</p></div>}
           </>}
-          {!isCarEssentialsDelivery && !isCarWash && !isCarService && <>
+          {!isCarEssentialsDelivery && !isCarWash && !isCarService && !isProfessionalDriverService && <>
           <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">Where do you need the service?</div>
           <div className="mt-2 text-sm text-muted-foreground">Choose the location for this booking. It can be different from your saved home or office address. GPS is optional.</div>
           {location && (
@@ -1239,7 +1239,7 @@ export default function CustomerRequestStart() {
             </Button>
           </form>
           </>}
-          {(location || isCarWash || isCarService) && (
+          {(location || isCarWash || isCarService || isProfessionalDriverService) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
               <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : isCarService ? () => setShowCarServiceQuoteReview(true) : createRequest} disabled={(!isProfessionalDriverService && location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !isProfessionalDriverService && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isCarService && !selectedCarServicePackage) || (isCarFlatPuncture && !punctureDispatchConsent)}>
