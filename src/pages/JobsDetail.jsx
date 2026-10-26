@@ -142,6 +142,7 @@ export default function JobsDetail() {
   const carEssentialsDeliveryOtp = /^\d{6}$/.test(jobDeliveryOtp) ? jobDeliveryOtp : /^\d{6}$/.test(approvalDeliveryOtp) ? approvalDeliveryOtp : '';
   const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
+  const isDriverBooking = /car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const isBatteryJumpStart = /battery jump start/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const batteryJumpStartTotal = Math.max(0, Number(job?.agreed_price_c ?? 0)) + 25;
   const savedServicePrice = Number(job?.agreed_price_c ?? 0);
@@ -622,6 +623,33 @@ export default function JobsDetail() {
     await updateJob({ status_c: status }, 'Job status changed to ' + status + '.');
   }
 
+  async function submitDriverTripCompletion() {
+    if (!isProvider || !isDriverBooking || job.status_c !== 'In Progress') return;
+    const duration = window.prompt('Enter actual trip duration (hours/days):');
+    if (duration === null || !duration.trim()) return;
+    const distance = window.prompt('Enter actual distance in km (or N/A if not applicable):', 'N/A');
+    if (distance === null) return;
+    const nightHalt = window.prompt('Enter actual night halt / overnight charges in rupees (0 if none):', '0');
+    if (nightHalt === null) return;
+    const extras = window.prompt('Enter other customer-approved additional charges in rupees (0 if none):', '0');
+    if (extras === null) return;
+    const notes = window.prompt('Enter trip completion notes and explain any extra charges:');
+    if (notes === null) return;
+    const agreedService = Number(job.agreed_price_c ?? 0);
+    const nightHaltAmount = Number(nightHalt);
+    const extrasAmount = Number(extras);
+    if (!Number.isFinite(agreedService) || agreedService <= 0 || !Number.isFinite(nightHaltAmount) || nightHaltAmount < 0 || !Number.isFinite(extrasAmount) || extrasAmount < 0) {
+      toast.error('The agreed service amount is missing or an additional charge is invalid. Contact LOCAL Customer Care before submitting completion.');
+      return;
+    }
+    const finalServiceAmount = agreedService + nightHaltAmount + extrasAmount;
+    const finalCustomerTotal = finalServiceAmount + 25;
+    const marker = 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:';
+    const existing = String(job.admin_review_note_c ?? '').split(marker)[0].trimEnd();
+    const completion = { submittedAt: new Date().toISOString(), duration: duration.trim(), distanceKm: distance.trim(), nightHaltAmount, otherApprovedCharges: extrasAmount, notes: notes.trim(), serviceAmount: finalServiceAmount, localFee: 25, customerTotal: finalCustomerTotal };
+    await updateJob({ agreed_price_c: finalServiceAmount, remaining_amount_c: finalServiceAmount, local_service_fee_amount_c: 25, customer_payable_now_c: finalCustomerTotal, payment_status_c: 'Balance Pending', billing_status_c: 'Driver submitted trip completion — payment due', payout_status_c: 'Not Eligible', status_c: 'Completed', returned_at_c: new Date().toISOString(), completion_requested_at_c: new Date().toISOString(), admin_review_note_c: existing + (existing ? '\\n' : '') + marker + JSON.stringify(completion) }, 'Trip completion submitted. Final customer bill: ₹' + finalCustomerTotal.toLocaleString('en-IN') + ' including the ₹25 LOCAL convenience fee. Customer payment is now due.');
+  }
+
   async function startProviderTravel() {
     if ((!isProvider && !isAdmin) || job.status_c !== 'Assigned') return;
     if (!navigator.geolocation) { toast.error('This browser does not support location sharing.'); return; }
@@ -1068,7 +1096,9 @@ export default function JobsDetail() {
           {isProvider && job.status_c === 'Assigned' && !isCarEssentialsDelivery && <Button onClick={() => setStatus('In Progress')} disabled={working || (isCarCare && inspectionStatus !== 'Confirmed') || !job.service_start_otp_verified_at_c}><ApperIcon name="Play" size={16} /> {tr('Start job', language)}</Button>}
           {isProvider && isCarService && job.status_c === 'Assigned' && inspectionStatus !== 'Confirmed' && <p className="text-sm text-highlight">Complete the vehicle condition report and obtain customer confirmation before starting Car Service.</p>}
           {isProvider && job.status_c === 'Assigned' && !isCarEssentialsDelivery && !job.service_start_otp_verified_at_c && <p className="text-sm text-highlight">Verify the customer’s start-job OTP before starting this service.</p>}
-          {isProvider && job.status_c === 'In Progress' && <Button onClick={() => setStatus('Completed')} disabled={working}><ApperIcon name="CheckCircle2" size={16} /> Mark completed</Button>}
+          {isProvider && job.status_c === 'In Progress' && isDriverBooking && <Button onClick={submitDriverTripCompletion} disabled={working || !job.service_start_otp_verified_at_c}><ApperIcon name="CheckCircle2" size={16} /> {working ? 'Submitting…' : 'Submit Trip Completion & Final Bill'}</Button>}
+          {isDriverBooking && job.status_c === 'Completed' && <div className="rounded-md border border-success-border bg-success-muted p-4 text-sm"><p className="font-semibold text-success">Trip completion recorded</p><p className="mt-1">Customer total due: {displayMoney(job.customer_payable_now_c || (Number(job.agreed_price_c || 0) + 25))}, including ₹25 LOCAL convenience fee.</p></div>}
+          {isProvider && job.status_c === 'In Progress' && !isDriverBooking && <Button onClick={() => setStatus('Completed')} disabled={working}><ApperIcon name="CheckCircle2" size={16} /> Mark completed</Button>}
           {(isProvider || isCustomer || isAdmin) && ['Assigned', 'In Progress'].includes(job.status_c) && <Button variant="outline" onClick={() => setStatus('Cancelled')} disabled={working}>Cancel job</Button>}
           {isAdmin && job.status_c === 'Completed' && <Button variant="outline" onClick={() => setStatus('In Progress')} disabled={working}>Reopen job</Button>}
           {job.status_c === 'Completed' && <div className="rounded-md border border-success-border bg-success-muted px-4 py-2 text-sm text-success">Service completed successfully.</div>}
