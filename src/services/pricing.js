@@ -20,8 +20,8 @@ export function getRemainingAmount(finalPrice, commitmentAmount) {
 
 export function getLocalServiceFee(finalPrice) {
   const agreed = Math.max(0, Number(finalPrice) || 0);
-  // Customer-facing Convenience Fee: 10% of the final agreed service price.
-  return roundMoney(agreed * 0.10);
+  // LOCAL's agreed customer-facing convenience fee is a fixed ₹25 per booking.
+  return agreed > 0 ? 25 : 0;
 }
 
 export function getProviderCommissionRate(completedJobsCount = 0) {

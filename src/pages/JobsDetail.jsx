@@ -144,6 +144,9 @@ export default function JobsDetail() {
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
   const isBatteryJumpStart = /battery jump start/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const batteryJumpStartTotal = Math.max(0, Number(job?.agreed_price_c ?? 0)) + 25;
+  const savedServicePrice = Number(job?.agreed_price_c ?? 0);
+  const hasValidServicePrice = Number.isFinite(savedServicePrice) && savedServicePrice > 0;
+  const finalServicePayable = hasValidServicePrice ? savedServicePrice + 25 : 0;
   const isPayAfterCompletion = isCarWash || isCarService || isAcService;
   const language = getLanguage();
   const completedJobsBeforeThisBooking = Number(job?.provider_completed_jobs_count_c ?? 0);
@@ -489,12 +492,17 @@ export default function JobsDetail() {
     setWorking(true);
     try {
       const isFinalBalancePayment = !isCarCare && !isAcService && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid';
-      const amount = isCarWash ? Number(job.agreed_price_c ?? job.original_car_wash_price_c ?? 0) + 25 : isCarService ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) + 25 : isBatteryJumpStart && isFinalBalancePayment ? Number(job.agreed_price_c ?? 0) + 25 : isCarCare || isAcService || isFinalBalancePayment ? Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0) : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
+      const serviceAmount = Number(job.agreed_price_c ?? job.remaining_amount_c ?? 0);
+      if ((isFinalBalancePayment || job.status_c === 'Completed') && (!Number.isFinite(serviceAmount) || serviceAmount <= 0)) {
+        toast.error('Payment is blocked because this job has no valid agreed service price. LOCAL Admin must record the agreed amount before payment can proceed.');
+        return;
+      }
+      const amount = isCarWash ? Number(job.agreed_price_c ?? job.original_car_wash_price_c ?? 0) + 25 : isCarService || isBatteryJumpStart && isFinalBalancePayment || isCarCare || isAcService || isFinalBalancePayment ? serviceAmount + 25 : Number(job.customer_payable_now_c ?? billing.customerPayableNow);
       const calculated = getBillingBreakdown(job.agreed_price_c, job.service_mode_c ?? 'Normal', Number(job.provider_completed_jobs_count_c ?? 0), Number(job.customer_discount_amount_c ?? 0), 0);
       const reference = 'DEMO-' + paymentMethod.toUpperCase().replace(' ', '-') + '-' + String(Date.now()).slice(-6);
       const values = (isCarCare || isAcService || isFinalBalancePayment) ? {
         remaining_amount_c: 0,
-        local_service_fee_amount_c: isCarWash || isCarService || isBatteryJumpStart ? 25 : Number(job.local_service_fee_amount_c ?? 0),
+        local_service_fee_amount_c: 25,
         customer_payable_now_c: amount,
         billing_status_c: 'Final Paid',
         payment_status_c: 'Final Payment Paid',
@@ -1050,7 +1058,7 @@ export default function JobsDetail() {
               <p className="mt-2 text-lg font-semibold">Amount due: {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : job.remaining_amount_c ?? billing.remainingServiceAmount)}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">{['UPI', 'Card', 'Net Banking'].map((method) => <Button key={method} type="button" variant={paymentMethod === method ? 'default' : 'outline'} onClick={() => setPaymentMethod(method)} disabled={working}>{method}</Button>)}</div>
               <Button className="mt-4" onClick={() => setShowDemoQr(true)} disabled={working || job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review'}><ApperIcon name="QrCode" size={16} /> Pay Now — {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : job.remaining_amount_c ?? billing.remainingServiceAmount)}</Button>
-              {showDemoQr && <div className="mt-4 rounded-lg border bg-background p-4"><div className="flex items-center gap-2 font-semibold"><ApperIcon name="QrCode" size={18} /> LOCAL UPI Payment · {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : job.remaining_amount_c ?? billing.remainingServiceAmount)}</div><p className="mt-1 text-sm text-muted-foreground">Scan this UPI QR using your UPI app. LOCAL does not automatically verify transfers; this screen records a demo payment only.</p><div className="mx-auto my-4 flex w-fit flex-col items-center rounded-md border bg-white p-3"><img src={LOCAL_PAYTM_UPI_QR} alt="LOCAL UPI payment QR code" className="h-44 w-44 object-contain" /><p className="mt-2 text-xs font-semibold text-slate-900">Scan with any UPI app</p><p className="text-xs text-slate-600">8587034884@ptsbi</p></div><div className="flex flex-col gap-2 sm:flex-row"><Button onClick={simulatePayment} disabled={working}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Recording demo…' : 'Simulate successful payment'}</Button><Button type="button" variant="outline" onClick={() => setShowDemoQr(false)} disabled={working}>Cancel</Button></div></div>}
+              {showDemoQr && hasValidServicePrice && <div className="mt-4 rounded-lg border bg-background p-4"><div className="flex items-center gap-2 font-semibold"><ApperIcon name="QrCode" size={18} /> LOCAL UPI Payment · {displayMoney(isBatteryJumpStart ? batteryJumpStartTotal : finalServicePayable)}</div><p className="mt-1 text-sm text-muted-foreground">Scan this UPI QR using your UPI app. LOCAL does not automatically verify transfers; this screen records a demo payment only.</p><div className="mx-auto my-4 flex w-fit flex-col items-center rounded-md border bg-white p-3"><img src={LOCAL_PAYTM_UPI_QR} alt="LOCAL UPI payment QR code" className="h-44 w-44 object-contain" /><p className="mt-2 text-xs font-semibold text-slate-900">Scan with any UPI app</p><p className="text-xs text-slate-600">8587034884@ptsbi</p></div><div className="flex flex-col gap-2 sm:flex-row"><Button onClick={simulatePayment} disabled={working}><ApperIcon name="ShieldCheck" size={16} /> {working ? 'Recording demo…' : 'Simulate successful payment'}</Button><Button type="button" variant="outline" onClick={() => setShowDemoQr(false)} disabled={working}>Cancel</Button></div></div>}
               {(job.dispute_status_c === 'Open' || job.dispute_status_c === 'Under Review') && <p className="mt-2 text-sm text-destructive">Payment is unavailable while this job is under dispute review.</p>}
             </div>
           </div>

@@ -626,6 +626,11 @@ export default function CentralDispatch() {
           return;
         }
       }
+      const resolvedServicePrice = isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : fixedPriceRequest ? Number(fixedPrice) : isCarEssentials ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total) : isRsaQuote ? Number(readRsaQuote(acceptedAssignment.message_c)?.total) : Number(acceptedAssignment.final_agreed_price_c ?? acceptedAssignment.proposed_price_c);
+      if (!Number.isFinite(resolvedServicePrice) || resolvedServicePrice <= 0) {
+        toast.error('Booking cannot be confirmed without a valid agreed service price greater than ₹0. Contact the customer/provider, record the agreed quote, and confirm only after the customer approves it.');
+        return;
+      }
       if (fixedPriceRequest && fixedPrice === null) {
         toast.error('A clear, positive fixed service total could not be read. Please review the price before confirming; no job was created.');
         return;
@@ -669,9 +674,10 @@ export default function CentralDispatch() {
         response_c: acceptedAssignment.Id,
         customer_c: request.customer_c?.Id ?? request.customer_c ?? null,
         technician_c: acceptedAssignment.technician_c?.Id ?? acceptedAssignment.technician_c,
-        agreed_price_c: isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? fixedPrice ?? 0) : fixedPrice,
-        remaining_amount_c: isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : undefined,
-        customer_payable_now_c: isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : undefined,
+        agreed_price_c: resolvedServicePrice,
+        remaining_amount_c: resolvedServicePrice,
+        local_service_fee_amount_c: 25,
+        customer_payable_now_c: resolvedServicePrice + 25,
         original_provider_quote_c: providerQuoteRequest && !fixedPriceRequest ? Number((isRsaQuote ? readRsaQuote(acceptedAssignment.message_c)?.total : readCarEssentialsQuote(acceptedAssignment.message_c)?.total) ?? 0) : null,
         scheduled_at_c: request.scheduled_at_c || null,
         status_c: 'Assigned',
