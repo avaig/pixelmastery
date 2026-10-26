@@ -964,13 +964,37 @@ export default function RequestDetail() {
                       <div className="font-semibold">Bike Maintenance — Visit & Quotation</div>
                       {quote?.visitCompletedAt ? <p className="mt-1 text-xs text-muted-foreground">Visit completed: {new Date(quote.visitCompletedAt).toLocaleString('en-IN')}</p> : null}
                       {isTechnician && assigned && !quote?.visitCompletedAt && <div className="mt-3"><p className="text-sm text-muted-foreground">Visit the customer and inspect the bike before entering final charges.</p><Button className="mt-2 w-full" disabled={working} onClick={() => markBikeVisitCompleted(response)}>Mark Visit Completed</Button></div>}
-                      {isTechnician && assigned && quote?.visitCompletedAt && quote.status !== 'Submitted to Admin' && quote.status !== 'Admin Approved' && quote.status !== 'Customer Approved' && <div className="mt-3 space-y-3">
-                        <p className="text-sm text-muted-foreground">Enter the itemized quotation. The ₹25 LOCAL convenience fee is added automatically.</p>
-                        <div className="grid grid-cols-2 gap-2"><label className="text-sm">Labour (₹)<Input type="number" min="0" value={bikeLabour} onChange={(event) => setBikeLabour(event.target.value)} /></label><label className="text-sm">Spare parts (₹)<Input type="number" min="0" value={bikeParts} onChange={(event) => setBikeParts(event.target.value)} /></label></div>
-                        <label className="block text-sm">Other charges (₹)<Input type="number" min="0" value={bikeOther} onChange={(event) => setBikeOther(event.target.value)} /></label>
-                        <label className="block text-sm">Inspection findings / work required<textarea className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={bikeNotes} onChange={(event) => setBikeNotes(event.target.value)} placeholder="Describe the issue and recommended work" /></label>
+                      {isTechnician && assigned && quote?.visitCompletedAt && quote.status !== 'Submitted to Admin' && quote.status !== 'Admin Approved' && quote.status !== 'Customer Approved' && <div className="bike-maintenance-quote-form mt-3 space-y-3">
+                        <p className="text-sm text-muted-foreground">Enter each charge, then calculate the final bill. The ₹25 LOCAL convenience fee is added automatically.</p>
+                        <div className="grid grid-cols-2 gap-2"><label className="text-sm">Labour (₹)<Input name="bike-labour" type="number" min="0" step="0.01" value={bikeLabour} onChange={(event) => setBikeLabour(event.target.value)} /></label><label className="text-sm">Spare parts (₹)<Input name="bike-parts" type="number" min="0" step="0.01" value={bikeParts} onChange={(event) => setBikeParts(event.target.value)} /></label></div>
+                        <label className="block text-sm">Other charges (₹)<Input name="bike-other" type="number" min="0" step="0.01" value={bikeOther} onChange={(event) => setBikeOther(event.target.value)} /></label>
+                        <label className="block text-sm">Inspection findings / work required<textarea name="bike-notes" className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={bikeNotes} onChange={(event) => setBikeNotes(event.target.value)} placeholder="Describe the issue and recommended work" /></label>
+                        <Button type="button" variant="outline" className="w-full" disabled={working} onClick={(event) => {
+                          const form = event.currentTarget.closest('.bike-maintenance-quote-form');
+                          const labourText = form?.querySelector('[name="bike-labour"]')?.value ?? '';
+                          const partsText = form?.querySelector('[name="bike-parts"]')?.value ?? '';
+                          const otherText = form?.querySelector('[name="bike-other"]')?.value ?? '';
+                          const notesText = form?.querySelector('[name="bike-notes"]')?.value ?? '';
+                          const values = [labourText, partsText, otherText].map((value) => value.trim() === '' ? NaN : Number(value));
+                          if (values.some((value) => !Number.isFinite(value) || value < 0) || values.reduce((sum, value) => sum + value, 0) <= 0) {
+                            toast.error('Enter valid charges in all three fields. Use 0 for any charge that does not apply.');
+                            return;
+                          }
+                          setBikeLabour(labourText);
+                          setBikeParts(partsText);
+                          setBikeOther(otherText);
+                          setBikeNotes(notesText);
+                          toast.success('Final bill calculated. Review the subtotal and ₹25 LOCAL fee below.');
+                        }}>Calculate Final Bill</Button>
                         <div className="rounded-md bg-muted/40 p-3 text-sm"><div className="flex justify-between"><span>Service subtotal</span><strong>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)).toLocaleString('en-IN')}</strong></div><div className="mt-1 flex justify-between"><span>LOCAL convenience fee</span><strong>₹25</strong></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Customer total</span><span>₹{(Math.max(0, Number(bikeLabour)||0)+Math.max(0, Number(bikeParts)||0)+Math.max(0, Number(bikeOther)||0)+25).toLocaleString('en-IN')}</span></div></div>
-                        <Button className="w-full" disabled={working} onClick={() => submitBikeMaintenanceQuote(response)}>Submit Quote to Customer Care</Button>
+                        <Button className="w-full" disabled={working} onClick={(event) => {
+                          const form = event.currentTarget.closest('.bike-maintenance-quote-form');
+                          setBikeLabour(form?.querySelector('[name="bike-labour"]')?.value ?? '');
+                          setBikeParts(form?.querySelector('[name="bike-parts"]')?.value ?? '');
+                          setBikeOther(form?.querySelector('[name="bike-other"]')?.value ?? '');
+                          setBikeNotes(form?.querySelector('[name="bike-notes"]')?.value ?? '');
+                          submitBikeMaintenanceQuote(response);
+                        }}>Submit Quote to Customer Care</Button>
                       </div>}
                       {quote && <div className="mt-3 space-y-2 text-sm">{(quote.items || []).map((item, index) => <div key={index} className="flex justify-between gap-3"><span>{item.name}</span><span>₹{Number(item.amount).toLocaleString('en-IN')}</span></div>)}{quote.notes && <p className="rounded bg-muted/30 p-2 text-muted-foreground">{quote.notes}</p>}<div className="flex justify-between border-t pt-2"><span>Service subtotal</span><span>₹{Number(quote.serviceTotal || 0).toLocaleString('en-IN')}</span></div><div className="flex justify-between"><span>LOCAL convenience fee</span><span>₹25</span></div><div className="flex justify-between font-bold"><span>Customer total</span><span>₹{Number(quote.customerTotal || 0).toLocaleString('en-IN')}</span></div><p className="text-xs text-muted-foreground">Status: {quote.status}</p></div>}
                       {user?.profile === 'Admin_c' && quote?.status === 'Submitted to Admin' && <div className="mt-3 space-y-2 rounded-md border p-3"><p className="text-sm">Review the quote, then call the customer and explain the full amount before recording their decision.</p><Button className="w-full" disabled={working} onClick={() => saveBikeMaintenanceQuoteStatus(response, { status: 'Admin Approved', adminApprovedAt: new Date().toISOString(), adminApprovedBy: user?.emailAddress ?? user?.email ?? 'Admin' }, 'Quotation approved. Call the customer to obtain consent.')}>Approve Quotation</Button></div>}
