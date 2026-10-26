@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { sdk } from '@/services/sdk';
 import { useFetch } from '@/hooks/useFetch';
+import { useFunction } from '@/hooks/useFunction';
 import ApperIcon from '@/components/ApperIcon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -227,6 +228,7 @@ export default function CentralDispatch() {
   const [carWashQuoteInputs, setCarWashQuoteInputs] = useState({});
   const [carWashCalculatedQuotes, setCarWashCalculatedQuotes] = useState({});
   const [driverQuoteDrafts, setDriverQuoteDrafts] = useState({});
+  const { invoke: calculateDriverTariffOnServer } = useFunction(import.meta.env.VITE_CALCULATE_DRIVER_ON_DEMAND_TARIFF, { showError: true });
   const { data, loading, error, run } = useFetch(async () => {
     const [requestRes, providerRes, responseRes, jobsRes, customerRes] = await Promise.all([
       sdk.table('service_requests_c').select(REQUEST_FIELDS).orderByDesc('CreatedOn').page(1, 500).fetch(),
@@ -481,9 +483,18 @@ export default function CentralDispatch() {
     if (!travelType || !tripDetails || !pickupDate || !pickupTime || !Number.isFinite(durationHours) || durationHours <= 0) { toast.error('Confirm travel type, route, pickup date, pickup time and trip duration before sending the quote.'); return; }
     if (!Number.isFinite(otherCharges) || otherCharges < 0) { toast.error('Enter valid additional charges (₹0 or more).'); return; }
     let tariff;
-    try { tariff = calculateDriverOnDemandTariff({ pickupDate, pickupTime, durationHours }); }
-    catch (error) { toast.error(error.message || 'Could not calculate the published tariff.'); return; }
-    const serviceAmount = tariff.serviceAmount;
+    try {
+      const serverResult = await calculateDriverTariffOnServer({ pickupDate, pickupTime, durationHours });
+      if (!serverResult?.tariff || !Number.isFinite(Number(serverResult.tariff.serviceAmount)) || !Number.isFinite(Number(serverResult.tariff.customerTotal))) {
+        toast.error('The server could not verify the tariff. No quotation was sent.');
+        return;
+      }
+      tariff = serverResult.tariff;
+    } catch (error) {
+      toast.error(error.message || 'Could not calculate the published tariff. No quotation was sent.');
+      return;
+    }
+    const serviceAmount = Number(tariff.serviceAmount);
     const previousQuote = readDriverQuote(request.problem_description_c);
     const quote = { quoteId: 'DRV-' + Date.now().toString(36).toUpperCase(), version: Number(previousQuote?.version ?? 0) + 1, travelType, tripDetails, schedule, pickupDate, pickupTime, durationHours, travellers, tariff, serviceAmount, otherCharges, localFee: tariff.localFee, customerTotal: serviceAmount + otherCharges + tariff.localFee, terms: notes, status: 'Sent to Customer', createdAt: new Date().toISOString() };
     const clean = String(request.problem_description_c ?? '').split('LOCAL_DRIVER_BOOKING_QUOTE_JSON:')[0].split('LOCAL_DRIVER_BOOKING_APPROVAL_JSON:')[0].trimEnd();
