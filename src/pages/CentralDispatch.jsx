@@ -627,9 +627,9 @@ export default function CentralDispatch() {
       }
       const isCarEssentials = /car essentials delivery/i.test(String(request.required_capability_c?.Name ?? request.Name ?? '') + ' ' + String(request.problem_description_c ?? ''));
       const isRsaQuote = isRsaQuoteRequest(request) && !isCarEssentials;
-      const fixedPriceRequest = isRsaQuote ? false : isFixedPriceRequest(request);
+      const fixedPriceRequest = isRsaQuote || isBikeMaintenanceRequest ? false : isFixedPriceRequest(request);
       const fixedPrice = isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.total) : fixedPriceRequest ? getFixedPrice(request) : null;
-      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || isCarEssentials || isRsaQuote;
+      const providerQuoteRequest = String(request.pricing_mode_c ?? '').toLowerCase() === 'provider quote' || isCarEssentials || isRsaQuote || isBikeMaintenanceRequest;
       if (isRsaQuote) {
         const quote = readRsaQuote(acceptedAssignment.message_c);
         const approval = readRsaApproval(request.problem_description_c);
@@ -645,7 +645,7 @@ export default function CentralDispatch() {
           return;
         }
       }
-      const resolvedServicePrice = isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : fixedPriceRequest ? Number(fixedPrice) : isCarEssentials ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total) : isRsaQuote ? Number(readRsaQuote(acceptedAssignment.message_c)?.total) : Number(acceptedAssignment.final_agreed_price_c ?? acceptedAssignment.proposed_price_c);
+      const resolvedServicePrice = isCarWashRequest && approvedCarWashQuote ? Number(approvedCarWashQuote.serviceSubtotal) - Number(approvedCarWashQuote.discount ?? 0) + Number(approvedCarWashQuote.pickupDropCharge ?? 0) : fixedPriceRequest ? Number(fixedPrice) : isCarEssentials ? Number(readCarEssentialsQuote(acceptedAssignment.message_c)?.total) : isRsaQuote ? Number(readRsaQuote(acceptedAssignment.message_c)?.total) : isBikeMaintenanceRequest ? Number(readBikeMaintenanceQuote(acceptedAssignment.message_c)?.serviceTotal) : Number(acceptedAssignment.final_agreed_price_c ?? acceptedAssignment.proposed_price_c);
       if (!Number.isFinite(resolvedServicePrice) || resolvedServicePrice <= 0) {
         toast.error('Booking cannot be confirmed without a valid agreed service price greater than ₹0. Contact the customer/provider, record the agreed quote, and confirm only after the customer approves it.');
         return;
