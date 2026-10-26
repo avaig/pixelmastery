@@ -1014,28 +1014,7 @@ export default function RequestDetail() {
                             </tbody>
                           </table>
                         </div>
-                        <label className="block text-sm font-medium">Inspection findings / work required<textarea name="bike-notes" className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={bikeNotes} onChange={(event) => setBikeNotes(event.target.value)} placeholder="Describe the issue and recommended work" /></label>
-                        <Button type="button" variant="outline" className="w-full" disabled={working} onClick={(event) => {
-                          const form = event.currentTarget.closest('.bike-maintenance-quote-form');
-                          const labourText = form?.querySelector('[name="bike-labour"]')?.value ?? '';
-                          const partsText = form?.querySelector('[name="bike-parts"]')?.value ?? '';
-                          const otherText = form?.querySelector('[name="bike-other"]')?.value ?? '';
-                          const notesText = form?.querySelector('[name="bike-notes"]')?.value ?? '';
-                          const values = [labourText, partsText, otherText].map((value) => value.trim() === '' ? NaN : Number(value));
-                          if (values.some((value) => !Number.isFinite(value) || value < 0) || values.reduce((sum, value) => sum + value, 0) <= 0) {
-                            toast.error('Enter valid charges in all three rows. Use 0 for any charge that does not apply.');
-                            return;
-                          }
-                          const subtotal = values.reduce((sum, value) => sum + value, 0);
-                          setBikeLabour(labourText);
-                          setBikeParts(partsText);
-                          setBikeOther(otherText);
-                          setBikeNotes(notesText);
-                          setBikeCalculatedSubtotal(subtotal);
-                          setBikeCalculatedTotal(subtotal + 25);
-                          setBikeBillCalculated(true);
-                          toast.success('Bill recalculated: service subtotal ₹' + subtotal.toLocaleString('en-IN') + '; final customer bill ₹' + (subtotal + 25).toLocaleString('en-IN') + '.');
-                        }}><span className="inline-flex items-center justify-center gap-2"><ApperIcon name="RefreshCw" size={16} />Calculate Final Bill</span></Button>
+                        
                         <Button className="w-full" disabled={working} onClick={(event) => {
                           const form = event.currentTarget.closest('.bike-maintenance-quote-form');
                           submitBikeMaintenanceQuote(response, {
