@@ -143,6 +143,23 @@ export default function JobsDetail() {
   const isPickupDrop = /Pickup\s*&\s*Drop/i.test(String(serviceRequest?.problem_description_c ?? '')) || /Pickup\s*&\s*Drop/i.test(String(job?.response_c ?? ''));
   const isAcService = /AC Technician/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '')) || String(serviceRequest?.problem_description_c ?? '').includes('LOCAL_AC_REQUEST_JSON:');
   const isDriverBooking = /car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|emergency driver|scheduled driver|professional car driver/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
+  const driverTripCompletion = (() => {
+    const note = String(job?.admin_review_note_c ?? '');
+    const marker = 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:';
+    const index = note.lastIndexOf(marker);
+    if (index < 0) return null;
+    const raw = note.slice(index + marker.length).split(/\\r?\\n/)[0].trim();
+    try { return JSON.parse(raw); } catch { return null; }
+  })();
+  const driverTripReview = (() => {
+    const note = String(job?.admin_review_note_c ?? '');
+    const marker = 'LOCAL_DRIVER_TRIP_REVIEW_JSON:';
+    const index = note.lastIndexOf(marker);
+    if (index < 0) return null;
+    const raw = note.slice(index + marker.length).split(/\\r?\\n/)[0].trim();
+    try { return JSON.parse(raw); } catch { return null; }
+  })();
+  const driverBillApprovedForCustomer = Boolean(driverTripReview?.approved === true && driverTripReview?.customerConsentRecorded === true);
   const isBatteryJumpStart = /battery jump start/i.test(String(job?.Name ?? '') + ' ' + String(job?.request_c?.Name ?? '') + ' ' + String(serviceRequest?.Name ?? '') + ' ' + String(serviceRequest?.problem_description_c ?? ''));
   const batteryJumpStartTotal = Math.max(0, Number(job?.agreed_price_c ?? 0)) + 25;
   const savedServicePrice = Number(job?.agreed_price_c ?? 0);
@@ -645,9 +662,10 @@ export default function JobsDetail() {
     const finalServiceAmount = agreedService + nightHaltAmount + extrasAmount;
     const finalCustomerTotal = finalServiceAmount + 25;
     const marker = 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:';
-    const existing = String(job.admin_review_note_c ?? '').split(marker)[0].trimEnd();
+    const reviewMarker = 'LOCAL_DRIVER_TRIP_REVIEW_JSON:';
+    const existing = String(job.admin_review_note_c ?? '').split(marker)[0].split(reviewMarker)[0].trimEnd();
     const completion = { submittedAt: new Date().toISOString(), duration: duration.trim(), distanceKm: distance.trim(), nightHaltAmount, otherApprovedCharges: extrasAmount, notes: notes.trim(), serviceAmount: finalServiceAmount, localFee: 25, customerTotal: finalCustomerTotal };
-    await updateJob({ agreed_price_c: finalServiceAmount, remaining_amount_c: finalServiceAmount, local_service_fee_amount_c: 25, customer_payable_now_c: finalCustomerTotal, payment_status_c: 'Balance Pending', billing_status_c: 'Payment Due After Delivery', payout_status_c: 'Not Eligible', status_c: 'Completed', returned_at_c: new Date().toISOString(), completion_requested_at_c: new Date().toISOString(), admin_review_note_c: existing + (existing ? '\\n' : '') + marker + JSON.stringify(completion) }, 'Trip completion submitted. Final customer bill: ₹' + finalCustomerTotal.toLocaleString('en-IN') + ' including the ₹25 LOCAL convenience fee. Customer payment is now due.');
+    await updateJob({ agreed_price_c: finalServiceAmount, remaining_amount_c: finalServiceAmount, local_service_fee_amount_c: 25, customer_payable_now_c: finalCustomerTotal, payment_status_c: 'Balance Pending', billing_status_c: 'Ready for Confirmation', payout_status_c: 'Not Eligible', status_c: 'Completed', returned_at_c: new Date().toISOString(), completion_requested_at_c: new Date().toISOString(), admin_review_note_c: existing + (existing ? '\\n' : '') + marker + JSON.stringify(completion) }, 'Trip completion submitted to LOCAL Customer Care for review. The customer will not be asked to pay until Admin approves the bill and records customer consent.');
   }
 
   async function startProviderTravel() {
@@ -852,6 +870,31 @@ export default function JobsDetail() {
     const reference = window.prompt('Enter the bank/UPI payout reference for the provider settlement:');
     if (!reference || !reference.trim()) return;
     await updateJob({ payout_status_c: 'Released', admin_review_note_c: [job.admin_review_note_c, 'Provider settlement recorded by Admin on ' + new Date().toLocaleString('en-IN') + '; payout reference: ' + reference.trim()].filter(Boolean).join('\n') }, 'Provider settlement recorded as paid. This records an external payout; it does not transfer money automatically.');
+  }
+
+  async function approveDriverFinalBillAndRecordConsent() {
+    if (!isAdmin || !isDriverBooking || !driverTripCompletion || job.status_c !== 'Completed') return;
+    const consent = window.confirm('Have you called the customer, explained the final trip bill including all additional charges and the ₹25 LOCAL convenience fee, and received their explicit approval? Choose OK only after the customer agrees.');
+    if (!consent) return;
+    const consentNote = window.prompt('Record how customer consent was obtained (e.g. phone call) and any brief notes:');
+    if (!consentNote || !consentNote.trim()) {
+      toast.error('Record the customer consent method before approving this bill.');
+      return;
+    }
+    const marker = 'LOCAL_DRIVER_TRIP_REVIEW_JSON:';
+    const existing = String(job.admin_review_note_c ?? '').split(marker)[0].trimEnd();
+    const review = { approved: true, customerConsentRecorded: true, reviewedAt: new Date().toISOString(), reviewedBy: displayLookup(user?.Name ?? user?.name ?? user?.emailAddress ?? 'LOCAL Admin'), customerTotal: Number(driverTripCompletion.customerTotal), consentMethodAndNotes: consentNote.trim() };
+    await updateJob({ admin_review_note_c: existing + (existing ? '\\n' : '') + marker + JSON.stringify(review), billing_status_c: 'Payment Due After Delivery', payment_status_c: 'Balance Pending' }, 'Final trip bill approved and customer consent recorded. The final payment is now available to the customer.');
+  }
+
+  async function returnDriverFinalBillForCorrection() {
+    if (!isAdmin || !isDriverBooking || !driverTripCompletion) return;
+    const reason = window.prompt('Explain what the driver must correct in the final trip bill:');
+    if (!reason || !reason.trim()) return;
+    const marker = 'LOCAL_DRIVER_TRIP_REVIEW_JSON:';
+    const existing = String(job.admin_review_note_c ?? '').split(marker)[0].trimEnd();
+    const review = { approved: false, customerConsentRecorded: false, returnedAt: new Date().toISOString(), returnedBy: displayLookup(user?.Name ?? user?.name ?? user?.emailAddress ?? 'LOCAL Admin'), correctionReason: reason.trim() };
+    await updateJob({ admin_review_note_c: existing + (existing ? '\\n' : '') + marker + JSON.stringify(review), status_c: 'In Progress', payment_status_c: 'Balance Pending', billing_status_c: 'Ready for Confirmation' }, 'Final bill returned to the driver for correction. Customer payment remains locked.');
   }
 
   async function adminResolveCompletion() {
@@ -1078,7 +1121,7 @@ export default function JobsDetail() {
           </div>
         )}
 
-        {!isPayAfterCompletion && isCustomer && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid' && (
+        {!isPayAfterCompletion && isCustomer && job.status_c === 'Completed' && job.payment_status_c !== 'Final Payment Paid' && (!isDriverBooking || driverBillApprovedForCustomer) && (
           <div className="mt-7 border-t border-border pt-5">
             <div className="rounded-lg border border-highlight/30 bg-highlight/5 p-4">
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name="CreditCard" size={18} /> Final service payment due</div>
@@ -1097,7 +1140,8 @@ export default function JobsDetail() {
           {isProvider && isCarService && job.status_c === 'Assigned' && inspectionStatus !== 'Confirmed' && <p className="text-sm text-highlight">Complete the vehicle condition report and obtain customer confirmation before starting Car Service.</p>}
           {isProvider && job.status_c === 'Assigned' && !isCarEssentialsDelivery && !job.service_start_otp_verified_at_c && <p className="text-sm text-highlight">Verify the customer’s start-job OTP before starting this service.</p>}
           {isProvider && job.status_c === 'In Progress' && isDriverBooking && <Button onClick={submitDriverTripCompletion} disabled={working || !job.service_start_otp_verified_at_c}><ApperIcon name="CheckCircle2" size={16} /> {working ? 'Submitting…' : 'Submit Trip Completion & Final Bill'}</Button>}
-          {isDriverBooking && job.status_c === 'Completed' && <div className="rounded-md border border-success-border bg-success-muted p-4 text-sm"><p className="font-semibold text-success">Trip completion recorded</p><p className="mt-1">Customer total due: {displayMoney(job.customer_payable_now_c || (Number(job.agreed_price_c || 0) + 25))}, including ₹25 LOCAL convenience fee.</p></div>}
+          {isDriverBooking && job.status_c === 'Completed' && <div className="rounded-md border border-success-border bg-success-muted p-4 text-sm"><p className="font-semibold text-success">Trip completion recorded</p><p className="mt-1">Draft final customer bill: {displayMoney(driverTripCompletion?.customerTotal ?? job.customer_payable_now_c ?? (Number(job.agreed_price_c || 0) + 25))}, including the ₹25 LOCAL convenience fee.</p><p className="mt-1">{driverBillApprovedForCustomer ? 'LOCAL Admin approved the bill and recorded customer consent.' : 'Awaiting LOCAL Admin review. The customer cannot pay until the bill is approved and customer consent is recorded.'}</p></div>}
+          {isAdmin && isDriverBooking && job.status_c === 'Completed' && driverTripCompletion && !driverBillApprovedForCustomer && <div className="mt-4 rounded-lg border border-highlight/40 bg-highlight/5 p-4"><h3 className="font-heading text-lg font-semibold">Driver trip bill — Admin review</h3><div className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><p>Trip duration: <strong>{driverTripCompletion.duration}</strong></p><p>Distance: <strong>{driverTripCompletion.distanceKm}</strong></p><p>Approved base quotation: <strong>{displayMoney(Number(job.original_provider_quote_c ?? 0))}</strong></p><p>Night-halt charges: <strong>{displayMoney(driverTripCompletion.nightHaltAmount)}</strong></p><p>Other additional charges: <strong>{displayMoney(driverTripCompletion.otherApprovedCharges)}</strong></p><p>Service subtotal: <strong>{displayMoney(driverTripCompletion.serviceAmount)}</strong></p><p>LOCAL convenience fee: <strong>{displayMoney(25)}</strong></p><p className="text-base">Final customer bill: <strong>{displayMoney(driverTripCompletion.customerTotal)}</strong></p></div><p className="mt-3 text-sm text-muted-foreground">Call the customer, explain the bill and obtain explicit consent before approving. Approval and consent method are recorded on this job.</p><div className="mt-3 flex flex-wrap gap-2"><Button onClick={approveDriverFinalBillAndRecordConsent} disabled={working}><ApperIcon name="CheckCircle2" size={16} /> Approve & Record Customer Consent</Button><Button variant="outline" onClick={returnDriverFinalBillForCorrection} disabled={working}>Return to Driver for Correction</Button></div></div>}
           {isProvider && job.status_c === 'In Progress' && !isDriverBooking && <Button onClick={() => setStatus('Completed')} disabled={working}><ApperIcon name="CheckCircle2" size={16} /> Mark completed</Button>}
           {(isProvider || isCustomer || isAdmin) && ['Assigned', 'In Progress'].includes(job.status_c) && <Button variant="outline" onClick={() => setStatus('Cancelled')} disabled={working}>Cancel job</Button>}
           {isAdmin && job.status_c === 'Completed' && <Button variant="outline" onClick={() => setStatus('In Progress')} disabled={working}>Reopen job</Button>}
