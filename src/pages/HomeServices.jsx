@@ -1,38 +1,283 @@
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { sdk } from '@/services/sdk';
+import { useFetch } from '@/hooks/useFetch';
 import ApperIcon from '@/components/ApperIcon';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
 import { getLanguage, tr } from '@/services/i18n';
 
-const PANDITG_LOGO = "data:image/webp;base64,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";
+const { eq } = window.ApperSDK.CoreSDK;
 
-const homeServices = [
-  { icon: 'Snowflake', label: 'AC Technician', href: '/customer/home-services/ac-technician' },
-  { icon: 'Zap', label: 'Electrician' },
-  { icon: 'Droplets', label: 'Plumber' },
-  { icon: 'Hammer', label: 'Carpenter' },
-  { icon: 'Wrench', label: 'Appliance Repair' },
-  { icon: 'Waves', label: 'RO / Water Purifier' },
-  { icon: 'Sparkles', label: 'Home Cleaning' },
-  { icon: 'Paintbrush', label: 'Painter' },
-  { icon: 'Bug', label: 'Pest Control' },
-  { icon: 'KeyRound', label: 'Locksmith' },
+const APPLIANCES = [
+  'Geyser',
+  'RO Purifier',
+  'Fridge',
+  'Washing Machine',
+  'BLDC Fan',
+  'Mixer Grinder',
+  'Microwave & OTG',
+  'Chimney',
+  'Oil Heater & Blowers',
+  'Press',
+  'Cooler',
+  'LED Light',
+  'Inverter',
 ];
 
-export const route = { path: '/customer/home-services', layout: 'public', access: 'public' };
+const SERVICES = [
+  { id: 'tax', title: 'GST & Tax Filing', subtitle: 'Filing and consultation', icon: 'ReceiptText', capability: 'GST & Tax Filing' },
+  { id: 'computer', title: 'Computer Services', subtitle: 'Desktop & Laptop · Installation and service', icon: 'MonitorCog', capability: 'Computer Services' },
+  { id: 'ac', title: 'AC Technician', subtitle: 'Window & Split AC · Installation and service', icon: 'Snowflake', capability: 'AC Technician — Split & Window AC' },
+];
+
+export const route = {
+  path: '/customer/home-services',
+  layout: 'owner',
+  access: "profile === 'Customer_c'",
+};
 
 export default function HomeServices() {
-  const language = getLanguage();
+  const navigate = useNavigate();
+  const user = useSelector((state) => state.user.user);
+  const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
+  const [selectedAppliances, setSelectedAppliances] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittingService, setSubmittingService] = useState('');
+
+  const { data: customer } = useFetch(
+    async () => {
+      if (!email) return null;
+      const result = await sdk.table('customer_profiles_c')
+        .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c'])
+        .page(1, 1000)
+        .fetch();
+      if (!result.success) throw new Error(result.message);
+      return (result.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
+    },
+    [email],
+  );
+
+  const { data: homeCategory } = useFetch(
+    async () => {
+      const result = await sdk.table('service_categories_c')
+        .select(['Id', 'Name', 'status_c'])
+        .where(eq('Name', 'Home Services'))
+        .page(1, 10)
+        .fetch();
+      if (!result.success) throw new Error(result.message);
+      return (result.data ?? []).find((item) => !item.status_c || item.status_c === 'Active') ?? null;
+    },
+    [],
+  );
+
+  const { data: capabilities } = useFetch(
+    async () => {
+      const result = await sdk.table('service_capabilities_c')
+        .select(['Id', 'Name', 'vehicle_type_c', 'status_c'])
+        .page(1, 200)
+        .fetch();
+      if (!result.success) throw new Error(result.message);
+      return result.data ?? [];
+    },
+    [],
+  );
+
+  const selectedSummary = useMemo(() => selectedAppliances.join(', '), [selectedAppliances]);
+
+  function toggleAppliance(name) {
+    setSelectedAppliances((current) => (
+      current.includes(name)
+        ? current.filter((item) => item !== name)
+        : [...current, name]
+    ));
+  }
+
+  async function requestCallback(service) {
+    if (submitting) return;
+    if (!customer?.Id) {
+      toast.error('Your customer profile could not be matched. Please complete your profile first.');
+      return;
+    }
+    if (!homeCategory?.Id) {
+      toast.error('Home Services is not configured yet. Please contact LOCAL Customer Care.');
+      return;
+    }
+    if (!String(customer.location_c ?? '').trim()) {
+      toast.error('Please add your service location to your customer profile before requesting a callback.');
+      navigate('/customer/profile');
+      return;
+    }
+    if (service.id === 'appliances' && selectedAppliances.length === 0) {
+      toast.error('Select at least one appliance.');
+      return;
+    }
+
+    const serviceName = service.id === 'appliances' ? 'Home Appliances' : service.title;
+    const capabilityName = service.capability || '';
+    const capability = (capabilities ?? []).find((item) => (
+      String(item.Name ?? '').trim().toLowerCase() === capabilityName.toLowerCase()
+      && (!item.status_c || item.status_c === 'Active')
+    ));
+
+    const requestDetails = {
+      version: 1,
+      type: 'HOME_SERVICE_CALLBACK',
+      service: serviceName,
+      selectedAppliances: service.id === 'appliances' ? selectedAppliances : [],
+      callbackRequested: true,
+      customerCareWorkflow: ['New', 'Contacted', 'Appointment Booked', 'Technician Assigned', 'In Progress', 'Completed', 'Payment Pending', 'Paid'],
+      customerCareNotes: '',
+      callOutcome: 'Not Called',
+      appointmentConfirmed: false,
+      technicianCapabilityCheckRequired: true,
+      paymentStatus: 'Not Due',
+    };
+
+    setSubmitting(true);
+    setSubmittingService(service.id);
+    try {
+      const result = await sdk.table('service_requests_c').create({
+        Name: service.id === 'appliances' ? 'Home Appliances • ' + selectedAppliances.join(', ') : service.title,
+        customer_c: customer.Id,
+        service_category_c: homeCategory.Id,
+        ...(capability?.Id ? { required_capability_c: capability.Id } : {}),
+        problem_description_c: 'LOCAL_HOME_SERVICE_CALLBACK_JSON:' + JSON.stringify(requestDetails),
+        location_c: String(customer.location_c).trim(),
+        service_area_c: 'Prayagraj',
+        status_c: 'Open',
+        preferred_time_c: 'ASAP',
+        requested_at_c: new Date().toISOString(),
+        service_mode_c: 'Normal',
+        pricing_mode_c: 'Provider Quote',
+        pricing_mode_description_c: 'Callback request. LOCAL Customer Care calls the customer, records requirements, books an appointment, assigns a technician with matching capabilities, confirms completion, and records payment.',
+      });
+
+      if (!result.data?.length) {
+        toast.error(result.messages?.[0] || 'Your callback request could not be created. Please try again.');
+        return;
+      }
+
+      toast.success('Callback requested. LOCAL Customer Care will contact you.');
+      setSelectedAppliances([]);
+      navigate('/requests/' + result.data[0].Id);
+    } catch (error) {
+      toast.error(error.message || 'Your callback request could not be created. Please try again.');
+    } finally {
+      setSubmitting(false);
+      setSubmittingService('');
+    }
+  }
+
+  function renderCallbackButton(service) {
+    return (
+      <Button
+        type="button"
+        className="mt-4 min-h-11 w-full"
+        onClick={() => requestCallback(service)}
+        disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
+      >
+        <ApperIcon name="PhoneCall" size={16} />
+        {submittingService === service.id ? 'Requesting callback…' : 'Request a Call Back'}
+      </Button>
+    );
+  }
+
   return (
-    <div className="min-h-svh bg-[#f7f9fc] text-[#102c4d]">
-      <main className="mx-auto max-w-5xl px-5 py-6 sm:px-8 sm:py-10">
-        <div className="mb-6 flex justify-start"><Link to="/" aria-label={tr('Back to Home', language)} className="flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white text-[#102c4d] shadow-sm transition hover:border-[#102c4d] hover:bg-slate-50"><ApperIcon name="ArrowLeft" size={19} /></Link></div>
-        <div className="text-center"><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{tr('Home Services', language)}</p><h1 className="mt-3 text-3xl font-black tracking-tight text-[#102c4d] sm:text-4xl">{tr('Choose a Service', language)}</h1><p className="mx-auto mt-3 max-w-xl text-sm text-slate-600">Choose a home service to find suitable nearby help.</p></div>
-        <div className="mx-auto mt-10 grid max-w-4xl grid-cols-2 items-start gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {homeServices.map((service) => {
-            const content = service.featured ? <img src={PANDITG_LOGO} alt="PanditG On Call" loading="lazy" decoding="async" className="mx-auto block h-auto w-full max-w-[190px] object-contain" /> : <><div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#102c4d] text-white"><ApperIcon name={service.icon} size={24} /></div><div className="mt-4 text-sm font-extrabold leading-tight text-[#102c4d]">{tr(service.label, language)}</div>{service.href ? <div className="mt-3 text-xs font-semibold text-teal-700">Get LOCAL Help <ApperIcon name="ArrowUpRight" size={13} className="inline" /></div> : <div className="mt-3 text-xs font-medium text-slate-400">{tr("Coming Soon", language)}</div>}</>;
-            const classes = 'group overflow-hidden rounded-2xl border bg-white p-2 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ' + (service.featured ? 'border-amber-300 shadow-[0_5px_18px_rgba(180,83,9,0.10)] hover:border-amber-500' : 'border-slate-200 hover:border-teal-600');
-            return service.href ? <Link key={service.label} to={service.href} className={classes}>{content}</Link> : <div key={service.label} aria-disabled="true" className={classes + ' opacity-70'}>{content}</div>;
-          })}
+    <div className="min-h-svh bg-background text-foreground">
+      <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
+        <div className="flex items-center justify-between gap-3">
+          <Button type="button" variant="outline" onClick={() => navigate('/')}>
+            <ApperIcon name="ArrowLeft" size={17} />
+            Back to LOCAL
+          </Button>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">LOCAL · Home Service</span>
         </div>
+
+        <header className="max-w-2xl space-y-2">
+          <p className="text-sm font-semibold text-primary">Local needs. Local solutions.</p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">What service do you need?</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Choose a service and request a callback. Our Customer Care team will understand the details and arrange the right help.
+          </p>
+        </header>
+
+        <section className="grid gap-4 md:grid-cols-2" aria-label="Home service categories">
+          {SERVICES.map((service, index) => (
+            <Card key={service.id} className="flex h-full flex-col rounded-xl border-border p-4 shadow-sm sm:p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <ApperIcon name={service.icon} size={27} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">0{index + 1}</p>
+                  <h2 className="mt-1 text-lg font-semibold">{service.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{service.subtitle}</p>
+                </div>
+              </div>
+              <div className="mt-auto">{renderCallbackButton(service)}</div>
+            </Card>
+          ))}
+
+          <Card className="rounded-xl border-border p-4 shadow-sm sm:p-5">
+            <div className="flex items-start gap-4">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ApperIcon name="HousePlug" size={27} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">04</p>
+                <h2 className="mt-1 text-lg font-semibold">Home Appliances</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Select one or more appliances that need attention.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {APPLIANCES.map((appliance) => {
+                const selected = selectedAppliances.includes(appliance);
+                return (
+                  <button
+                    key={appliance}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => toggleAppliance(appliance)}
+                    className={'flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' + (
+                      selected
+                        ? 'border-primary bg-primary/10 font-semibold text-foreground'
+                        : 'border-border bg-background hover:border-primary/50 hover:bg-accent'
+                    )}
+                  >
+                    <ApperIcon name={selected ? 'CheckCircle2' : 'Circle'} size={16} className={selected ? 'shrink-0 text-primary' : 'shrink-0 text-muted-foreground'} />
+                    <span className="leading-tight">{appliance}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedAppliances.length > 0 && (
+              <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm">
+                <span className="font-semibold">{selectedAppliances.length} selected:</span> {selectedSummary}
+              </p>
+            )}
+            {renderCallbackButton({ id: 'appliances' })}
+          </Card>
+        </section>
+
+        <section className="rounded-xl border border-border bg-muted/40 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <ApperIcon name="Headset" size={22} className="mt-0.5 shrink-0 text-primary" />
+            <div>
+              <h2 className="font-semibold">What happens next?</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Request received → Customer Care calls you → appointment booked → suitable technician assigned → work completed → payment recorded.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                No detailed form is needed now. Please discuss the problem and appointment time with Customer Care on the call.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
