@@ -393,16 +393,14 @@ export default function ServiceProviderProfile() {
           Name: file.Name ?? file.name ?? 'Provider selfie',
           Type: file.Type ?? file.type ?? 'image/jpeg',
           Size: file.Size ?? file.size ?? 0,
-          url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
-          previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
+          url: /^https?:\/\//i.test(String(file.url ?? file.Url ?? '')) ? String(file.url ?? file.Url) : null,
         }))),
         provider_documents_c: JSON.stringify(Object.fromEntries(Object.entries(documents).map(([key, files]) => [key, (files ?? []).map((file) => ({
           Id: file.Id,
           Name: file.Name ?? file.name ?? 'Uploaded document',
           Type: file.Type ?? file.type ?? 'application/octet-stream',
           Size: file.Size ?? file.size ?? 0,
-          url: file.url ?? file.Url ?? file.previewUrl ?? file.preview_url ?? null,
-          previewDataUrl: file.previewDataUrl ?? file.preview_data_url ?? null,
+          url: /^https?:\/\//i.test(String(file.url ?? file.Url ?? '')) ? String(file.url ?? file.Url) : null,
         }))]))),
       };
       // A browser-local demo application is not proof that a database row exists.
