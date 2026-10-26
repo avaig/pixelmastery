@@ -704,16 +704,8 @@ export default function CustomerRequestStart() {
   }
 
   async function createRequest() {
-    if (isProfessionalDriverService && (!driverPickupPoint || !driverDropoffPoint)) {
-      toast.error('Please confirm both pickup and drop-off locations before sending your driver request.');
-      return;
-    }
     if (isCarFlatPuncture && !punctureDispatchConsent) {
       toast.error('Please accept the puncture pricing and cancellation policy before dispatch.');
-      return;
-    }
-    if (isProfessionalDriverService && !driverDisclaimerAccepted) {
-      toast.error('Please read and accept the Safety & Liability Disclaimer before continuing.');
       return;
     }
     if (!customer?.Id) {
@@ -742,11 +734,11 @@ export default function CustomerRequestStart() {
       toast.error('Please select a Car Service package and vehicle type.');
       return;
     }
-    if (!location) {
+    if (!isProfessionalDriverService && !location) {
       toast.error(tr('Please confirm your location first.', language));
       return;
     }
-    if (location.serviceable === false) {
+    if (!isProfessionalDriverService && location?.serviceable === false) {
       toast.error('LOCAL bookings are not available at this location yet. Please choose a service location within the current Naini/Prayagraj coverage area.');
       return;
     }
@@ -754,7 +746,7 @@ export default function CustomerRequestStart() {
       toast.error(tr('Please describe the problem before continuing.', language));
       return;
     }
-    if (serviceTiming === 'Scheduled') {
+    if (!isProfessionalDriverService && serviceTiming === 'Scheduled') {
       const selectedDate = new Date(scheduledAt);
       if (!scheduledAt || Number.isNaN(selectedDate.getTime()) || selectedDate.getTime() <= Date.now()) {
         toast.error('Choose a future date and time for the scheduled service.');
@@ -770,7 +762,7 @@ export default function CustomerRequestStart() {
         service_category_c: category.Id,
         required_capability_c: requiredCapability.Id,
         problem_description_c: (requestedService
-          ? (isCarWash ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + '; LOCAL Platform Fee: ₹' + CAR_WASH_PLATFORM_FEE + ' (once per booking)' + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Service subtotal: ₹' + washCartSummary.subtotal.toLocaleString('en-IN') + '. Customer menu estimate including platform fee' + (includePickupDrop ? ' and indicative Pickup & Drop' : '') + ': ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. LOCAL Platform Fee: ₹' + CAR_SERVICE_PLATFORM_FEE + ' (once per booking). Indicative total including platform fee: ₹' + (Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : isBikeCareRequest ? requestedService + '. Customer requested a callback from LOCAL Customer Care. No bike model details or bidding are required. Confirm availability and the full service price, including the ₹25 LOCAL Platform Fee, with the customer before confirming payment.' : requestedService) + (vehicle === 'bike' ? '.' : ' for their car.')
+          ? (isProfessionalDriverService ? 'Customer requested a driver. LOCAL Customer Care must call the customer to understand trip requirements and share a quote for approval before assigning a driver.' : isCarWash ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + '; LOCAL Platform Fee: ₹' + CAR_WASH_PLATFORM_FEE + ' (once per booking)' + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Service subtotal: ₹' + washCartSummary.subtotal.toLocaleString('en-IN') + '. Customer menu estimate including platform fee' + (includePickupDrop ? ' and indicative Pickup & Drop' : '') + ': ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. LOCAL Platform Fee: ₹' + CAR_SERVICE_PLATFORM_FEE + ' (once per booking). Indicative total including platform fee: ₹' + (Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : isBikeCareRequest ? requestedService + '. Customer requested a callback from LOCAL Customer Care. No bike model details or bidding are required. Confirm availability and the full service price, including the ₹25 LOCAL Platform Fee, with the customer before confirming payment.' : requestedService) + (vehicle === 'bike' ? '.' : ' for their car.')
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isProfessionalDriverService ? '\\nLOCAL_DRIVER_ROUTE_JSON:' + JSON.stringify({ pickup: driverPickupPoint, dropoff: driverDropoffPoint, tripType: driverTripType, travelType: driverTravelType, stops: driverStops, quoteWorkflow: 'Customer Care reviews route and trip details, sends quote for customer approval, and assigns a driver only after customer approval.' }) : '') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
@@ -1168,52 +1160,15 @@ export default function CustomerRequestStart() {
             </section>
           )}
           {isProfessionalDriverService && (
-            <>
             <section className="mt-6 rounded-xl border-2 border-primary/25 bg-background p-4 sm:p-5" aria-labelledby="driver-route-title">
               <div className="flex items-start gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="Route" size={23} /></div>
-                <div><h2 id="driver-route-title" className="text-lg font-extrabold">Where should your driver go?</h2><p className="mt-1 text-sm text-muted-foreground">Choose pickup and drop-off like a ride-booking app. LOCAL Customer Care will review your route and send a quote before assigning a driver.</p></div>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div><label htmlFor="driver-travel-type" className="text-sm font-semibold">Journey</label><select id="driver-travel-type" value={driverTravelType} onChange={(event) => setDriverTravelType(event.target.value)} className="mt-1.5 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"><option>Within city</option><option>Outstation</option></select></div>
-                <div><label htmlFor="driver-trip-type" className="text-sm font-semibold">Trip type</label><select id="driver-trip-type" value={driverTripType} onChange={(event) => setDriverTripType(event.target.value)} className="mt-1.5 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"><option>One-way</option><option>Round trip</option></select></div>
-              </div>
-              <div className="mt-4 space-y-4">
-                <div className="rounded-xl border p-3 sm:p-4">
-                  <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"><ApperIcon name="CircleDot" size={15} /></span><label htmlFor="driver-pickup-address" className="font-semibold">Pickup location</label></div>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input id="driver-pickup-address" value={driverPickupAddress} onChange={(event) => { setDriverPickupAddress(event.target.value); setDriverPickupPoint(null); }} placeholder="Enter pickup address or locality" autoComplete="street-address" /><Button type="button" variant="outline" className="shrink-0" onClick={() => resolveDriverAddress(driverPickupAddress, 'pickup')} disabled={driverLocationBusy !== '' || driverPickupAddress.trim().length < 3}>{driverLocationBusy === 'pickup' ? 'Searching…' : 'Find address'}</Button></div>
-                  <Button type="button" variant="ghost" className="mt-1 px-1" onClick={useDriverPickupCurrentLocation} disabled={driverLocationBusy !== ''}><ApperIcon name="LocateFixed" size={16} />{driverLocationBusy === 'gps' ? 'Getting current location…' : 'Use my current location'}</Button>
-                  {driverPickupPoint && <p className="mt-1 flex items-start gap-1.5 text-xs font-medium text-emerald-700"><ApperIcon name="CheckCircle2" size={14} className="mt-0.5 shrink-0" />Confirmed: {driverPickupPoint.text} ({driverPickupPoint.latitude.toFixed(5)}, {driverPickupPoint.longitude.toFixed(5)})</p>}
-                </div>
-                <div className="rounded-xl border p-3 sm:p-4">
-                  <div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-full bg-rose-100 text-rose-800"><ApperIcon name="MapPin" size={16} /></span><label htmlFor="driver-dropoff-address" className="font-semibold">Drop-off location</label></div>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input id="driver-dropoff-address" value={driverDropoffAddress} onChange={(event) => { setDriverDropoffAddress(event.target.value); setDriverDropoffPoint(null); }} placeholder="Enter destination address or locality" autoComplete="street-address" /><Button type="button" variant="outline" className="shrink-0" onClick={() => resolveDriverAddress(driverDropoffAddress, 'dropoff')} disabled={driverLocationBusy !== '' || driverDropoffAddress.trim().length < 3}>{driverLocationBusy === 'dropoff' ? 'Searching…' : 'Find address'}</Button></div>
-                  {driverDropoffPoint && <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-emerald-700"><ApperIcon name="CheckCircle2" size={14} className="mt-0.5 shrink-0" />Confirmed: {driverDropoffPoint.text} ({driverDropoffPoint.latitude.toFixed(5)}, {driverDropoffPoint.longitude.toFixed(5)})</p>}
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ApperIcon name="PhoneCall" size={23} /></div>
+                <div>
+                  <h2 id="driver-route-title" className="text-lg font-extrabold">Need a Driver?</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Simply send your request. LOCAL Customer Care will call you to understand your journey, timing and other requirements, then share a clear quote for your approval. We will assign a driver only after you approve the quote.</p>
                 </div>
               </div>
-              <div className="mt-4 rounded-xl border border-dashed p-3 sm:p-4">
-                <div className="flex items-center justify-between gap-2"><div><p className="font-semibold">Stops along the way</p><p className="text-xs text-muted-foreground">Optional — add places the driver should visit.</p></div><ApperIcon name="Signpost" size={20} className="text-muted-foreground" /></div>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input value={driverStopDraft} onChange={(event) => setDriverStopDraft(event.target.value)} placeholder="Add a stop (e.g. railway station)" /><Button type="button" variant="outline" disabled={!driverStopDraft.trim()} onClick={() => { setDriverStops((current) => [...current, driverStopDraft.trim()]); setDriverStopDraft(''); }}>Add stop</Button></div>
-                {driverStops.length > 0 && <ol className="mt-3 space-y-2">{driverStops.map((stop, index) => <li key={index} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm"><span>{index + 1}. {stop}</span><Button type="button" variant="ghost" size="sm" onClick={() => setDriverStops((current) => current.filter((_, stopIndex) => stopIndex !== index))} aria-label={'Remove stop ' + stop}><ApperIcon name="X" size={15} />Remove</Button></li>)}</ol>}
-              </div>
-              {driverPickupPoint && driverDropoffPoint && <div className="mt-4 overflow-hidden rounded-xl border"><div className="flex items-center justify-between gap-3 p-3"><div><p className="font-semibold">Route preview</p><p className="text-xs text-muted-foreground">Map preview is provided by OpenStreetMap. Customer Care confirms the final route and charges.</p></div><ApperIcon name="Map" size={20} className="text-primary" /></div><iframe title="Pickup location map preview" className="h-48 w-full border-t bg-muted" loading="lazy" src={'https://www.openstreetmap.org/export/embed.html?bbox=' + (Math.min(driverPickupPoint.longitude, driverDropoffPoint.longitude) - 0.015) + '%2C' + (Math.min(driverPickupPoint.latitude, driverDropoffPoint.latitude) - 0.015) + '%2C' + (Math.max(driverPickupPoint.longitude, driverDropoffPoint.longitude) + 0.015) + '%2C' + (Math.max(driverPickupPoint.latitude, driverDropoffPoint.latitude) + 0.015) + '&layer=mapnik&marker=' + driverPickupPoint.latitude + '%2C' + driverPickupPoint.longitude} /><div className="p-3"><a className="text-sm font-semibold text-primary underline underline-offset-4" href={'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=' + driverPickupPoint.latitude + '%2C' + driverPickupPoint.longitude + '%3B' + driverDropoffPoint.latitude + '%2C' + driverDropoffPoint.longitude} target="_blank" rel="noreferrer">Open pickup-to-drop-off route</a></div></div>}
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">No driver is assigned and no payment is collected at this stage. Tell Customer Care about travel date/time, duration, night halt, waiting time and extra stops during the confirmation call. A quote must be approved by you before a driver is assigned.</p>
             </section>
-            <section className="mt-6 rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4" aria-labelledby="driver-safety-disclaimer-title">
-              <h2 id="driver-safety-disclaimer-title" className="text-base font-bold">Safety &amp; Liability Disclaimer</h2>
-              <div className="mt-3 space-y-3 text-sm leading-relaxed text-foreground">
-                <p>LOCAL connects customers with professional drivers who drive the customer's own vehicle. The customer is responsible for ensuring that the vehicle is roadworthy and has valid insurance applicable to its intended use and the assigned driver.</p>
-                <p>The driver must hold a valid driving licence and comply with applicable traffic laws. LOCAL facilitates the connection and does not guarantee accident-free travel.</p>
-                <p>Any accident, injury, loss or damage will be handled according to applicable law and the relevant insurance policy. The driver and LOCAL are not exempt from liability that the law imposes, including liability arising from their own acts or omissions.</p>
-                <p className="text-xs text-muted-foreground">This disclaimer does not remove any rights or responsibilities that cannot legally be excluded. Please read the full Professional Driver Service terms before booking.</p>
-              </div>
-              <label htmlFor="driver-disclaimer-accept" className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 font-semibold">
-                <input id="driver-disclaimer-accept" type="checkbox" checked={driverDisclaimerAccepted} onChange={(event) => setDriverDisclaimerAccepted(event.target.checked)} className="mt-1 size-4 shrink-0 accent-primary" />
-                <span>I have read and understood the Safety &amp; Liability Disclaimer and agree to proceed.</span>
-              </label>
-              {!driverDisclaimerAccepted && <p className="mt-2 text-xs font-medium text-amber-700">Required: tick the checkbox to continue with this driver booking.</p>}
-            </section>
-            </>
           )}
           {isInsuranceClaim && (
             <div className="mt-6 rounded-xl border-2 border-primary/20 bg-background p-4">
@@ -1287,9 +1242,9 @@ export default function CustomerRequestStart() {
           {(location || isCarWash || isCarService) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : isCarService ? () => setShowCarServiceQuoteReview(true) : createRequest} disabled={(location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isCarService && !selectedCarServicePackage) || (isProfessionalDriverService && (!driverDisclaimerAccepted || !driverPickupPoint || !driverDropoffPoint)) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : isCarService ? () => setShowCarServiceQuoteReview(true) : createRequest} disabled={(!isProfessionalDriverService && location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !isProfessionalDriverService && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isCarService && !selectedCarServicePackage) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
-                {creating ? tr('Sharing request…', language) : isCarWash ? 'Book My Car Wash' : isCarService ? 'Book Your Car Service' : isBikeCareRequest ? 'Submit Request to LOCAL' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
+                {creating ? tr('Sharing request…', language) : isCarWash ? 'Book My Car Wash' : isCarService ? 'Book Your Car Service' : isBikeCareRequest ? 'Submit Request to LOCAL' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : isProfessionalDriverService ? 'Request a Driver' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
               {(isCarWash || isCarService) && (CUSTOMER_CARE_PHONE ? <Button asChild type="button" variant="outline" className="mt-2 w-full"><a href={'tel:' + CUSTOMER_CARE_PHONE}><ApperIcon name="Phone" size={17} /> Call Customer Care</a></Button> : <Button type="button" variant="outline" className="mt-2 w-full" disabled title="Customer Care phone number has not been configured"><ApperIcon name="Phone" size={17} /> Call Customer Care</Button>)}
               {(isCarWash || isCarService) && !location && <p className="mt-2 text-center text-xs text-amber-700">Your saved location isn’t available. Please update your location in your profile before booking.</p>}
