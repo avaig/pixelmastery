@@ -82,9 +82,9 @@ export default function VehicleIssueSelect() {
             </div>
           </div>
         </div>
-        <a href="tel:9235559696" className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-center text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:text-lg">
+        <a href="tel:9235559696" aria-label={tr('Call LOCAL Support', language)} className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-center text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:text-lg">
           <ApperIcon name="PhoneCall" size={22} />
-          <span>{tr('CALL LOCAL SUPPORT', language)} · 9235559696</span>
+          <span>{tr('CALL LOCAL SUPPORT', language)}</span>
         </a>
         <p className="mt-3 text-center text-sm font-semibold leading-snug text-slate-700 sm:text-base">{tr('One call. Help on the way.', language)}</p>
       </Card>
