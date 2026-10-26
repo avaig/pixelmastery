@@ -650,10 +650,11 @@ export default function CentralDispatch() {
         const currentQuote = isCarEssentials ? readCarEssentialsQuote(acceptedAssignment.message_c) : isRsaQuote ? readRsaQuote(acceptedAssignment.message_c) : null;
         const updateExistingJob = await sdk.table('jobs_c').update({
           Id: existingJob.Id,
-          agreed_price_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.agreed_price_c,
-          original_provider_quote_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : (isCarEssentials || isRsaQuote) ? Number(currentQuote.total) : existingJob.original_provider_quote_c,
-          remaining_amount_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : undefined,
-          customer_payable_now_c: isCarWashRequest ? Number(approvedCarWashQuote.total) : undefined,
+          agreed_price_c: resolvedServicePrice,
+          original_provider_quote_c: resolvedServicePrice,
+          remaining_amount_c: resolvedServicePrice,
+          local_service_fee_amount_c: 25,
+          customer_payable_now_c: resolvedServicePrice + 25,
           billing_status_c: 'Booking Confirmed — Payment Due After Delivery',
           service_start_otp_c: isCarEssentials ? null : existingJob.service_start_otp_c,
           admin_review_note_c: isCarEssentials
