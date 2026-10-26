@@ -1151,17 +1151,6 @@ export default function CentralDispatch() {
   return (
     <div id="central-dispatch-page-top" className="min-w-0 space-y-5 text-slate-900 scroll-mt-20">
       <PageHeader eyebrow="" title="Central Dispatch" description="Manage and assign customer service requests" />
-      {data && (() => {
-        const pendingDriverBills = jobs.filter((job) => {
-          const label = String(job.Name ?? '') + ' ' + String(job.request_c?.Name ?? '');
-          if (!/car driver on demand|driver on demand|hourly driver|full[- ]day driver|outstation driver|professional car driver/i.test(label) || job.status_c !== 'Completed') return false;
-          const completion = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:');
-          const review = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_REVIEW_JSON:');
-          return Boolean(completion && review?.approved !== true);
-        });
-        if (!pendingDriverBills.length) return null;
-        return <Card className="border-amber-300 bg-amber-50/60 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="rounded-lg bg-amber-100 p-2 text-amber-800"><ApperIcon name="FileCheck2" size={22} /></div><div className="min-w-0 flex-1"><h2 className="text-lg font-semibold text-slate-900">Driver final bills — awaiting Admin review</h2><p className="mt-1 text-sm text-slate-600">Service Providers have submitted trip details. Open each bill to review the amount, call the customer, record consent, and release the payment option.</p><div className="mt-4 space-y-3">{pendingDriverBills.map((job) => { const completion = readDriverTripMetadata(job.admin_review_note_c, 'LOCAL_DRIVER_TRIP_COMPLETION_JSON:'); return <div key={job.Id} className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-semibold text-slate-900">{job.Name || 'Driver on Demand trip'}</p><p className="mt-1 text-sm text-slate-600">Trip duration: {completion.duration || '—'} · Distance: {completion.distanceKm || '—'}</p><p className="mt-1 text-base font-bold text-slate-900">Customer total: ₹{Number(completion.customerTotal ?? 0).toLocaleString('en-IN')}</p><p className="mt-1 text-xs text-amber-800">Submitted {completion.submittedAt ? new Date(completion.submittedAt).toLocaleString('en-IN') : 'for review'}</p></div><Button asChild className="shrink-0"><Link to={'/jobs/' + job.Id}><ApperIcon name="ClipboardCheck" size={16} /> Review bill & share</Link></Button></div>; })}</div></div></div></Card>;
-      })()}
       {loading && !data ? <div className="h-64 animate-pulse rounded-lg border bg-muted" /> : error ? <Card className="p-6"><p className="font-medium">Dispatch data could not be loaded.</p><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={run}>Retry</Button></Card> : selectedRequest ? renderRequestDetail(selectedRequest) : (
         <>
           <div className="mb-5 grid grid-cols-4 gap-2">
