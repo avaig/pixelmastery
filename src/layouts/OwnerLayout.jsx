@@ -40,11 +40,16 @@ export default function OwnerLayout() {
   const [providerAvailability, setProviderAvailability] = useState('Unavailable Today');
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [providerRecordId, setProviderRecordId] = useState(null);
+  const [providerJobsCount, setProviderJobsCount] = useState(null);
   const profileLabel = tr(String(user?.profile ?? '').replace(/_c$/, '') || 'Account', language);
 
   useEffect(() => {
-    if (user?.profile !== 'ServiceProvider_c') return;
+    if (user?.profile !== 'ServiceProvider_c') {
+      setProviderJobsCount(null);
+      return;
+    }
     let active = true;
+    setProviderJobsCount(null);
     (async () => {
       try {
         const email = user?.emailAddress ?? user?.email ?? '';
@@ -57,15 +62,25 @@ export default function OwnerLayout() {
         if (row) {
           setProviderRecordId(row.Id);
           setProviderAvailability(PROVIDER_AVAILABILITY.includes(row.availability_c) ? row.availability_c : 'Unavailable Today');
+          const jobsResult = await sdk.table('jobs_c')
+            .select(['Id'])
+            .where(eq('technician_c', row.Id))
+            .page(1, 1).fetch();
+          if (!active) return;
+          setProviderJobsCount(jobsResult.success ? Number(jobsResult.total ?? jobsResult.data?.length ?? 0) : null);
         } else {
           setProviderRecordId(null);
+          setProviderJobsCount(0);
         }
       } catch {
-        if (active) setProviderRecordId(null);
+        if (active) {
+          setProviderRecordId(null);
+          setProviderJobsCount(null);
+        }
       }
     })();
     return () => { active = false; };
-  }, [user?.profile, user?.emailAddress, user?.email]);
+  }, [user?.profile, user?.emailAddress, user?.email, location.pathname]);
 
   async function changeProviderAvailability(value) {
     if (!PROVIDER_AVAILABILITY.includes(value)) return;
@@ -123,7 +138,7 @@ export default function OwnerLayout() {
               >
                 <ApperIcon name={item.icon ?? 'Circle'} size={17} />
                 <span className="flex-1 truncate">{tr(item.label, language)}</span>
-                {counts[item.to] != null && <span className="rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[11px] text-sidebar-foreground/70">{counts[item.to]}</span>}
+                {(item.to === '/jobs' && user?.profile === 'ServiceProvider_c' ? providerJobsCount : counts[item.to]) != null && <span className="rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[11px] text-sidebar-foreground/70">{item.to === '/jobs' && user?.profile === 'ServiceProvider_c' ? providerJobsCount : counts[item.to]}</span>}
               </NavLink>
             ))}
           </div>
