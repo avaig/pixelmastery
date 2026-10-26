@@ -1058,7 +1058,7 @@ export default function CentralDispatch() {
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
                 </section>;
               })()}
-              {getStructuredServiceDetails(request).type !== 'Car Wash' && <section className="rounded-lg border p-4">
+              {getStructuredServiceDetails(request).type !== 'Car Wash' && !isDriverBookingRequest(request) && <section className="rounded-lg border p-4">
                 <h3 className="font-semibold">Price review</h3>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <span className="text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Detected fixed service total' : 'Inspection / estimate amount'}</span>
