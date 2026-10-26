@@ -961,7 +961,7 @@ export default function CentralDispatch() {
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">Request status and job status are tracked separately. This panel reads the job linked to this service request.</p>
               </section>}
-              {false && <section className="rounded-xl border border-border bg-card p-4 md:p-5">
+              {request.Id === '__removed_service_summary__' && <section className="rounded-xl border border-border bg-card p-4 md:p-5">
                 {(() => { const details = getStructuredServiceDetails(request); return <>
                   <div className="flex items-center gap-3 border-b border-border pb-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><ApperIcon name="ClipboardList" size={18} /></div>
