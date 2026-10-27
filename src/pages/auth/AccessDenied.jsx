@@ -1,12 +1,26 @@
 import { Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/layouts/RootLayout';
 import { APP_CONFIG, AUTH_PROFILES } from '@/config/app.config';
+import { sdk } from '@/services/sdk';
+import { clearUser } from '@/store/userSlice';
 import ApperIcon from '@/components/ApperIcon';
 import AuthLayout from './AuthLayout';
 
 export default function AccessDenied() {
   const { user, isAuthenticated } = useAuth();
+  const dispatch = useDispatch();
+
+  const switchToAdminLogin = async () => {
+    try {
+      await sdk.session.logout();
+    } catch {
+      // Clear local session state even if the provider session has already expired.
+    }
+    dispatch(clearUser());
+    window.location.replace('/admin/login');
+  };
 
   return (
     <AuthLayout
@@ -40,12 +54,18 @@ export default function AccessDenied() {
           </Button>
         )}
         {isAuthenticated && (
-          <Button asChild className="h-9">
-            <Link to="/">
-              <ApperIcon name="Home" size={16} />
-              Go home
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button type="button" onClick={switchToAdminLogin} className="h-9 w-full">
+              <ApperIcon name="LogIn" size={16} />
+              Switch account / Admin sign in
+            </Button>
+            <Button asChild variant="outline" className="h-9">
+              <Link to="/">
+                <ApperIcon name="Home" size={16} />
+                Go home
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
     </AuthLayout>
