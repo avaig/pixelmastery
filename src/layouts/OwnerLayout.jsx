@@ -190,8 +190,8 @@ export default function OwnerLayout() {
             <div className="lg:hidden"><UserMenu user={user} initials={initials} displayName={displayName} logout={logout} /></div>
           </div>
         </header>
-        {mobileOpen && <div className="border-b border-border bg-sidebar p-3 lg:hidden">{navigation}</div>}
-        <main className="min-w-0 p-4 md:p-6 lg:p-8">
+        {mobileOpen && <div className="max-h-[calc(100svh-4.5rem)] overflow-y-auto border-b border-border bg-sidebar p-3 lg:hidden">{navigation}</div>}
+        <main className="min-w-0 px-3 py-4 sm:p-4 md:p-6 lg:p-8">
           <ErrorBoundary><Outlet /></ErrorBoundary>
         </main>
         <button
