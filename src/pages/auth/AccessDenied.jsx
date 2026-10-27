@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/layouts/RootLayout';
 import { APP_CONFIG, AUTH_PROFILES } from '@/config/app.config';
-import { sdk } from '@/services/sdk';
+
 import { clearUser } from '@/store/userSlice';
 import ApperIcon from '@/components/ApperIcon';
 import AuthLayout from './AuthLayout';
