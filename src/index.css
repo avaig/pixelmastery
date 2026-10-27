@@ -93,3 +93,77 @@
 ::-webkit-scrollbar-track { background: var(--muted); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ring); }
+
+/* Shared responsive safeguards for phone-sized screens across every LOCAL route. */
+html,
+body,
+#root {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Long customer notes, addresses and identifiers should wrap instead of widening a page. */
+main,
+main > *,
+main [class*="grid"],
+main [class*="flex"] {
+  min-width: 0;
+}
+
+main :where(p, h1, h2, h3, h4, label, td, th, li) {
+  overflow-wrap: anywhere;
+}
+
+/* Wide admin data tables remain usable with horizontal scrolling instead of breaking the viewport. */
+main table {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  main {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  main table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+}
