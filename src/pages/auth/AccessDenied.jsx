@@ -12,14 +12,11 @@ export default function AccessDenied() {
   const { user, isAuthenticated } = useAuth();
   const dispatch = useDispatch();
 
-  const switchToAdminLogin = async () => {
-    try {
-      await sdk.session.logout();
-    } catch {
-      // Clear local session state even if the provider session has already expired.
-    }
+  const switchToAdminLogin = () => {
+    // Admin login is a public route. Navigate there directly instead of invoking logout,
+    // which can race the SDK's session restore and send the user back to Access Denied.
     dispatch(clearUser());
-    window.location.replace('/admin/login');
+    window.location.href = '/admin/login';
   };
 
   return (
