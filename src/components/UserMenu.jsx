@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/layouts/RootLayout';
 import ThemeToggle from '@/components/ThemeToggle';
+import { getManualInstallHint, hasInstallPrompt, promptInstall, subscribeInstall } from '@/services/pwa';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -32,6 +34,10 @@ export default function UserMenu({ user: userProp, initials: initialsProp, displ
     displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() ||
     'U';
   const profileLabel = String(user?.profile ?? '').replace(/_c$/, '');
+  const [canInstall, setCanInstall] = useState(() => hasInstallPrompt());
+  const iosHint = getManualInstallHint();
+
+  useEffect(() => subscribeInstall(() => setCanInstall(hasInstallPrompt())), []);
 
   return (
     <DropdownMenu>
@@ -57,6 +63,15 @@ export default function UserMenu({ user: userProp, initials: initialsProp, displ
         <div className="px-2 pb-2">
           <ThemeToggle className="w-full justify-between" />
         </div>
+        {(canInstall || iosHint) && (
+          <>
+            {canInstall && <DropdownMenuItem onClick={promptInstall}>Install LOCAL app</DropdownMenuItem>}
+            {iosHint && (
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{iosHint}</DropdownMenuLabel>
+            )}
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/change-password">Change password</Link>
