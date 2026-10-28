@@ -158,7 +158,7 @@ export default function Home() {
   const [language, setLanguageState] = useState(getLanguage);
   const [installAvailable, setInstallAvailable] = useState(hasInstallPrompt);
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
-  const [appInstalled, setAppInstalled] = useState(false);
+
   const [helpText, setHelpText] = useState('');
   const [helpResult, setHelpResult] = useState(null);
   const [isListening, setIsListening] = useState(false);
@@ -170,7 +170,7 @@ export default function Home() {
     const updateInstallState = () => {
       const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
       setInstallAvailable(hasInstallPrompt());
-      setAppInstalled(standalone);
+
     };
     updateInstallState();
     const unsubscribe = subscribeInstall(updateInstallState);
@@ -421,8 +421,7 @@ export default function Home() {
               {tr('Services At Your Doorstep', language)}
             </p>
 
-            {!appInstalled && (
-              <div className="mx-auto mt-4 max-w-md">
+            <div className="mx-auto mt-4 max-w-md">
                 <button
                   type="button"
                   onClick={handleInstallClick}
@@ -455,8 +454,7 @@ export default function Home() {
                 {installAvailable && !installHelpOpen && (
                   <p className="mt-2 text-xs font-semibold text-slate-500">{tr('Install for quicker access from your home screen', language)}</p>
                 )}
-              </div>
-            )}
+            </div>
 
             <div id="services" className="mx-auto mt-5 max-w-3xl sm:mt-8">
               <div className="rounded-3xl border border-slate-200 bg-white p-3 text-left shadow-lg shadow-slate-200/50 sm:p-4">
