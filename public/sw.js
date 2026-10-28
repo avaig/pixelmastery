@@ -1,5 +1,5 @@
-const CACHE = 'local-static-v1';
-const PRECACHE = ['/manifest.webmanifest', '/favicon.ico', '/local-logo.svg'];
+const CACHE = 'local-static-v2';
+const PRECACHE = ['/favicon.ico', '/local-logo.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -19,6 +19,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.pathname === '/manifest.webmanifest') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
   const isStaticAsset = PRECACHE.includes(url.pathname) || url.pathname.startsWith('/icons/');
   if (!isStaticAsset) return;
   event.respondWith(
