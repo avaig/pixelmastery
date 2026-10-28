@@ -41,8 +41,16 @@ export function hasInstallPrompt() {
 
 export function getManualInstallHint() {
   if (isStandalone()) return null;
-  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  return isIos ? 'To install, tap Share, then Add to Home Screen.' : null;
+  const userAgent = navigator.userAgent || '';
+  const isIos = /iPad|iPhone|iPod/.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(userAgent);
+  const isChrome = /Chrome|CriOS/i.test(userAgent) && !/Edg|OPR|SamsungBrowser/i.test(userAgent);
+
+  if (isIos) return 'Open this page in Safari, tap Share, then choose Add to Home Screen.';
+  if (isAndroid && isChrome) return 'In Chrome, tap ⋮ (three dots), then choose Install app or Add to Home screen.';
+  if (isAndroid) return 'Open this page in Chrome, tap ⋮ (three dots), then choose Install app or Add to Home screen.';
+  if (isChrome) return 'Look for the Install icon in the address bar, or open Chrome ⋮ and choose Install LOCAL.';
+  return 'Open your browser menu and look for Install app or Add to Home screen. The wording depends on your browser.';
 }
 
 export async function promptInstall() {

@@ -6,6 +6,7 @@ import ApperIcon from '@/components/ApperIcon';
 import { getLanguage, setLanguage, tr } from '@/services/i18n';
 import { sdk } from '@/services/sdk';
 import CustomerLocationGate from '@/components/local/CustomerLocationGate';
+import { getManualInstallHint, hasInstallPrompt, promptInstall, subscribeInstall } from '@/services/pwa';
 
 const LOCAL_LOGO = '/local-logo.svg';
 
@@ -155,12 +156,30 @@ export default function Home() {
   const session = useSelector((state) => state.user.user);
   const { logout } = useAuth();
   const [language, setLanguageState] = useState(getLanguage);
+  const [installAvailable, setInstallAvailable] = useState(hasInstallPrompt);
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
+  const [appInstalled, setAppInstalled] = useState(false);
   const [helpText, setHelpText] = useState('');
   const [helpResult, setHelpResult] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [searchMessage, setSearchMessage] = useState('');
 
   const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+
+  useEffect(() => {
+    const updateInstallState = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      setInstallAvailable(hasInstallPrompt());
+      setAppInstalled(standalone);
+    };
+    updateInstallState();
+    const unsubscribe = subscribeInstall(updateInstallState);
+    window.addEventListener('appinstalled', updateInstallState);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('appinstalled', updateInstallState);
+    };
+  }, []);
 
   useEffect(() => {
     const removeAaravSeedRequests = async () => {
@@ -241,6 +260,15 @@ export default function Home() {
     const result = findHelp(helpText);
     setHelpResult(result);
     setSearchMessage(result ? '' : helpText.trim() ? tr('We could not identify that exact help yet. Try words like “car puncture”, “bike battery”, “petrol finished”, or “ambulance”.', language) : '');
+  }
+
+  async function handleInstallClick() {
+    if (hasInstallPrompt()) {
+      await promptInstall();
+      setInstallAvailable(hasInstallPrompt());
+      return;
+    }
+    setInstallHelpOpen((open) => !open);
   }
 
   function openHelpResult(result = helpResult) {
@@ -392,6 +420,43 @@ export default function Home() {
             <p className="mx-auto mt-3 max-w-2xl px-2 text-base font-semibold tracking-wide text-slate-600 sm:mt-4 sm:text-xl">
               {tr('Services At Your Doorstep', language)}
             </p>
+
+            {!appInstalled && (
+              <div className="mx-auto mt-4 max-w-md">
+                <button
+                  type="button"
+                  onClick={handleInstallClick}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#f4b61a] px-5 py-3 text-sm font-extrabold text-[#102c4d] shadow-md transition hover:-translate-y-0.5 hover:bg-[#ffc52e] focus:outline-none focus:ring-2 focus:ring-[#102c4d] focus:ring-offset-2 sm:text-base"
+                  aria-expanded={installHelpOpen}
+                >
+                  <ApperIcon name="Download" size={20} />
+                  {tr('Install LOCAL App', language)}
+                </button>
+                {installHelpOpen && (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-6 text-[#102c4d] shadow-sm" role="status">
+                    <div className="flex items-start gap-2">
+                      <ApperIcon name="Smartphone" size={20} className="mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-extrabold">{tr('Add LOCAL to your phone', language)}</p>
+                        <p className="mt-1">{getManualInstallHint()}</p>
+                        <p className="mt-2 text-xs font-medium text-slate-600">{tr('If you do not see an install option, open this link in Chrome on Android or Safari on iPhone.', language)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setInstallHelpOpen(false)}
+                        className="rounded-lg p-1 text-slate-600 hover:bg-amber-100"
+                        aria-label={tr('Close installation instructions', language)}
+                      >
+                        <ApperIcon name="X" size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {installAvailable && !installHelpOpen && (
+                  <p className="mt-2 text-xs font-semibold text-slate-500">{tr('Install for quicker access from your home screen', language)}</p>
+                )}
+              </div>
+            )}
 
             <div id="services" className="mx-auto mt-5 max-w-3xl sm:mt-8">
               <div className="rounded-3xl border border-slate-200 bg-white p-3 text-left shadow-lg shadow-slate-200/50 sm:p-4">
