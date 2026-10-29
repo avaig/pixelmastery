@@ -84,7 +84,7 @@ export function getManualInstallHint() {
   const isAndroid = /Android/i.test(userAgent);
   const isChrome = /Chrome|CriOS/i.test(userAgent) && !/Edg|OPR|SamsungBrowser/i.test(userAgent);
 
-  if (isIos) return 'Open this page in Safari, tap Share, then choose Add to Home Screen.';
+  if (isIos) return 'On iPhone or iPad: open LOCAL in Safari (not an in-app browser), tap the Share button (square with an up arrow), scroll down and tap Add to Home Screen, then tap Add. If you do not see it, scroll to the bottom of the Share menu and choose Edit Actions to add it if available.';
   if (isAndroid && isChrome) return 'In Chrome, tap ⋮ (three dots), then choose Install app or Add to Home screen.';
   if (isAndroid) return 'Open this page in Chrome, tap ⋮ (three dots), then choose Install app or Add to Home screen.';
   if (isChrome) return 'Look for the Install icon in the address bar, or open Chrome ⋮ and choose Install LOCAL.';
