@@ -20,16 +20,10 @@ export default function CarDriveOnDemand() {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-2 text-center sm:mb-3">
-        <div className="mx-auto mb-2 flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary sm:mb-2 sm:size-12">
-          <ApperIcon name="CarTaxiFront" size={28} />
-        </div>
+      <div className="mb-1 text-center">
         <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           Car Driver on Demand
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-          Choose a driver service for your own car.
-        </p>
       </div>
 
       <div className="mx-auto max-w-2xl">
