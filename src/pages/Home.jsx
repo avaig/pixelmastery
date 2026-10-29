@@ -548,27 +548,30 @@ export default function Home() {
                   <Link
                     key={option.label}
                     to={customerDestination(option.href)}
-                    className={'group relative flex min-h-[128px] items-center gap-2 rounded-2xl border border-white/15 bg-white p-2.5 pb-12 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-4 sm:p-4 sm:pb-12 ' + (['Roadside Assistance (RSA)', 'Car Care & Assistance'].includes(option.label) ? 'pr-2.5 sm:pr-4' : '')}
+                    className={'group relative flex min-h-[128px] flex-col gap-2 rounded-2xl border border-white/15 bg-white p-2.5 text-left shadow-xl transition hover:-translate-y-1 hover:border-[#f4b61a] sm:min-h-[128px] sm:gap-3 sm:p-4 ' + (['Roadside Assistance (RSA)', 'Car Care & Assistance'].includes(option.label) ? 'pr-2.5 sm:pr-4' : '')}
                   >
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
-                      <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
-                    </div>
-                    <div className={'min-w-0 flex-1 ' + (option.label === 'Roadside Assistance (RSA)' ? 'text-center' : '') + (option.label === 'Home Services' ? ' pb-7' : '')}>
-                      <div className="text-sm font-extrabold leading-snug text-[#102c4d] sm:text-base">
-                        {tr(option.label, language)}
+                    <div className="flex w-full min-w-0 flex-1 items-center gap-2 sm:gap-4">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
+                        <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
                       </div>
-                      {option.label === 'Roadside Assistance (RSA)' && (
-                        <span className="absolute bottom-3 left-2.5 right-2.5 inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-extrabold leading-tight text-emerald-800 shadow-sm sm:bottom-3 sm:left-4 sm:right-auto sm:w-max sm:gap-2 sm:px-3.5 sm:py-1.5 sm:text-sm">
-                          <span className="size-2.5 shrink-0 rounded-full bg-emerald-500" />
-                          {tr('24×7 Available', language)}
-                        </span>
-                      )}
-                      {['Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && (
-                        <span className={'absolute left-2.5 right-2.5 text-center text-xs font-semibold leading-snug text-slate-500 sm:left-4 sm:right-4 sm:text-sm ' + (option.label === 'Home Services' ? 'bottom-5 sm:bottom-5' : 'bottom-3 sm:bottom-4')}>
-                          {tr(option.label === 'Car Care & Assistance' ? 'Wash • Service • Insurance Help' : option.label === 'Bike Care & Assistance' ? 'Quick fixes • Smooth rides' : option.label === 'Car Driver' ? 'A trusted driver, when you need one' : 'AC Service • Electricians • Plumber • Much More', language)}
-                        </span>
-                      )}
+                      <div className={'min-w-0 flex-1 ' + (option.label === 'Roadside Assistance (RSA)' ? 'text-center' : '')}>
+                        <div className="text-sm font-extrabold leading-snug text-[#102c4d] sm:text-base">
+                          {tr(option.label, language)}
+                        </div>
+                      </div>
+                      {!['Roadside Assistance (RSA)', 'Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
                     </div>
+                    {['Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && (
+                      <div className="w-full px-1 text-center text-xs font-semibold leading-snug text-slate-500 sm:text-sm">
+                        {tr(option.label === 'Car Care & Assistance' ? 'Wash • Service • Insurance Help' : option.label === 'Bike Care & Assistance' ? 'Quick fixes • Smooth rides' : option.label === 'Car Driver' ? 'A trusted driver, when you need one' : 'AC Service • Electricians • Plumber • Much More', language)}
+                      </div>
+                    )}
+                    {option.label === 'Roadside Assistance (RSA)' && (
+                      <span className="inline-flex max-w-full items-center justify-center gap-1.5 self-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-extrabold leading-tight text-emerald-800 shadow-sm sm:gap-2 sm:px-3.5 sm:text-sm">
+                        <span className="size-2.5 shrink-0 rounded-full bg-emerald-500" />
+                        {tr('24×7 Available', language)}
+                      </span>
+                    )}
                     {!['Roadside Assistance (RSA)', 'Car Care & Assistance', 'Bike Care & Assistance', 'Car Driver', 'Home Services'].includes(option.label) && <ApperIcon name="ArrowRight" size={19} className="shrink-0 text-[#102c4d]" />}
                   </Link>
                 ))}
