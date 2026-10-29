@@ -136,8 +136,8 @@ export default function CarEssentialsDelivery() {
   }
 
   return (
-    <div className="mx-auto -mt-5 max-w-5xl space-y-3 sm:mt-0 sm:space-y-6">
-      <header className="relative -top-2 mb-2 text-center sm:static sm:mb-0">
+    <div className="mx-auto mt-3 max-w-5xl space-y-3 sm:mt-4 sm:space-y-6">
+      <header className="mb-2 text-center sm:mb-0">
         <div className="mx-auto mb-1 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:mb-3 sm:size-14">
           <ApperIcon name="PackageCheck" size={22} />
         </div>
