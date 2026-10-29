@@ -397,6 +397,41 @@ export default function Home() {
           <div className="absolute -right-20 top-32 h-64 w-64 rounded-full bg-emerald-100/70 blur-3xl pointer-events-none" />
 
           <div className="relative mx-auto max-w-5xl px-4 py-6 text-center sm:px-8 sm:py-16 lg:px-10 lg:py-20">
+            <div className="mx-auto mb-4 max-w-md sm:mb-5">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#f4b61a] px-5 py-3 text-sm font-extrabold text-[#102c4d] shadow-md transition hover:-translate-y-0.5 hover:bg-[#ffc52e] focus:outline-none focus:ring-2 focus:ring-[#102c4d] focus:ring-offset-2 sm:text-base"
+                aria-expanded={installHelpOpen}
+              >
+                <ApperIcon name="Download" size={20} />
+                {tr('Install LOCAL App', language)}
+              </button>
+              {installHelpOpen && (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-6 text-[#102c4d] shadow-sm" role="status">
+                  <div className="flex items-start gap-2">
+                    <ApperIcon name="Smartphone" size={20} className="mt-0.5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-extrabold">{tr('Add LOCAL to your phone', language)}</p>
+                      <p className="mt-1">{getManualInstallHint()}</p>
+                      <p className="mt-2 text-xs font-medium text-slate-600">{tr('If you do not see an install option, open this link in Chrome on Android or Safari on iPhone.', language)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInstallHelpOpen(false)}
+                      className="rounded-lg p-1 text-slate-600 hover:bg-amber-100"
+                      aria-label={tr('Close installation instructions', language)}
+                    >
+                      <ApperIcon name="X" size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+              {installAvailable && !installHelpOpen && (
+                <p className="mt-2 text-xs font-semibold text-slate-500">{tr('Install for quicker access from your home screen', language)}</p>
+              )}
+            </div>
+
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800 sm:px-4 sm:py-2 sm:text-xs">
               <span className="size-2 rounded-full bg-emerald-600" />
               {tr('LOCAL Help in', language)} {city}
@@ -421,40 +456,7 @@ export default function Home() {
               {tr('Services At Your Doorstep', language)}
             </p>
 
-            <div className="mx-auto mt-4 max-w-md">
-                <button
-                  type="button"
-                  onClick={handleInstallClick}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#f4b61a] px-5 py-3 text-sm font-extrabold text-[#102c4d] shadow-md transition hover:-translate-y-0.5 hover:bg-[#ffc52e] focus:outline-none focus:ring-2 focus:ring-[#102c4d] focus:ring-offset-2 sm:text-base"
-                  aria-expanded={installHelpOpen}
-                >
-                  <ApperIcon name="Download" size={20} />
-                  {tr('Install LOCAL App', language)}
-                </button>
-                {installHelpOpen && (
-                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-6 text-[#102c4d] shadow-sm" role="status">
-                    <div className="flex items-start gap-2">
-                      <ApperIcon name="Smartphone" size={20} className="mt-0.5 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-extrabold">{tr('Add LOCAL to your phone', language)}</p>
-                        <p className="mt-1">{getManualInstallHint()}</p>
-                        <p className="mt-2 text-xs font-medium text-slate-600">{tr('If you do not see an install option, open this link in Chrome on Android or Safari on iPhone.', language)}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setInstallHelpOpen(false)}
-                        className="rounded-lg p-1 text-slate-600 hover:bg-amber-100"
-                        aria-label={tr('Close installation instructions', language)}
-                      >
-                        <ApperIcon name="X" size={18} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {installAvailable && !installHelpOpen && (
-                  <p className="mt-2 text-xs font-semibold text-slate-500">{tr('Install for quicker access from your home screen', language)}</p>
-                )}
-            </div>
+
 
             <div id="services" className="mx-auto mt-5 max-w-3xl sm:mt-8">
               <div className="rounded-3xl border border-slate-200 bg-white p-3 text-left shadow-lg shadow-slate-200/50 sm:p-4">
