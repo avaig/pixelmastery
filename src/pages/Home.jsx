@@ -45,24 +45,24 @@ const vehicleOptions = [
 ];
 
 const helpCatalog = [
-  { vehicle: 'car', issue: 'Battery / Won’t Start', terms: ['car battery', 'car battery dead', 'car won’t start', 'car wont start', 'car start', 'battery', 'गाड़ी बैटरी', 'कार बैटरी', 'गाड़ी स्टार्ट', 'बैटरी'] },
-  { vehicle: 'bike', issue: 'Battery / Won’t Start', terms: ['bike battery', 'bike won’t start', 'bike wont start', 'bike start', 'बाइक बैटरी', 'बाइक स्टार्ट'] },
-  { vehicle: 'car', issue: 'Flat Tyre / Puncture', terms: ['car puncture', 'car flat tyre', 'car flat tire', 'puncture car', 'tyre puncture', 'टायर पंचर', 'कार पंचर'] },
-  { vehicle: 'bike', issue: 'Flat Tyre / Puncture', terms: ['bike puncture', 'bike flat tyre', 'bike flat tire', 'puncture bike', 'बाइक पंचर'] },
+  { vehicle: 'car', issue: 'Battery / Won’t Start', terms: ['car battery', 'car battery dead', 'car won’t start', 'car wont start', 'car start', 'battery', 'jump start', 'battery dead', 'gaadi start nahi ho rahi', 'car start nahi ho rahi', 'gaadi start nahi ho rahi hai', 'battery down', 'गाड़ी बैटरी', 'कार बैटरी', 'गाड़ी स्टार्ट', 'गाड़ी स्टार्ट नहीं हो रही', 'कार स्टार्ट नहीं हो रही', 'बैटरी डाउन', 'बैटरी खत्म', 'बैटरी'] },
+  { vehicle: 'bike', issue: 'Battery / Won’t Start', terms: ['bike battery', 'bike won’t start', 'bike wont start', 'bike start', 'bike start nahi ho rahi', 'bike start nahi ho rahi hai', 'scooty start nahi ho rahi', 'bike battery down', 'बाइक बैटरी', 'बाइक स्टार्ट', 'बाइक स्टार्ट नहीं हो रही', 'स्कूटी स्टार्ट नहीं हो रही', 'बाइक की बैटरी खत्म'] },
+  { vehicle: 'car', issue: 'Flat Tyre / Puncture', terms: ['car puncture', 'car flat tyre', 'car flat tire', 'puncture car', 'tyre puncture', 'gaadi puncture', 'car ka tyre puncture', 'car tyre flat', 'टायर पंचर', 'कार पंचर', 'गाड़ी पंचर', 'गाड़ी का टायर पंचर', 'टायर में हवा नहीं', 'टायर फट गया'] },
+  { vehicle: 'bike', issue: 'Flat Tyre / Puncture', terms: ['bike puncture', 'bike flat tyre', 'bike flat tire', 'puncture bike', 'bike ka tyre puncture', 'scooty puncture', 'बाइक पंचर', 'बाइक का टायर पंचर', 'स्कूटी पंचर'] },
   { vehicle: 'car', issue: 'Engine Overheating', terms: ['car overheating', 'engine overheating', 'engine hot', 'car engine hot', 'कार गरम', 'इंजन गर्म', 'इंजन ओवरहीट'] },
   { vehicle: 'bike', issue: 'Engine Overheating', terms: ['bike overheating', 'bike engine hot', 'बाइक गरम', 'बाइक इंजन गर्म'] },
   { vehicle: 'car', issue: 'Mechanical Breakdown', terms: ['car breakdown', 'car mechanical problem', 'car mechanic', 'car repair', 'car broke down', 'कार खराब', 'गाड़ी खराब', 'कार बंद'] },
   { vehicle: 'bike', issue: 'Mechanical Breakdown', terms: ['bike breakdown', 'bike mechanical problem', 'bike mechanic', 'bike repair', 'bike broke down', 'बाइक खराब'] },
   { vehicle: 'car', issue: 'Electrical Problem', terms: ['car electrical', 'car wiring', 'car electrical problem', 'car electricity', 'कार इलेक्ट्रिकल', 'कार बिजली', 'इलेक्ट्रिकल समस्या'] },
   { vehicle: 'bike', issue: 'Electrical Problem', terms: ['bike electrical', 'bike wiring', 'bike electrical problem', 'बाइक इलेक्ट्रिकल', 'बाइक बिजली'] },
-  { vehicle: 'car', issue: 'Out of Fuel', terms: ['car fuel', 'car petrol', 'car diesel', 'car out of fuel', 'petrol finished car', 'fuel finished car', 'कार में पेट्रोल खत्म', 'कार में डीजल खत्म', 'ईंधन खत्म'] },
-  { vehicle: 'bike', issue: 'Out of Fuel', terms: ['bike fuel', 'bike petrol', 'bike out of fuel', 'petrol finished bike', 'बाइक में पेट्रोल खत्म'] },
+  { vehicle: 'car', issue: 'Out of Fuel', terms: ['car fuel', 'car petrol', 'car diesel', 'car out of fuel', 'petrol finished car', 'fuel finished car', 'petrol khatam', 'diesel khatam', 'gaadi mein petrol khatam', 'car mein petrol khatam', 'fuel khatam', 'कार में पेट्रोल खत्म', 'कार में डीजल खत्म', 'गाड़ी में पेट्रोल खत्म', 'गाड़ी में डीजल खत्म', 'पेट्रोल खत्म', 'डीजल खत्म', 'ईंधन खत्म'] },
+  { vehicle: 'bike', issue: 'Out of Fuel', terms: ['bike fuel', 'bike petrol', 'bike out of fuel', 'petrol finished bike', 'bike mein petrol khatam', 'scooty petrol khatam', 'बाइक में पेट्रोल खत्म', 'बाइक में पेट्रोल खत्म हो गया', 'स्कूटी में पेट्रोल खत्म'] },
   { vehicle: 'car', issue: 'Key Locked / Lockout', terms: ['car key locked', 'car lockout', 'keys locked in car', 'car keys inside', 'कार की चाबी अंदर', 'कार लॉक हो गई', 'चाबी लॉक'] },
   { vehicle: 'car', issue: 'Towing Required', terms: ['car towing', 'tow car', 'towing required', 'car tow truck', 'कार टोइंग', 'गाड़ी टोइंग', 'टो ट्रक'] },
   { vehicle: 'bike', issue: 'Towing Required', terms: ['bike towing', 'tow bike', 'bike tow', 'बाइक टोइंग'] },
   { vehicle: 'bike', issue: 'Chain / Drive Problem', terms: ['bike chain', 'chain problem', 'bike drive problem', 'बाइक चेन', 'चेन खराब'] },
   { vehicle: 'bike', issue: 'Clutch / Gear Problem', terms: ['bike clutch', 'bike gear', 'clutch problem bike', 'gear problem bike', 'बाइक क्लच', 'बाइक गियर'] },
-  { vehicle: 'ambulance', issue: 'Ambulance', terms: ['ambulance', 'medical emergency', 'emergency ambulance', 'need ambulance', 'एम्बुलेंस', 'मेडिकल इमरजेंसी', 'आपातकालीन एम्बुलेंस'] },
+  { vehicle: 'ambulance', issue: 'Ambulance', terms: ['ambulance', 'medical emergency', 'emergency ambulance', 'need ambulance', 'ambulance chahiye', 'ambulance bhejo', 'medical help', 'एम्बुलेंस', 'एम्बुलेंस चाहिए', 'एम्बुलेंस भेजो', 'मेडिकल इमरजेंसी', 'आपातकालीन एम्बुलेंस'] },
 ];
 
 function normalizeHelpText(value = '') {
@@ -110,15 +110,34 @@ function findHelp(text) {
   }
 
   const serviceSearches = [
-    { service: 'Insurance Claim Assistance', terms: ['insurance claim assistance', 'insurance claim', 'claim my car insurance', 'car insurance claim', 'vehicle insurance claim', 'insurance for car accident', 'claim insurance', 'इंश्योरेंस क्लेम', 'कार इंश्योरेंस क्लेम', 'बीमा क्लेम', 'गाड़ी का बीमा क्लेम'] },
-    { service: 'Car Wash', terms: ['car wash', 'wash my car', 'washing car', 'vehicle wash', 'कार वॉश', 'कार धोना', 'गाड़ी धोना'] },
-    { service: 'Car Service', terms: ['car service', 'car servicing', 'service my car', 'car maintenance', 'routine service', 'कार सर्विस', 'कार की सर्विस', 'गाड़ी की सर्विस'] },
+    { result: { vehicle: 'car', issue: 'Other Issue', service: 'Insurance Claim Assistance' }, terms: ['insurance claim assistance', 'insurance claim', 'claim my car insurance', 'car insurance claim', 'vehicle insurance claim', 'insurance for car accident', 'claim insurance', 'insurance help', 'accident insurance', 'इंश्योरेंस क्लेम', 'कार इंश्योरेंस क्लेम', 'बीमा क्लेम', 'गाड़ी का बीमा क्लेम', 'बीमा का पैसा', 'insurance claim karna hai'] },
+    { result: { destination: '/customer/car-essentials', vehicle: 'car', issue: 'Other Issue' }, terms: ['car essentials', 'engine oil delivery', 'engine oil', 'car coolant', 'engine coolant', 'adblue', 'def fluid', 'diesel exhaust fluid', 'car fluids', 'car oil', 'engine oil chahiye', 'coolant chahiye', 'इंजन ऑयल', 'इंजन ऑयल चाहिए', 'इंजन कूलेंट', 'कूलेंट चाहिए', 'एडब्लू', 'कार का तेल'] },
+    { result: { vehicle: 'car', issue: 'Other Issue', service: 'Car Wash' }, terms: ['car wash', 'wash my car', 'washing car', 'vehicle wash', 'car cleaning', 'car dhoni hai', 'gaadi dhoni hai', 'gaadi dhulwani hai', 'car saaf karni hai', 'कार वॉश', 'कार धोना', 'गाड़ी धोना', 'गाड़ी धुलवानी है', 'कार साफ करनी है', 'गाड़ी साफ करनी है'] },
+    { result: { vehicle: 'car', issue: 'Other Issue', service: 'Car Service' }, terms: ['car service', 'car servicing', 'service my car', 'car maintenance', 'routine service', 'car repair service', 'gaadi ki service', 'car ki service karani hai', 'कार सर्विस', 'कार की सर्विस', 'गाड़ी की सर्विस', 'गाड़ी की सर्विस करानी है', 'कार मेंटेनेंस'] },
+    { result: { destination: '/customer/bike-care', vehicle: 'bike', issue: 'Bike Care & Assistance' }, terms: ['bike maintenance', 'bike servicing', 'bike rsa', 'bike roadside assistance', 'bike repair', 'scooty repair', 'bike ki service', 'bike ki servicing', 'बाइक मेंटेनेंस', 'बाइक सर्विस', 'बाइक की सर्विस', 'बाइक रिपेयर', 'स्कूटी रिपेयर'] },
+    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'AC Technician' }, terms: ['ac technician', 'ac repair', 'ac service', 'ac servicing', 'ac not cooling', 'ac not cooling properly', 'ac gas refill', 'split ac', 'window ac', 'ac thanda nahi kar raha', 'ac thanda nahi ho raha', 'ac ki cooling nahi hai', 'ac mein gas bharni hai', 'air conditioner repair', 'एसी टेक्नीशियन', 'एसी रिपेयर', 'एसी सर्विस', 'एसी ठंडा नहीं कर रहा', 'एसी ठंडा नहीं हो रहा', 'एसी की कूलिंग नहीं', 'एसी में गैस भरनी है', 'स्प्लिट एसी', 'विंडो एसी'] },
+    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Computer Services' }, terms: ['computer service', 'computer repair', 'laptop repair', 'desktop repair', 'computer not working', 'laptop not working', 'computer thik karna hai', 'laptop thik karna hai', 'computer kharab hai', 'laptop kharab hai', 'कंप्यूटर सर्विस', 'कंप्यूटर रिपेयर', 'लैपटॉप रिपेयर', 'लैपटॉप खराब है', 'कंप्यूटर खराब है'] },
+    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'GST & Tax Filing' }, terms: ['gst filing', 'gst return', 'tax filing', 'income tax return', 'itr filing', 'file my itr', 'tax consultant', 'gst return bharna', 'income tax bharna', 'जीएसटी रिटर्न', 'टैक्स फाइलिंग', 'इनकम टैक्स रिटर्न', 'आईटीआर भरना', 'जीएसटी भरना'] },
+    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Home Appliances' }, terms: ['home appliance', 'appliance repair', 'geyser repair', 'ro repair', 'water purifier repair', 'fridge repair', 'refrigerator repair', 'washing machine repair', 'fan repair', 'mixer grinder repair', 'microwave repair', 'chimney repair', 'heater repair', 'cooler repair', 'inverter repair', 'led light repair', 'iron repair', 'geyser kharab', 'fridge kharab', 'washing machine kharab', 'घर का सामान ठीक करना', 'गीजर खराब', 'आरओ खराब', 'फ्रिज खराब', 'वॉशिंग मशीन खराब', 'पंखा खराब', 'मिक्सर खराब', 'माइक्रोवेव खराब', 'कूलर खराब', 'इन्वर्टर खराब', 'इस्त्री खराब'] },
+    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Home Services' }, terms: ['home services', 'home service', 'ghar par service', 'ghar ke liye technician', 'technician at home', 'घर की सर्विस', 'घर पर सर्विस', 'घर के लिए टेक्नीशियन'] },
   ];
   const requestedService = serviceSearches.find((entry) => entry.terms.some((term) => normalized.includes(normalizeHelpText(term))));
-  if (requestedService) return { vehicle: 'car', issue: 'Other Issue', service: requestedService.service };
+  if (requestedService) return requestedService.result;
 
-  if (['car care', 'car care and assistance', 'roadside assistance', 'road side assistance', 'rsa', 'roadside help', 'रोडसाइड असिस्टेंस'].some((term) => normalized.includes(normalizeHelpText(term)))) {
+  if (['car care', 'car care and assistance', 'roadside assistance', 'road side assistance', 'rsa', 'roadside help', 'roadside assistance chahiye', 'car help', 'गाड़ी की मदद', 'कार की मदद', 'रोडसाइड असिस्टेंस', 'रोड साइड हेल्प'].some((term) => normalized.includes(normalizeHelpText(term)))) {
     return { vehicle: 'car-care', issue: 'Car Care & Assistance', destination: '/customer/car-care' };
+  }
+
+  if (['bike care', 'bike care and assistance', 'bike help', 'बाइक की मदद', 'बाइक केयर'].some((term) => normalized.includes(normalizeHelpText(term)))) {
+    return { vehicle: 'bike-care', issue: 'Bike Care & Assistance', destination: '/customer/bike-care' };
+  }
+
+  if (['police assistance', 'police help', 'need police', 'police chahiye', 'पुलिस सहायता', 'पुलिस मदद', 'पुलिस बुलाओ'].some((term) => normalized.includes(normalizeHelpText(term)))) {
+    return { destination: '/police-assistance', vehicle: 'emergency', issue: 'Police Assistance' };
+  }
+
+  if (['emergency help', 'urgent help', 'emergency assistance', 'आपातकालीन मदद', 'इमरजेंसी मदद'].some((term) => normalized.includes(normalizeHelpText(term)))) {
+    return { destination: '/emergency-help', vehicle: 'emergency', issue: 'Emergency Help' };
   }
 
   const explicitVehicle = hasVehicle(normalized, 'car') ? 'car' : hasVehicle(normalized, 'bike') ? 'bike' : null;
