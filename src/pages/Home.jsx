@@ -601,31 +601,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-5xl px-4 pb-8 sm:px-8 sm:pb-10 lg:px-10">
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-3 py-4 shadow-sm sm:px-6 sm:py-5">
-            <div className="pointer-events-none absolute -right-10 -top-12 size-36 rounded-full bg-emerald-50" />
-            <div className="relative">
-              <div className="text-center">
-                <h2 className="text-xl font-black tracking-tight text-[#102c4d] sm:text-2xl">{tr('Why Choose LOCAL?', language)}</h2>
-              </div>
-              <div className="mx-auto mt-3 grid max-w-xl grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-4 sm:gap-3">
-                {[
-                  { icon: 'MapPin', label: 'Nearby help' },
-                  { icon: 'ShieldCheck', label: 'Provider verification' },
-                  { icon: 'IndianRupee', label: 'Clear pricing' },
-                  { icon: 'Clock3', label: 'Arrival updates' },
-                ].map((item) => (
-                  <div key={item.icon} className="flex min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50/70 px-2 py-2 transition hover:border-emerald-100 hover:bg-emerald-50/50 sm:rounded-2xl sm:gap-3 sm:px-3 sm:py-2.5">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-slate-100 sm:size-11 sm:rounded-xl">
-                      <ApperIcon name={item.icon} size={21} />
-                    </div>
-                    <span className="text-xs font-extrabold leading-tight text-[#102c4d] sm:text-sm">{tr(item.label, language)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+
 
       </main>
 
