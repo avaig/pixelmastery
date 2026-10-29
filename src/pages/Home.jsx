@@ -77,7 +77,7 @@ const genericHelpTerms = [
   { issue: 'Flat Tyre / Puncture', terms: ['puncture', 'flat tyre', 'flat tire', 'tyre puncture', 'टायर पंचर'] },
   { issue: 'Battery / Won’t Start', terms: ['battery', 'dead battery', 'स्टार्ट नहीं', 'बैटरी'] },
   { issue: 'Out of Fuel', terms: ['fuel', 'petrol', 'diesel', 'out of fuel', 'ईंधन', 'पेट्रोल', 'डीजल'] },
-  { issue: 'Mechanical Breakdown', terms: ['breakdown', 'broke down', 'mechanical problem', 'repair', 'खराब', 'ब्रेकडाउन'] },
+  { issue: 'Mechanical Breakdown', terms: ['breakdown', 'broke down', 'mechanical problem', 'repair', 'mechanic', 'mechanic chahiye', 'gaadi ka mechanic', 'मेकैनिक', 'मैकेनिक', 'मैकेनिक चाहिए', 'खराब', 'ब्रेकडाउन'] },
   { issue: 'Towing Required', terms: ['towing', 'tow truck', 'टोइंग', 'टो ट्रक'] },
   { issue: 'Engine Overheating', terms: ['overheating', 'engine hot', 'गर्म', 'ओवरहीट'] },
   { issue: 'Electrical Problem', terms: ['electrical', 'electricity', 'wiring', 'इलेक्ट्रिकल', 'बिजली'] },
@@ -101,7 +101,7 @@ function findHelp(text) {
   const driverSearchTerms = [
     'car driver', 'driver on demand', 'professional car driver', 'hire a driver', 'book a driver',
     'hourly driver', 'full day driver', 'full-day driver', 'outstation driver', 'emergency driver',
-    'driver for my car', 'need a driver', 'chauffeur', 'कार ड्राइवर', 'ड्राइवर चाहिए',
+    'driver for my car', 'need a driver', 'chauffeur', 'driver chahiye', 'gaadi chalane wala chahiye', 'driver book karna hai', 'car chalane ke liye driver', 'कार ड्राइवर', 'ड्राइवर चाहिए',
     'ड्राइवर बुक करें', 'प्रोफेशनल कार ड्राइवर', 'घंटे के लिए ड्राइवर', 'पूरे दिन का ड्राइवर',
     'आउटस्टेशन ड्राइवर', 'इमरजेंसी ड्राइवर',
   ];
@@ -119,7 +119,7 @@ function findHelp(text) {
     { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Computer Services' }, terms: ['computer service', 'computer repair', 'laptop repair', 'desktop repair', 'computer not working', 'laptop not working', 'computer thik karna hai', 'laptop thik karna hai', 'computer kharab hai', 'laptop kharab hai', 'कंप्यूटर सर्विस', 'कंप्यूटर रिपेयर', 'लैपटॉप रिपेयर', 'लैपटॉप खराब है', 'कंप्यूटर खराब है'] },
     { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'GST & Tax Filing' }, terms: ['gst filing', 'gst return', 'tax filing', 'income tax return', 'itr filing', 'file my itr', 'tax consultant', 'gst return bharna', 'income tax bharna', 'जीएसटी रिटर्न', 'टैक्स फाइलिंग', 'इनकम टैक्स रिटर्न', 'आईटीआर भरना', 'जीएसटी भरना'] },
     { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Home Appliances' }, terms: ['home appliance', 'appliance repair', 'geyser repair', 'ro repair', 'water purifier repair', 'fridge repair', 'refrigerator repair', 'washing machine repair', 'fan repair', 'mixer grinder repair', 'microwave repair', 'chimney repair', 'heater repair', 'cooler repair', 'inverter repair', 'led light repair', 'iron repair', 'geyser kharab', 'fridge kharab', 'washing machine kharab', 'घर का सामान ठीक करना', 'गीजर खराब', 'आरओ खराब', 'फ्रिज खराब', 'वॉशिंग मशीन खराब', 'पंखा खराब', 'मिक्सर खराब', 'माइक्रोवेव खराब', 'कूलर खराब', 'इन्वर्टर खराब', 'इस्त्री खराब'] },
-    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Home Services' }, terms: ['home services', 'home service', 'ghar par service', 'ghar ke liye technician', 'technician at home', 'घर की सर्विस', 'घर पर सर्विस', 'घर के लिए टेक्नीशियन'] },
+    { result: { destination: '/customer/home-services', vehicle: 'home-services', issue: 'Home Services' }, terms: ['home services', 'home service', 'ghar par service', 'ghar ke liye technician', 'technician at home', 'electrician', 'electrician chahiye', 'plumber', 'plumber chahiye', 'bijli ka kaam', 'nal theek karna', 'घर की सर्विस', 'घर पर सर्विस', 'घर के लिए टेक्नीशियन', 'इलेक्ट्रीशियन', 'बिजली का काम', 'प्लंबर', 'नल ठीक करना'] },
   ];
   const requestedService = serviceSearches.find((entry) => entry.terms.some((term) => normalized.includes(normalizeHelpText(term))));
   if (requestedService) return requestedService.result;
@@ -549,7 +549,7 @@ export default function Home() {
                     ) : helpResult ? (
                       <button type="button" onClick={() => openHelpResult(helpResult)} className="flex w-full items-center gap-3 text-left">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white">
-                          <ApperIcon name={helpResult.vehicle === 'car' ? 'Car' : helpResult.vehicle === 'bike' ? 'Bike' : 'Ambulance'} size={22} />
+                          <ApperIcon name={helpResult.vehicle === 'car' ? 'Car' : helpResult.vehicle === 'bike' ? 'Bike' : helpResult.vehicle === 'car-driver' ? 'CarTaxiFront' : helpResult.vehicle === 'home-services' ? 'House' : helpResult.vehicle === 'emergency' ? 'Siren' : 'Ambulance'} size={22} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">{tr('We found', language)}</div>
