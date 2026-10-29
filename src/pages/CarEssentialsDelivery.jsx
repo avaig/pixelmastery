@@ -171,21 +171,21 @@ export default function CarEssentialsDelivery() {
                     <h2 className="font-semibold leading-snug">{product.title}</h2>
                     <ApperIcon name={selected ? 'CircleCheck' : 'Circle'} size={19} className={'shrink-0 ' + (selected ? 'text-primary' : 'text-muted-foreground')} />
                   </div>
-                {selected && (
-                  <div className="mt-2 border-t pt-2 sm:mt-4 sm:pt-3" onClick={(event) => event.stopPropagation()}>
-                    <label htmlFor={'quantity-' + product.id} className="text-sm font-medium">Quantity / pack count</label>
-                    <Input
-                      id={'quantity-' + product.id}
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={quantities[product.id] || '1'}
-                      onChange={(event) => setQuantities((current) => ({ ...current, [product.id]: event.target.value }))}
-                      onClick={(event) => event.stopPropagation()}
-                      className="mt-2"
-                    />
-                  </div>
-                )}
+                  {selected && (
+                    <div className="mt-2 border-t pt-2 sm:mt-4 sm:pt-3" onClick={(event) => event.stopPropagation()}>
+                      <label htmlFor={'quantity-' + product.id} className="text-sm font-medium">Quantity / pack count</label>
+                      <Input
+                        id={'quantity-' + product.id}
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={quantities[product.id] || '1'}
+                        onChange={(event) => setQuantities((current) => ({ ...current, [product.id]: event.target.value }))}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-2"
+                      />
+                    </div>
+                  )}
                 </div>
               </Card>
             </button>
