@@ -59,7 +59,7 @@ export default function CarDriveOnDemand() {
             </div>
             <details open className="mt-4 rounded-lg border bg-background px-3 py-3 text-sm">
               <summary className="cursor-pointer font-semibold text-foreground">Safety &amp; Liability Disclaimer (Required)</summary>
-              <div className="mt-3 space-y-2 leading-relaxed text-muted-foreground">
+              <div className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
                 <p>LOCAL connects customers with professional drivers who drive the customer's own vehicle. The customer is responsible for ensuring that the vehicle is roadworthy and has valid insurance applicable to its intended use and the assigned driver.</p>
                 <p>The driver must hold a valid driving licence and comply with applicable traffic laws. LOCAL facilitates the connection and does not guarantee accident-free travel.</p>
                 <p>Any accident, injury, loss or damage will be handled according to applicable law and the relevant insurance policy. The driver and LOCAL are not exempt from liability that the law imposes, including liability arising from their own acts or omissions.</p>
