@@ -553,7 +553,7 @@ export default function Home() {
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#102c4d] text-white transition group-hover:bg-[#f4b61a] group-hover:text-[#102c4d] sm:size-12">
                       <ApperIcon name={option.icon} size={23} className="sm:size-[25px]" />
                     </div>
-                    <div className={'min-w-0 flex-1 ' + (option.label === 'Roadside Assistance (RSA)' ? 'text-center' : '')}>
+                    <div className={'min-w-0 flex-1 ' + (option.label === 'Roadside Assistance (RSA)' ? 'text-center' : '') + (option.label === 'Home Services' ? ' pb-7' : '')}>
                       <div className="text-sm font-extrabold leading-snug text-[#102c4d] sm:text-base">
                         {tr(option.label, language)}
                       </div>
