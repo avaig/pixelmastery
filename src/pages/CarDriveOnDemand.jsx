@@ -58,17 +58,11 @@ export default function CarDriveOnDemand() {
             </details>
             <button type="button" onClick={() => navigate(driverService.href)} disabled={!disclaimerAccepted} className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">Continue to Booking</button>
           </Card>
-        <Card className="mt-3 flex w-full flex-col items-center gap-2 border p-3 text-center sm:p-4">
-          <div className="flex items-center gap-2 font-semibold text-foreground">
-            <ApperIcon name="Headset" size={20} className="text-primary" />
-            <span>Need assistance?</span>
-          </div>
-          <p className="text-sm text-muted-foreground">Our Customer Care team is here to help you.</p>
-          <button type="button" disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground opacity-60 disabled:cursor-not-allowed">
+        <Card className="mt-3 w-full border p-2 sm:p-3">
+          <button type="button" disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground opacity-60 disabled:cursor-not-allowed">
             <ApperIcon name="Phone" size={17} />
             Call Customer Care
           </button>
-          <p className="text-xs text-muted-foreground">Customer Care number will be added shortly.</p>
         </Card>
       </div>
 
