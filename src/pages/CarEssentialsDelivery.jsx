@@ -16,22 +16,16 @@ const PRODUCTS = [
   {
     id: 'engine-oil',
     title: 'Engine Oil',
-    description: 'Mobil and other compatible engine oil brands.',
-    detail: 'Choose the oil grade recommended for your vehicle.',
     icon: 'Droplets',
   },
   {
     id: 'coolant',
     title: 'Engine Coolant',
-    description: 'Coolant matched to your vehicle requirements.',
-    detail: 'Choose a compatible coolant type and pack size.',
     icon: 'Thermometer',
   },
   {
     id: 'adblue',
     title: 'UREA / Diesel Exhaust Fluid (DEF) / AdBlue',
-    description: 'For diesel vehicles equipped with a compatible SCR system.',
-    detail: 'Not required for every diesel vehicle.',
     icon: 'Fuel',
   },
 ];
@@ -177,8 +171,6 @@ export default function CarEssentialsDelivery() {
                     <h2 className="font-semibold leading-snug">{product.title}</h2>
                     <ApperIcon name={selected ? 'CircleCheck' : 'Circle'} size={19} className={'shrink-0 ' + (selected ? 'text-primary' : 'text-muted-foreground')} />
                   </div>
-                  <p className="mt-1 text-xs leading-snug text-muted-foreground sm:mt-2 sm:text-sm sm:leading-relaxed">{product.description}</p>
-                  <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:mt-3 sm:text-xs sm:leading-relaxed">{product.detail}</p>
                 {selected && (
                   <div className="mt-2 border-t pt-2 sm:mt-4 sm:pt-3" onClick={(event) => event.stopPropagation()}>
                     <label htmlFor={'quantity-' + product.id} className="text-sm font-medium">Quantity / pack count</label>
