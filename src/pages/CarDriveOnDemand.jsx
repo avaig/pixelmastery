@@ -33,7 +33,7 @@ export default function CarDriveOnDemand() {
       </div>
 
       <div className="mx-auto max-w-2xl">
-        <Card className="flex w-full flex-col border-2 p-3 text-left sm:p-4">
+        <Card className="flex w-full flex-col gap-2 border-2 p-3 text-left sm:p-4">
             <button type="button" onClick={() => disclaimerAccepted && navigate(driverService.href)} disabled={!disclaimerAccepted} className="flex w-full items-center justify-between gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
               <div className="flex items-center gap-3">
                 <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ApperIcon name={driverService.icon} size={29} /></div>
@@ -41,14 +41,14 @@ export default function CarDriveOnDemand() {
               </div>
               <ApperIcon name="ArrowUpRight" size={20} className="text-muted-foreground" />
             </button>
-            <div className="mt-3 rounded-lg bg-primary/5 px-3 py-3 text-sm leading-6 text-foreground sm:text-base">
+            <div className="rounded-lg bg-primary/5 px-3 py-3 text-sm leading-6 text-foreground sm:text-base">
               <p className="mb-2"><span className="font-bold">₹800</span> for an 8-hour shift</p>
               <p className="mb-2"><span className="font-bold">₹50/hour</span> for every hour after the first 8 hours, until 10 PM</p>
               <div className="my-2 border-t border-primary/15" />
               <p className="font-semibold">After 10 PM</p>
               <p><span className="font-bold">₹100/hour</span> + <span className="font-bold">₹300 fixed night charge</span></p>
             </div>
-            <details open className="mt-3 rounded-lg border bg-background px-3 py-3 text-sm">
+            <details open className="rounded-lg border bg-background px-3 py-3 text-sm">
               <summary className="cursor-pointer font-semibold text-foreground">Safety &amp; Liability Disclaimer (Required)</summary>
               <div className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
                 <p>LOCAL connects customers with professional drivers who drive the customer's own vehicle. The customer is responsible for ensuring that the vehicle is roadworthy and has valid insurance applicable to its intended use and the assigned driver.</p>
@@ -62,7 +62,7 @@ export default function CarDriveOnDemand() {
               </label>
               <p className="mt-2 text-xs text-muted-foreground">{disclaimerAccepted ? 'Disclaimer accepted. You can continue to booking.' : 'Required: accept the disclaimer before you can continue to booking.'}</p>
             </details>
-            <button type="button" onClick={() => navigate(driverService.href)} disabled={!disclaimerAccepted} className="mt-3 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">Continue to Booking</button>
+            <button type="button" onClick={() => navigate(driverService.href)} disabled={!disclaimerAccepted} className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">Continue to Booking</button>
           </Card>
       </div>
 
