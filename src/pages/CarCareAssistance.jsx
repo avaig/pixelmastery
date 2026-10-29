@@ -73,6 +73,17 @@ export default function CarCareAssistance() {
           </button>
         ))}
       </div>
+
+      <div className="mt-6 flex justify-center pb-4">
+        <a
+          href="tel:"
+          aria-label={tr('Call Customer Care', language)}
+          className="inline-flex min-h-12 w-full max-w-md items-center justify-center gap-2 rounded-xl bg-[#132F55] px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-[#1c426f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          <ApperIcon name="Phone" size={20} />
+          {tr('Call Customer Care', language)}
+        </a>
+      </div>
     </div>
   );
 }
