@@ -49,19 +49,19 @@ const helpCatalog = [
   { vehicle: 'bike', issue: 'Battery / Won’t Start', terms: ['bike battery', 'bike won’t start', 'bike wont start', 'bike start', 'bike start nahi ho rahi', 'bike start nahi ho rahi hai', 'scooty start nahi ho rahi', 'bike battery down', 'बाइक बैटरी', 'बाइक स्टार्ट', 'बाइक स्टार्ट नहीं हो रही', 'स्कूटी स्टार्ट नहीं हो रही', 'बाइक की बैटरी खत्म'] },
   { vehicle: 'car', issue: 'Flat Tyre / Puncture', terms: ['car puncture', 'car flat tyre', 'car flat tire', 'puncture car', 'tyre puncture', 'gaadi puncture', 'car ka tyre puncture', 'car tyre flat', 'टायर पंचर', 'कार पंचर', 'गाड़ी पंचर', 'गाड़ी का टायर पंचर', 'टायर में हवा नहीं', 'टायर फट गया'] },
   { vehicle: 'bike', issue: 'Flat Tyre / Puncture', terms: ['bike puncture', 'bike flat tyre', 'bike flat tire', 'puncture bike', 'bike ka tyre puncture', 'scooty puncture', 'बाइक पंचर', 'बाइक का टायर पंचर', 'स्कूटी पंचर'] },
-  { vehicle: 'car', issue: 'Engine Overheating', terms: ['car overheating', 'engine overheating', 'engine hot', 'car engine hot', 'कार गरम', 'इंजन गर्म', 'इंजन ओवरहीट'] },
-  { vehicle: 'bike', issue: 'Engine Overheating', terms: ['bike overheating', 'bike engine hot', 'बाइक गरम', 'बाइक इंजन गर्म'] },
-  { vehicle: 'car', issue: 'Mechanical Breakdown', terms: ['car breakdown', 'car mechanical problem', 'car mechanic', 'car repair', 'car broke down', 'कार खराब', 'गाड़ी खराब', 'कार बंद'] },
-  { vehicle: 'bike', issue: 'Mechanical Breakdown', terms: ['bike breakdown', 'bike mechanical problem', 'bike mechanic', 'bike repair', 'bike broke down', 'बाइक खराब'] },
-  { vehicle: 'car', issue: 'Electrical Problem', terms: ['car electrical', 'car wiring', 'car electrical problem', 'car electricity', 'कार इलेक्ट्रिकल', 'कार बिजली', 'इलेक्ट्रिकल समस्या'] },
-  { vehicle: 'bike', issue: 'Electrical Problem', terms: ['bike electrical', 'bike wiring', 'bike electrical problem', 'बाइक इलेक्ट्रिकल', 'बाइक बिजली'] },
+  { vehicle: 'car', issue: 'Engine Overheating', terms: ['car overheating', 'engine overheating', 'engine hot', 'car engine hot', 'car getting hot', 'gaadi garam ho rahi', 'engine garam ho raha hai', 'कार गरम', 'गाड़ी गरम हो रही है', 'इंजन गर्म', 'इंजन गरम हो रहा है', 'इंजन ओवरहीट'] },
+  { vehicle: 'bike', issue: 'Engine Overheating', terms: ['bike overheating', 'bike engine hot', 'bike garam ho rahi', 'bike engine garam', 'बाइक गरम', 'बाइक गरम हो रही है', 'बाइक इंजन गर्म'] },
+  { vehicle: 'car', issue: 'Mechanical Breakdown', terms: ['car breakdown', 'car mechanical problem', 'car mechanic', 'car repair', 'car broke down', 'gaadi kharab ho gayi', 'car kharab ho gayi', 'gaadi band ho gayi', 'कार खराब', 'गाड़ी खराब', 'गाड़ी खराब हो गई', 'गाड़ी बंद हो गई', 'कार बंद'] },
+  { vehicle: 'bike', issue: 'Mechanical Breakdown', terms: ['bike breakdown', 'bike mechanical problem', 'bike mechanic', 'bike repair', 'bike broke down', 'bike kharab ho gayi', 'bike band ho gayi', 'बाइक खराब', 'बाइक खराब हो गई', 'बाइक बंद हो गई'] },
+  { vehicle: 'car', issue: 'Electrical Problem', terms: ['car electrical', 'car wiring', 'car electrical problem', 'car electricity', 'car ki wiring', 'gaadi ki wiring', 'car electrical issue', 'कार इलेक्ट्रिकल', 'कार की वायरिंग', 'गाड़ी की वायरिंग', 'कार बिजली', 'इलेक्ट्रिकल समस्या'] },
+  { vehicle: 'bike', issue: 'Electrical Problem', terms: ['bike electrical', 'bike wiring', 'bike electrical problem', 'bike ki wiring', 'बाइक इलेक्ट्रिकल', 'बाइक की वायरिंग', 'बाइक बिजली'] },
   { vehicle: 'car', issue: 'Out of Fuel', terms: ['car fuel', 'car petrol', 'car diesel', 'car out of fuel', 'petrol finished car', 'fuel finished car', 'petrol khatam', 'diesel khatam', 'gaadi mein petrol khatam', 'car mein petrol khatam', 'fuel khatam', 'कार में पेट्रोल खत्म', 'कार में डीजल खत्म', 'गाड़ी में पेट्रोल खत्म', 'गाड़ी में डीजल खत्म', 'पेट्रोल खत्म', 'डीजल खत्म', 'ईंधन खत्म'] },
   { vehicle: 'bike', issue: 'Out of Fuel', terms: ['bike fuel', 'bike petrol', 'bike out of fuel', 'petrol finished bike', 'bike mein petrol khatam', 'scooty petrol khatam', 'बाइक में पेट्रोल खत्म', 'बाइक में पेट्रोल खत्म हो गया', 'स्कूटी में पेट्रोल खत्म'] },
-  { vehicle: 'car', issue: 'Key Locked / Lockout', terms: ['car key locked', 'car lockout', 'keys locked in car', 'car keys inside', 'कार की चाबी अंदर', 'कार लॉक हो गई', 'चाबी लॉक'] },
-  { vehicle: 'car', issue: 'Towing Required', terms: ['car towing', 'tow car', 'towing required', 'car tow truck', 'कार टोइंग', 'गाड़ी टोइंग', 'टो ट्रक'] },
-  { vehicle: 'bike', issue: 'Towing Required', terms: ['bike towing', 'tow bike', 'bike tow', 'बाइक टोइंग'] },
-  { vehicle: 'bike', issue: 'Chain / Drive Problem', terms: ['bike chain', 'chain problem', 'bike drive problem', 'बाइक चेन', 'चेन खराब'] },
-  { vehicle: 'bike', issue: 'Clutch / Gear Problem', terms: ['bike clutch', 'bike gear', 'clutch problem bike', 'gear problem bike', 'बाइक क्लच', 'बाइक गियर'] },
+  { vehicle: 'car', issue: 'Key Locked / Lockout', terms: ['car key locked', 'car lockout', 'keys locked in car', 'car keys inside', 'key locked in car', 'chabi car mein reh gayi', 'car ki chabi andar reh gayi', 'कार की चाबी अंदर', 'गाड़ी की चाबी अंदर रह गई', 'कार लॉक हो गई', 'गाड़ी लॉक हो गई', 'चाबी लॉक'] },
+  { vehicle: 'car', issue: 'Towing Required', terms: ['car towing', 'tow car', 'towing required', 'car tow truck', 'gaadi tow karni hai', 'car tow karwani hai', 'tow truck chahiye', 'कार टोइंग', 'गाड़ी टोइंग', 'गाड़ी टो करनी है', 'टो ट्रक', 'टो ट्रक चाहिए'] },
+  { vehicle: 'bike', issue: 'Towing Required', terms: ['bike towing', 'tow bike', 'bike tow', 'bike tow karni hai', 'बाइक टोइंग', 'बाइक टो करनी है'] },
+  { vehicle: 'bike', issue: 'Chain / Drive Problem', terms: ['bike chain', 'chain problem', 'bike drive problem', 'bike chain kharab', 'बाइक चेन', 'बाइक की चेन खराब', 'चेन खराब'] },
+  { vehicle: 'bike', issue: 'Clutch / Gear Problem', terms: ['bike clutch', 'bike gear', 'clutch problem bike', 'gear problem bike', 'bike ka clutch kharab', 'gear nahi lag raha', 'बाइक क्लच', 'बाइक का क्लच खराब', 'बाइक गियर', 'गियर नहीं लग रहा'] },
   { vehicle: 'ambulance', issue: 'Ambulance', terms: ['ambulance', 'medical emergency', 'emergency ambulance', 'need ambulance', 'ambulance chahiye', 'ambulance bhejo', 'medical help', 'एम्बुलेंस', 'एम्बुलेंस चाहिए', 'एम्बुलेंस भेजो', 'मेडिकल इमरजेंसी', 'आपातकालीन एम्बुलेंस'] },
 ];
 
@@ -327,8 +327,10 @@ export default function Home() {
     };
     recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript ?? '';
+      const result = findHelp(transcript);
       setHelpText(transcript);
-      setHelpResult(findHelp(transcript));
+      setHelpResult(result);
+      setSearchMessage(result || !transcript.trim() ? '' : tr('We could not identify that exact help yet. Try another phrase in Hindi or English, or type your request.', language));
     };
     recognition.onerror = () => {
       setSearchMessage(tr('Voice search could not hear you. Please try again or type your request.', language));
