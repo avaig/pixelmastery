@@ -197,11 +197,13 @@ export default function Home() {
     updateInstallState();
     const unsubscribe = subscribeInstall(updateInstallState);
     window.addEventListener('appinstalled', updateInstallState);
-    displayMode.addEventListener?.('change', updateInstallState);
+    if (displayMode.addEventListener) displayMode.addEventListener('change', updateInstallState);
+    else if (displayMode.addListener) displayMode.addListener(updateInstallState);
     return () => {
       unsubscribe();
       window.removeEventListener('appinstalled', updateInstallState);
-      displayMode.removeEventListener?.('change', updateInstallState);
+      if (displayMode.removeEventListener) displayMode.removeEventListener('change', updateInstallState);
+      else if (displayMode.removeListener) displayMode.removeListener(updateInstallState);
     };
   }, []);
 
