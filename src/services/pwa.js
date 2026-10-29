@@ -19,12 +19,50 @@ export function initPwa() {
     deferredPrompt = null;
     notify();
   });
+
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((error) => {
-        console.info(`PWA service worker registration failed: ${error.message}`);
-      });
+    let refreshingForUpdate = false;
+    let registration = null;
+
+    const checkForUpdates = () => {
+      if (registration && navigator.onLine) {
+        registration.update().catch((error) => {
+          console.info(`PWA update check skipped: ${error.message}`);
+        });
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshingForUpdate) return;
+      refreshingForUpdate = true;
+      window.location.reload();
     });
+
+    const registerServiceWorker = async () => {
+      try {
+        registration = await navigator.serviceWorker.register('/sw.js', {
+          updateViaCache: 'none',
+        });
+        checkForUpdates();
+
+        // Check again whenever a user returns to LOCAL, including an installed PWA.
+        window.addEventListener('focus', checkForUpdates);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') checkForUpdates();
+        });
+
+        // Keep an already-open app up to date without requiring the customer to do anything.
+        window.setInterval(checkForUpdates, 60 * 1000);
+      } catch (error) {
+        console.info(`PWA service worker registration failed: ${error.message}`);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      registerServiceWorker();
+    } else {
+      window.addEventListener('load', registerServiceWorker, { once: true });
+    }
   }
 }
 
