@@ -176,6 +176,7 @@ export default function Home() {
   const { logout } = useAuth();
   const [language, setLanguageState] = useState(getLanguage);
   const [installAvailable, setInstallAvailable] = useState(hasInstallPrompt);
+  const [isInstalledApp, setIsInstalledApp] = useState(false);
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
 
   const [helpText, setHelpText] = useState('');
@@ -186,17 +187,21 @@ export default function Home() {
   const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 
   useEffect(() => {
+    const displayMode = window.matchMedia('(display-mode: standalone)');
     const updateInstallState = () => {
-      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-      setInstallAvailable(hasInstallPrompt());
-
+      const standalone = displayMode.matches || window.navigator.standalone === true;
+      setIsInstalledApp(standalone);
+      setInstallAvailable(!standalone && hasInstallPrompt());
+      if (standalone) setInstallHelpOpen(false);
     };
     updateInstallState();
     const unsubscribe = subscribeInstall(updateInstallState);
     window.addEventListener('appinstalled', updateInstallState);
+    displayMode.addEventListener?.('change', updateInstallState);
     return () => {
       unsubscribe();
       window.removeEventListener('appinstalled', updateInstallState);
+      displayMode.removeEventListener?.('change', updateInstallState);
     };
   }, []);
 
@@ -418,6 +423,7 @@ export default function Home() {
           <div className="absolute -right-20 top-32 h-64 w-64 rounded-full bg-emerald-100/70 blur-3xl pointer-events-none" />
 
           <div className="relative mx-auto max-w-5xl px-4 py-6 text-center sm:px-8 sm:py-16 lg:px-10 lg:py-20">
+            {!isInstalledApp && (
             <div className="mx-auto mb-4 max-w-md sm:mb-5">
               <button
                 type="button"
@@ -452,6 +458,7 @@ export default function Home() {
                 <p className="mt-2 text-xs font-semibold text-slate-500">{tr('Install for quicker access from your home screen', language)}</p>
               )}
             </div>
+            )}
 
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800 sm:px-4 sm:py-2 sm:text-xs">
               <span className="size-2 rounded-full bg-emerald-600" />
