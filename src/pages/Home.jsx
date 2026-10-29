@@ -558,7 +558,7 @@ export default function Home() {
                         {tr(option.label, language)}
                       </div>
                       {option.label === 'Roadside Assistance (RSA)' && (
-                        <span className="absolute bottom-3 left-2.5 inline-flex w-max max-w-[calc(100%-1.25rem)] flex-nowrap items-center gap-2 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-extrabold leading-tight text-emerald-800 shadow-sm sm:bottom-3 sm:left-4 sm:px-3.5 sm:py-1.5 sm:text-sm">
+                        <span className="absolute bottom-3 left-2.5 right-2.5 inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-extrabold leading-tight text-emerald-800 shadow-sm sm:bottom-3 sm:left-4 sm:right-auto sm:w-max sm:gap-2 sm:px-3.5 sm:py-1.5 sm:text-sm">
                           <span className="size-2.5 shrink-0 rounded-full bg-emerald-500" />
                           {tr('24×7 Available', language)}
                         </span>
