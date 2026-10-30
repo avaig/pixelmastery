@@ -888,14 +888,14 @@ export default function CustomerRequestStart() {
         </div>
       ) : (
         <PageHeader
-          eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
-          title={tr(displayIssue, language)}
-          description={tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
-          action={
+          eyebrow={isInsuranceClaim ? undefined : vehicle.toUpperCase() + ' ' + tr('assistance', language)}
+          title={isInsuranceClaim ? 'Car Insurance Claim' : tr(displayIssue, language)}
+          description={isInsuranceClaim ? undefined : tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
+          action={isInsuranceClaim ? undefined : (
             <Button asChild variant="outline">
-              <span onClick={() => navigate(isBikeCareRequest ? '/customer/bike-care' : ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Emergency Driver', 'Scheduled Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{isBikeCareRequest ? 'Back to Bike Care' : tr('Change problem', language)}</span>
+              <span onClick={() => navigate(isBikeCareRequest ? '/customer/bike-care' : ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Scheduled Driver', 'Emergency Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{isBikeCareRequest ? 'Back to Bike Care' : tr('Change problem', language)}</span>
             </Button>
-          }
+          )}
         />
       )}
       {isCarService && (
