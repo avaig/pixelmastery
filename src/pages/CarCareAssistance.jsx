@@ -29,7 +29,7 @@ const services = [
     href: '/customer/car-essentials',
   },
   {
-    title: 'Insurance Claim',
+    title: 'Car Insurance Claim',
     description: 'Get help with the next steps after car damage or an accident',
     icon: 'FileCheck',
     href: '/customer/request?vehicle=car&issue=Other%20Issue&service=Insurance%20Claim%20Assistance',
