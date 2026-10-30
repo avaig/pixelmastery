@@ -887,16 +887,22 @@ export default function CustomerRequestStart() {
           <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Car Service</h1>
         </div>
       ) : (
-        <PageHeader
-          eyebrow={isInsuranceClaim ? undefined : vehicle.toUpperCase() + ' ' + tr('assistance', language)}
-          title={isInsuranceClaim ? 'Car Insurance Claim' : tr(displayIssue, language)}
-          description={isInsuranceClaim ? undefined : tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
-          action={isInsuranceClaim ? undefined : (
-            <Button asChild variant="outline">
-              <span onClick={() => navigate(isBikeCareRequest ? '/customer/bike-care' : ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Scheduled Driver', 'Emergency Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{isBikeCareRequest ? 'Back to Bike Care' : tr('Change problem', language)}</span>
-            </Button>
-          )}
-        />
+        isInsuranceClaim ? (
+          <div className="mb-7 border-b border-border pb-5 text-center">
+            <h1 className="font-heading text-3xl font-semibold tracking-tight">Car Insurance Claim</h1>
+          </div>
+        ) : (
+          <PageHeader
+            eyebrow={vehicle.toUpperCase() + ' ' + tr('assistance', language)}
+            title={tr(displayIssue, language)}
+            description={tr('Confirm your location and we will share the request only with Service Providers who have the required capability.', language)}
+            action={
+              <Button asChild variant="outline">
+                <span onClick={() => navigate(isBikeCareRequest ? '/customer/bike-care' : ['Hourly Driver', 'Full-Day Driver', 'Full Day Driver', 'Outstation Driver', 'Scheduled Driver', 'Emergency Driver'].includes(requestedService) ? '/customer/car-driver' : requestedService === 'Car Wash' || requestedService === 'Car Service' || requestedService === 'Insurance Claim Assistance' ? '/customer/car-care' : '/customer/vehicle/' + vehicle)}>{isBikeCareRequest ? 'Back to Bike Care' : tr('Change problem', language)}</span>
+              </Button>
+            }
+          />
+        )
       )}
       {isCarService && (
         <section className="mx-auto mb-6 max-w-5xl space-y-5" aria-label="Car Service packages">
@@ -1064,14 +1070,14 @@ export default function CustomerRequestStart() {
         </section>
       )}
       <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card id="car-wash-selected-summary" className="border-2 border-primary/20 p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <ApperIcon name={vehicle === 'car' ? 'Car' : 'Bike'} size={34} />
+        <Card id="car-wash-selected-summary" className={'border-2 border-primary/20 ' + (isInsuranceClaim ? 'p-4' : 'p-6')}>
+          <div className={'flex items-center ' + (isInsuranceClaim ? 'gap-3' : 'gap-4')}>
+            <div className={'flex shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ' + (isInsuranceClaim ? 'size-14' : 'size-16')}>
+              <ApperIcon name={vehicle === 'car' ? 'Car' : 'Bike'} size={isInsuranceClaim ? 28 : 34} />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Service Selected</div>
-              <div className="mt-1 text-lg font-semibold">{tr(isDieselRequest ? 'Diesel on Demand' : displayIssue, language)}</div>
+              <div className="mt-1 text-lg font-semibold">{isInsuranceClaim ? 'Car Insurance Claim' : tr(isDieselRequest ? 'Diesel on Demand' : displayIssue, language)}</div>
             </div>
           </div>
           {isDieselRequest ? (
