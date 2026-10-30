@@ -226,6 +226,7 @@ export default function CustomerRequestStart() {
   const displayIssue = requestedService || issue;
   const isCarEssentialsDelivery = requestedService === 'Car Essentials Delivery';
   const isCarFlatPuncture = vehicle === 'car' && /flat tyre \/ puncture/i.test(issue || requestedService);
+  const carEssentialsAutoSubmitRef = useRef(false);
   const [creating, setCreating] = useState(false);
   const [submittedWashOrder, setSubmittedWashOrder] = useState(null);
   const [submittedBikeCareRequest, setSubmittedBikeCareRequest] = useState(null);
@@ -807,6 +808,36 @@ export default function CustomerRequestStart() {
     } finally {
       setCreating(false);
     }
+  }
+
+  useEffect(() => {
+    if (!isCarEssentialsDelivery || carEssentialsAutoSubmitRef.current) return;
+    if (customerLoading || categoryLoading || capabilitiesLoading) return;
+    carEssentialsAutoSubmitRef.current = true;
+    if (!customer?.Id) {
+      createRequest().catch((error) => {
+        toast.error(error?.message || 'Could not submit the Car Essentials requirement.');
+        navigate('/customer/car-essentials');
+      });
+      return;
+    }
+    if (!category?.Id || !requiredCapability?.Id) {
+      toast.error('Car Essentials is not fully configured. Please try again later.');
+      navigate('/customer/car-essentials');
+      return;
+    }
+    createRequest().catch((error) => {
+      toast.error(error?.message || 'Could not submit the Car Essentials requirement.');
+      navigate('/customer/car-essentials');
+    });
+  }, [isCarEssentialsDelivery, customerLoading, categoryLoading, capabilitiesLoading, customer?.Id, category?.Id, requiredCapability?.Id, navigate]);
+
+  if (isCarEssentialsDelivery) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center" role="status" aria-label="Submitting requirement">
+        <ApperIcon name="LoaderCircle" size={28} className="animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (submittedBikeCareRequest) {
