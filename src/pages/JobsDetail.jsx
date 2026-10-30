@@ -12,6 +12,7 @@ import { PageHeader, StatusBadge } from '@/components/local/EntityPages';
 import { toast } from 'sonner';
 import { getBillingBreakdown, getBookingCommitmentAmount, calculateDriverOnDemandTariff } from '@/services/pricing';
 import { getLanguage, tr } from '@/services/i18n';
+import { createNotification } from '@/services/notifications';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -232,6 +233,53 @@ export default function JobsDetail() {
     });
   }, [job?.Id, job?.vehicle_condition_report_c, job?.pickup_photos_c, job?.return_photos_c]);
 
+  async function notifyJobParticipants(values) {
+    const changes = [];
+    if (values.status_c && values.status_c !== job?.status_c) {
+      changes.push({ type: 'Job', key: 'status', message: 'Booking status updated: ' + values.status_c + '.' });
+    }
+    if (values.payment_status_c && values.payment_status_c !== job?.payment_status_c) {
+      changes.push({ type: 'Payment', key: 'payment', message: 'Payment status updated: ' + values.payment_status_c + '.' });
+    }
+    if (values.provider_travel_status_c && values.provider_travel_status_c !== job?.provider_travel_status_c) {
+      changes.push({ type: 'Job', key: 'travel', message: 'Service Provider update: ' + values.provider_travel_status_c + '.' });
+    }
+    if (!changes.length) return;
+
+    const participants = [];
+    if (isProvider || isAdmin) {
+      const customerId = job?.customer_c?.Id ?? job?.customer_c ?? serviceRequest?.customer_c?.Id ?? serviceRequest?.customer_c;
+      if (customerId) participants.push({ table: 'customer_profiles_c', id: customerId });
+    }
+    if (isCustomer || isAdmin) {
+      const providerId = job?.technician_c?.Id ?? job?.technician_c;
+      if (providerId) participants.push({ table: 'technician_profiles_c', id: providerId });
+    }
+
+    for (const participant of participants) {
+      try {
+        const profileResult = await sdk.table(participant.table).select(['Id', 'Owner']).get(participant.id);
+        if (!profileResult.success || !profileResult.data) continue;
+        const recipientUserId = profileResult.data.Owner?.Id ?? profileResult.data.Owner;
+        if (!recipientUserId) continue;
+        for (const change of changes) {
+          await createNotification({
+            recipientUserId,
+            title: change.type === 'Payment' ? 'Payment update' : 'Booking update',
+            message: change.message,
+            type: change.type,
+            actionUrl: '/jobs/' + job.Id,
+            relatedRecordId: job.Id,
+            relatedType: 'jobs_c',
+            eventKey: 'job-' + job.Id + '-' + change.key + '-' + String(values.status_c ?? values.payment_status_c ?? values.provider_travel_status_c),
+          });
+        }
+      } catch (notificationError) {
+        console.warn('LOCAL notification could not be created:', notificationError);
+      }
+    }
+  }
+
   async function updateJob(values, successMessage) {
     if (working) return;
     if (values.status_c === 'In Progress' && isCarCare && !job.service_start_otp_verified_at_c && !values.service_start_otp_verified_at_c) {
@@ -251,6 +299,7 @@ export default function JobsDetail() {
       ]);
       if (!res?.success || !res.data?.length) throw new Error(res?.messages?.[0] ?? res?.message ?? 'Job could not be updated. Please retry.');
       toast.success(successMessage);
+      await notifyJobParticipants(values);
       refreshAfterSave = true;
     } catch (err) {
       toast.error(err.message ?? 'Job update failed. Please retry.');
