@@ -1141,7 +1141,7 @@ export default function CustomerRequestStart() {
                 </>
               )}
             </div>
-          ) : (
+          ) : isInsuranceClaim ? null : (
             <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name={pricingMode === 'Fixed Price' ? 'BadgeIndianRupee' : pricingMode === 'Urgent Dispatch' ? 'Zap' : 'MessagesSquare'} size={18} />{pricingMode}</div>
               <p className="mt-1 text-sm text-muted-foreground">{pricingModeDescription}</p>
@@ -1177,12 +1177,33 @@ export default function CustomerRequestStart() {
             </section>
           )}
           {isInsuranceClaim && (
-            <div className="mt-6 rounded-xl border-2 border-primary/20 bg-background p-4">
-              <label htmlFor="insurance-copy-upload" className="text-sm font-semibold">Upload Insurance Copy</label>
-              <p className="mt-1 text-sm text-muted-foreground">Select your insurance policy copy or related claim documents (PDF, JPG, or PNG; you may select multiple files).</p>
-              <Input id="insurance-copy-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple onChange={(event) => setInsuranceFiles(Array.from(event.target.files ?? []))} className="mt-3 cursor-pointer" />
-              {insuranceFiles.length > 0 && <ul className="mt-3 space-y-1 text-sm text-muted-foreground">{insuranceFiles.map((file, index) => <li key={file.name + '-' + index} className="flex items-center gap-2"><ApperIcon name="FileCheck" size={15} />{file.name} <span>({Math.max(1, Math.round(file.size / 1024))} KB)</span></li>)}</ul>}
-              <p className="mt-2 text-xs text-muted-foreground">Document upload is a demo control; secure file storage will be connected when the backend is configured.</p>
+            <div className="mt-3 rounded-xl border-2 border-primary/25 bg-background p-3">
+              <input
+                id="insurance-copy-upload"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                multiple
+                onChange={(event) => setInsuranceFiles(Array.from(event.target.files ?? []))}
+                className="sr-only"
+              />
+              <label
+                htmlFor="insurance-copy-upload"
+                className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
+              >
+                <ApperIcon name="Upload" size={18} />
+                Upload Car Insurance Copy
+              </label>
+              {insuranceFiles.length > 0 && (
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {insuranceFiles.map((file, index) => (
+                    <li key={file.name + '-' + index} className="flex items-center gap-2">
+                      <ApperIcon name="FileCheck" size={14} />
+                      <span className="break-all">{file.name}</span>
+                      <span className="shrink-0">({Math.max(1, Math.round(file.size / 1024))} KB)</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           {isOtherIssue && !isInsuranceClaim && !isCarEssentialsDelivery && (
