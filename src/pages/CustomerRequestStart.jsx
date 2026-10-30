@@ -745,6 +745,7 @@ export default function CustomerRequestStart() {
     setCreating(true);
     try {
       let essentialsGps = null;
+      let essentialsAddress = '';
       if (isCarEssentialsDelivery) {
         if (!navigator.geolocation) {
           toast.error('Your browser does not support location access. Please enable location services or try another browser.');
@@ -769,6 +770,29 @@ export default function CustomerRequestStart() {
           return null;
         });
         if (!essentialsGps) return;
+
+        const savedProfileAddress = String(customer?.location_c || '').trim();
+        let savedServiceAddress = '';
+        try {
+          const saved = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null');
+          savedServiceAddress = String(saved?.label || '').trim();
+        } catch {
+          savedServiceAddress = '';
+        }
+        const isUsefulAddress = (value) => value && !/^(confirmed service location|current location|saved customer address not available|to be confirmed)/i.test(value);
+        essentialsAddress = isUsefulAddress(savedProfileAddress) ? savedProfileAddress : (isUsefulAddress(savedServiceAddress) ? savedServiceAddress : '');
+        if (!essentialsAddress) {
+          try {
+            const response = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=' + encodeURIComponent(essentialsGps.latitude) + '&lon=' + encodeURIComponent(essentialsGps.longitude), { headers: { Accept: 'application/json' } });
+            if (response.ok) {
+              const result = await response.json();
+              essentialsAddress = String(result?.display_name || '').trim();
+            }
+          } catch {
+            // Keep coordinates for the map link if reverse geocoding is temporarily unavailable.
+          }
+        }
+        if (!essentialsAddress) essentialsAddress = 'Address could not be resolved; use View Customer Location for the map pin.';
       }
       const res = await sdk.table('service_requests_c').create({
         Name: vehicle.toUpperCase() + ' • ' + (isCarWash ? 'Car Wash (' + washCart.reduce((sum, item) => sum + item.qty, 0) + ' items)' : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' — ' + selectedCarServicePackage.vehicleType : displayIssue),
@@ -780,7 +804,7 @@ export default function CustomerRequestStart() {
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isProfessionalDriverService ? '\\nLOCAL_DRIVER_ROUTE_JSON:' + JSON.stringify({ pickup: driverPickupPoint, dropoff: driverDropoffPoint, tripType: driverTripType, travelType: driverTravelType, stops: driverStops, quoteWorkflow: 'Customer Care reviews route and trip details, sends quote for customer approval, and assigns a driver only after customer approval.' }) : '') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
-        location_c: isCarEssentialsDelivery ? (String(customer?.location_c || '').trim() || String(location?.text || '').trim() || (() => { try { const saved = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null'); return String(saved?.label || '').trim(); } catch { return ''; } })() || 'Saved customer address not available') : isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
+        location_c: isCarEssentialsDelivery ? essentialsAddress : isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
         latitude_c: isCarEssentialsDelivery ? essentialsGps.latitude : isInsuranceClaim ? null : Number(location.latitude),

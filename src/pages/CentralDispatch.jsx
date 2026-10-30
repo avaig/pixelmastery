@@ -216,6 +216,49 @@ function formatCancellationTime(value) {
 }
 const PROVIDER_FIELDS = ['Id', 'Name', 'email_c', 'phone_c', 'status_c', 'verification_status_c', 'availability_c', 'service_area_c', 'latitude_c', 'longitude_c', 'service_radius_km_c'];
 
+function RequestServiceLocation({ request, customerAddress }) {
+  const [resolvedAddress, setResolvedAddress] = useState('');
+  useEffect(() => {
+    let active = true;
+    const requestAddress = String(request?.location_c || '').trim();
+    const profileAddress = String(customerAddress || '').trim();
+    const isPlaceholder = (value) => !value || /to be confirmed by LOCAL Customer Care|saved customer address not available|address could not be resolved/i.test(value);
+    const savedAddress = !isPlaceholder(requestAddress) ? requestAddress : (!isPlaceholder(profileAddress) ? profileAddress : '');
+    if (savedAddress) {
+      setResolvedAddress(savedAddress);
+      return () => { active = false; };
+    }
+    setResolvedAddress('Resolving address from the captured location…');
+    const latitude = Number(request?.latitude_c);
+    const longitude = Number(request?.longitude_c);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setResolvedAddress('Address not recorded');
+      return () => { active = false; };
+    }
+    fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=' + encodeURIComponent(latitude) + '&lon=' + encodeURIComponent(longitude), { headers: { Accept: 'application/json' } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Address lookup unavailable')))
+      .then((result) => {
+        if (active) setResolvedAddress(String(result?.display_name || '').trim() || 'Address unavailable — use the map pin below.');
+      })
+      .catch(() => {
+        if (active) setResolvedAddress('Address unavailable — use the map pin below.');
+      });
+    return () => { active = false; };
+  }, [request?.Id, request?.location_c, request?.latitude_c, request?.longitude_c, customerAddress]);
+
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">Service location</p>
+      <p className="mt-1 font-medium">{resolvedAddress || 'Resolving address from the captured location…'}</p>
+      {request?.latitude_c != null && request?.longitude_c != null && (
+        <a href={'https://www.google.com/maps?q=' + encodeURIComponent(request.latitude_c + ',' + request.longitude_c)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline underline-offset-4">
+          <ApperIcon name="MapPin" size={15} /> View Customer Location
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function CentralDispatch() {
   const [search, setSearch] = useState('');
   const [requestFilter, setRequestFilter] = useState('All');
