@@ -744,6 +744,32 @@ export default function CustomerRequestStart() {
 
     setCreating(true);
     try {
+      let essentialsGps = null;
+      if (isCarEssentialsDelivery) {
+        if (!navigator.geolocation) {
+          toast.error('Your browser does not support location access. Please enable location services or try another browser.');
+          return;
+        }
+        essentialsGps = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+              latitude: Number(position.coords.latitude),
+              longitude: Number(position.coords.longitude),
+            }),
+            (error) => reject(error),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          );
+        }).catch((error) => {
+          const message = error?.code === 1
+            ? 'Please allow LOCAL to access your current location to submit this requirement.'
+            : error?.code === 3
+              ? 'Could not get your current location in time. Please try submitting again.'
+              : 'Unable to get your current location. Please check your device location settings and try again.';
+          toast.error(message);
+          return null;
+        });
+        if (!essentialsGps) return;
+      }
       const res = await sdk.table('service_requests_c').create({
         Name: vehicle.toUpperCase() + ' • ' + (isCarWash ? 'Car Wash (' + washCart.reduce((sum, item) => sum + item.qty, 0) + ' items)' : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' — ' + selectedCarServicePackage.vehicleType : displayIssue),
         customer_c: customer.Id,
@@ -754,11 +780,11 @@ export default function CustomerRequestStart() {
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isProfessionalDriverService ? '\\nLOCAL_DRIVER_ROUTE_JSON:' + JSON.stringify({ pickup: driverPickupPoint, dropoff: driverDropoffPoint, tripType: driverTripType, travelType: driverTravelType, stops: driverStops, quoteWorkflow: 'Customer Care reviews route and trip details, sends quote for customer approval, and assigns a driver only after customer approval.' }) : '') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
-        location_c: isCarEssentialsDelivery ? 'To be confirmed by LOCAL Customer Care with the customer' : isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
+        location_c: isCarEssentialsDelivery ? 'Customer GPS location captured at submission (' + essentialsGps.latitude.toFixed(6) + ', ' + essentialsGps.longitude.toFixed(6) + ')' : isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
-        latitude_c: (isInsuranceClaim || isCarEssentialsDelivery) ? null : Number(location.latitude),
-        longitude_c: (isInsuranceClaim || isCarEssentialsDelivery) ? null : Number(location.longitude),
+        latitude_c: isCarEssentialsDelivery ? essentialsGps.latitude : isInsuranceClaim ? null : Number(location.latitude),
+        longitude_c: isCarEssentialsDelivery ? essentialsGps.longitude : isInsuranceClaim ? null : Number(location.longitude),
         status_c: 'Open',
         preferred_time_c: serviceTiming,
         requested_at_c: new Date().toISOString(),
