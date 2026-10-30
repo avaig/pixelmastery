@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { formatRelativeTime } from '@/utils/date';
 
 const { eq } = window.ApperSDK.CoreSDK;
+const NOTIFICATION_PAGE_SIZE = 100;
 
 export const route = {
   path: '/notifications',
@@ -45,7 +46,7 @@ export default function Notifications() {
       .select(['Id', 'Name', 'message_c', 'notification_type_c', 'is_read_c', 'action_url_c', 'related_record_id_c', 'related_type_c', 'CreatedOn'])
       .where(eq('recipient_user_c', user.userId))
       .orderByDesc('CreatedOn')
-      .page(1, 100)
+      .page(1, NOTIFICATION_PAGE_SIZE)
       .fetch();
     if (!result.success) throw new Error(result.message || 'Notifications could not be loaded.');
     return result.data ?? [];
