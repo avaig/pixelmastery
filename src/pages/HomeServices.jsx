@@ -197,7 +197,7 @@ export default function HomeServices() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-semibold leading-tight">{service.title}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{service.subtitle}</p>
+                  <p className={`mt-1 text-sm text-muted-foreground ${service.id === 'computer' ? 'whitespace-nowrap text-xs tracking-tight' : ''}`}>{service.subtitle}</p>
                 </div>
               </div>
               {renderCallbackButton(service)}
