@@ -28,13 +28,6 @@ export default function CarDriveOnDemand() {
 
       <div className="mx-auto max-w-2xl">
         <Card className="flex w-full flex-col gap-2 border-2 p-3 text-left sm:p-4">
-            <button type="button" onClick={() => disclaimerAccepted && navigate(driverService.href)} disabled={!disclaimerAccepted} className="flex w-full items-center justify-between gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
-              <div className="flex items-center gap-3">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ApperIcon name={driverService.icon} size={29} /></div>
-                <div className="font-heading text-lg font-semibold leading-snug">{driverService.title}</div>
-              </div>
-              <ApperIcon name="ArrowUpRight" size={20} className="text-muted-foreground" />
-            </button>
             <div className="rounded-lg bg-primary/5 px-3 py-3 text-sm leading-6 text-foreground sm:text-base">
               <p className="mb-2"><span className="font-bold">₹800</span> for an 8-hour shift</p>
               <p className="mb-2"><span className="font-bold">₹50/hour</span> for every hour after the first 8 hours, until 10 PM</p>
