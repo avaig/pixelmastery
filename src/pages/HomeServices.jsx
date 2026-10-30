@@ -175,7 +175,7 @@ export default function HomeServices() {
     return (
       <Button
         type="button"
-        className="mt-3 min-h-10 w-full"
+        className={`${service.id === 'ac' ? 'mt-1' : 'mt-3'} min-h-10 w-full`}
         onClick={() => requestCallback(service)}
         disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
       >
@@ -190,7 +190,7 @@ export default function HomeServices() {
       <main className="mx-auto max-w-5xl px-3 py-3 sm:px-6 sm:py-4">
         <section className="grid gap-4 md:grid-cols-2" aria-label="Home service categories">
           {SERVICES.map((service) => (
-            <Card key={service.id} className="flex h-full flex-col rounded-xl border-border p-3 shadow-sm sm:p-4">
+            <Card key={service.id} className={`flex flex-col rounded-xl border-border p-3 shadow-sm sm:p-4 ${service.id === 'ac' ? 'h-auto self-start' : 'h-full'}`}>
               <div className="flex items-center gap-3">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <ApperIcon name={service.icon} size={24} />
