@@ -5,6 +5,7 @@ import { APP_CONFIG } from '@/config/app.config';
 import { cn } from '@/lib/utils';
 import ApperIcon from '@/components/ApperIcon';
 import UserMenu from '@/components/UserMenu';
+import NotificationBell from '@/components/NotificationBell';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { getLanguage, setLanguage, tr } from '@/services/i18n';
 import LanguageRuntime from '@/components/LanguageRuntime';
@@ -164,6 +165,7 @@ export default function OwnerLayout() {
             <img src="/local-logo.svg" alt="LOCAL — Happy to Help" className="h-8 w-auto" />
           </Link>
           <div className="ml-auto flex min-w-0 max-w-full items-center justify-end gap-2 sm:gap-3">
+            {(user?.profile === 'Customer_c' || user?.profile === 'ServiceProvider_c') && <NotificationBell userId={user?.userId} />}
             {user?.profile === 'ServiceProvider_c' && (
               <div className="flex items-center gap-2">
                 <label htmlFor="header-provider-availability" className="hidden text-xs font-medium text-muted-foreground sm:block">Availability</label>
