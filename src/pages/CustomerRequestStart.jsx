@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { sdk } from '@/services/sdk';
@@ -149,8 +149,8 @@ function getCarEssentialsRequestNote() {
     const order = JSON.parse(raw);
     const items = Array.isArray(order.items) ? order.items : [];
     if (!items.length) return '';
-    const itemSummary = items.map((item) => `${item.title} × ${item.quantity}`).join('; ');
-    return ` Car Essentials order details: ${itemSummary}. Vehicle: ${order.vehicle || 'Not specified'}. Requested delivery location: ${order.deliveryLocation || 'Not specified'}. Product compatibility, stock, final price and delivery charges must be confirmed by the Service Provider before fulfilment.`;
+    const itemSummary = items.map((item) => item.title).filter(Boolean).join('; ');
+    return ` Car Essentials requirement. Selected products: ${itemSummary}. Vehicle: ${order.vehicle || 'Not specified'}. LOCAL Customer Care must call the customer to confirm quantity, brand/specification, availability, final price and delivery location before arranging fulfilment. Do not dispatch automatically.`;
   } catch {
     return '';
   }
@@ -495,7 +495,7 @@ export default function CustomerRequestStart() {
       .filter((item) => item.qty > 0));
   }
 
-  const { data: customer } = useFetch(
+  const { data: customer, loading: customerLoading } = useFetch(
     async () => {
       if (!user?.userId) return null;
       const res = await sdk.table('customer_profiles_c')
@@ -511,12 +511,12 @@ export default function CustomerRequestStart() {
 
   const isOtherIssue = issue === 'Other Issue' && !requestedService;
   const categoryName = VEHICLE_CATEGORY[vehicle] ?? 'Car Assistance';
-  const { data: category } = useFetch(
+  const { data: category, loading: categoryLoading } = useFetch(
     () => sdk.table('service_categories_c').select(['Id', 'Name', 'status_c']).where(eq('Name', categoryName)).page(1, 1).fetch().then((res) => res.data?.[0] ?? null),
     [categoryName],
   );
   const capabilityName = getCapabilityName(issue, vehicle, requestedService);
-  const { data: capabilities } = useFetch(
+  const { data: capabilities, loading: capabilitiesLoading } = useFetch(
     () => getCapabilityCatalog(),
     [],
   );
@@ -721,11 +721,11 @@ export default function CustomerRequestStart() {
       toast.error('Please select a Car Service package and vehicle type.');
       return;
     }
-    if (!isProfessionalDriverService && !isInsuranceClaim && !location) {
+    if (!isProfessionalDriverService && !isInsuranceClaim && !isCarEssentialsDelivery && !location) {
       toast.error(tr('Please confirm your location first.', language));
       return;
     }
-    if (!isProfessionalDriverService && !isInsuranceClaim && location?.serviceable === false) {
+    if (!isProfessionalDriverService && !isInsuranceClaim && !isCarEssentialsDelivery && location?.serviceable === false) {
       toast.error('LOCAL bookings are not available at this location yet. Please choose a service location within the current Naini/Prayagraj coverage area.');
       return;
     }
@@ -753,11 +753,11 @@ export default function CustomerRequestStart() {
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isProfessionalDriverService ? '\\nLOCAL_DRIVER_ROUTE_JSON:' + JSON.stringify({ pickup: driverPickupPoint, dropoff: driverDropoffPoint, tripType: driverTripType, travelType: driverTravelType, stops: driverStops, quoteWorkflow: 'Customer Care reviews route and trip details, sends quote for customer approval, and assigns a driver only after customer approval.' }) : '') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
-        location_c: isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
+        location_c: isCarEssentialsDelivery ? 'To be confirmed by LOCAL Customer Care with the customer' : isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
-        latitude_c: isInsuranceClaim ? null : Number(location.latitude),
-        longitude_c: isInsuranceClaim ? null : Number(location.longitude),
+        latitude_c: (isInsuranceClaim || isCarEssentialsDelivery) ? null : Number(location.latitude),
+        longitude_c: (isInsuranceClaim || isCarEssentialsDelivery) ? null : Number(location.longitude),
         status_c: 'Open',
         preferred_time_c: serviceTiming,
         requested_at_c: new Date().toISOString(),
@@ -768,10 +768,11 @@ export default function CustomerRequestStart() {
       });
       if (!res.data?.length) {
         toast.error(res.messages?.[0] ?? 'Service request was not created.');
+        if (isCarEssentialsDelivery) navigate('/customer/car-essentials');
         return;
       }
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
-      toast.success(isInsuranceClaim ? 'Car Insurance Claim request sent to LOCAL Customer Care. We will contact you.' : isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : isProfessionalDriverService ? 'Driver request sent to LOCAL Customer Care. We will confirm driver availability, schedule and charges.' : tr('Request shared with eligible nearby Service Providers.', language));
+      if (!isCarEssentialsDelivery) toast.success(isInsuranceClaim ? 'Car Insurance Claim request sent to LOCAL Customer Care. We will contact you.' : isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : isProfessionalDriverService ? 'Driver request sent to LOCAL Customer Care. We will confirm driver availability, schedule and charges.' : tr('Request shared with eligible nearby Service Providers.', language));
       if (isCarWash) {
         setWashVehicleLocked(false);
         window.sessionStorage.removeItem('local_car_wash_vehicle_locked_v1');
@@ -784,6 +785,10 @@ export default function CustomerRequestStart() {
           pickupDropIndicative: includePickupDrop ? 100 : 0,
           locationText: location.text,
         });
+        return;
+      }
+      if (isCarEssentialsDelivery) {
+        navigate('/customer');
         return;
       }
       if (isCarService) {
