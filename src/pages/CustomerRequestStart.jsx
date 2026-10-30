@@ -734,11 +734,11 @@ export default function CustomerRequestStart() {
       toast.error('Please select a Car Service package and vehicle type.');
       return;
     }
-    if (!isProfessionalDriverService && !location) {
+    if (!isProfessionalDriverService && !isInsuranceClaim && !location) {
       toast.error(tr('Please confirm your location first.', language));
       return;
     }
-    if (!isProfessionalDriverService && location?.serviceable === false) {
+    if (!isProfessionalDriverService && !isInsuranceClaim && location?.serviceable === false) {
       toast.error('LOCAL bookings are not available at this location yet. Please choose a service location within the current Naini/Prayagraj coverage area.');
       return;
     }
@@ -766,11 +766,11 @@ export default function CustomerRequestStart() {
           : isOtherIssue
             ? problemDetails.trim()
             : 'Customer selected ' + issue + ' for ' + vehicle.toUpperCase() + '.') + (isProfessionalDriverService ? '\\nLOCAL_DRIVER_ROUTE_JSON:' + JSON.stringify({ pickup: driverPickupPoint, dropoff: driverDropoffPoint, tripType: driverTripType, travelType: driverTravelType, stops: driverStops, quoteWorkflow: 'Customer Care reviews route and trip details, sends quote for customer approval, and assigns a driver only after customer approval.' }) : '') + (isCarFlatPuncture ? '\\nLOCAL_PUNCTURE_DISPATCH_CONSENT_JSON:' + JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString(), pricePerPuncture: 150, visitChargeWithin10Km: 200, platformFee: 25, cancellationPolicy: { beforeProviderAcceptance: 0, afterAcceptanceBeforeTravel: 0, afterTravelBeforeArrival: 0, afterArrivalOrQuoteDeclined: 200, providerFault: 0 }, policyVersion: 1 }) : '') + (requestedService === 'Car Essentials Delivery' ? getCarEssentialsRequestNote() : '') + (isInsuranceClaim && insuranceFiles.length ? ' Insurance copy files selected: ' + insuranceFiles.map((file) => file.name).join(', ') + '. Demo preview records file names only; files are not securely uploaded or stored.' : ''),
-        location_c: location.text,
+        location_c: isInsuranceClaim ? 'Not required — remote insurance claim assistance' : location.text,
         // LOCAL's current demo rollout is Prayagraj; this city-level service area gates provider visibility.
         service_area_c: 'Prayagraj',
-        latitude_c: Number(location.latitude),
-        longitude_c: Number(location.longitude),
+        latitude_c: isInsuranceClaim ? null : Number(location.latitude),
+        longitude_c: isInsuranceClaim ? null : Number(location.longitude),
         status_c: 'Open',
         preferred_time_c: serviceTiming,
         requested_at_c: new Date().toISOString(),
@@ -784,7 +784,7 @@ export default function CustomerRequestStart() {
         return;
       }
       if (requestedService === 'Car Essentials Delivery') window.sessionStorage.removeItem('local_car_essentials_order_v1');
-      toast.success(isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : isProfessionalDriverService ? 'Driver request sent to LOCAL Customer Care. We will confirm driver availability, schedule and charges.' : tr('Request shared with eligible nearby Service Providers.', language));
+      toast.success(isInsuranceClaim ? 'Car Insurance Claim request sent to LOCAL Customer Care. We will contact you.' : isCarWash ? 'Car Wash quote submitted for LOCAL Customer Care review.' : isBikeCareRequest ? 'Bike service request sent to LOCAL Central Dispatch. Customer Care will call you.' : isProfessionalDriverService ? 'Driver request sent to LOCAL Customer Care. We will confirm driver availability, schedule and charges.' : tr('Request shared with eligible nearby Service Providers.', language));
       if (isCarWash) {
         setWashVehicleLocked(false);
         window.sessionStorage.removeItem('local_car_wash_vehicle_locked_v1');
@@ -1231,7 +1231,7 @@ export default function CustomerRequestStart() {
           )}
         </Card>
         <Card className={(isCarWash || isCarService) ? "p-3" : "p-6"}>
-          {!isCarWash && !isCarService && !isProfessionalDriverService && <>
+          {!isCarWash && !isCarService && !isProfessionalDriverService && !isInsuranceClaim && <>
             <div className="text-sm font-semibold">When do you need the service?</div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Button type="button" variant={serviceTiming === 'ASAP' ? 'default' : 'outline'} onClick={() => setServiceTiming('ASAP')}><ApperIcon name="Zap" size={16} /> Book Now</Button>
@@ -1239,7 +1239,7 @@ export default function CustomerRequestStart() {
             </div>
             {serviceTiming === 'Scheduled' && <div className="mt-3"><label htmlFor="requested-service-time" className="text-sm font-medium">Choose date and time</label><Input id="requested-service-time" type="datetime-local" min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Your selected time is a request, not a confirmed appointment. A Service Provider must accept it.</p></div>}
           </>}
-          {!isCarEssentialsDelivery && !isCarWash && !isCarService && !isProfessionalDriverService && <>
+          {!isCarEssentialsDelivery && !isCarWash && !isCarService && !isProfessionalDriverService && !isInsuranceClaim && <>
           <div className="mt-6 border-t border-border pt-5 text-sm font-semibold">Where do you need the service?</div>
           <div className="mt-2 text-sm text-muted-foreground">Choose the location for this booking. It can be different from your saved home or office address. GPS is optional.</div>
           {location && (
@@ -1268,10 +1268,10 @@ export default function CustomerRequestStart() {
             </Button>
           </form>
           </>}
-          {(location || isCarWash || isCarService || isProfessionalDriverService) && (
+          {(location || isCarWash || isCarService || isProfessionalDriverService || isInsuranceClaim) && (
             <>
               {isCarEssentialsDelivery && location && <div className="mt-5 rounded-lg border bg-muted/30 p-3 text-sm"><div className="font-semibold">Delivery address confirmed</div><div className="mt-1 text-muted-foreground">{location.text}</div><p className="mt-1 text-xs text-muted-foreground">We’ll use this address for the delivery request. Availability and final price still need provider confirmation.</p></div>}
-              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : isCarService ? () => setShowCarServiceQuoteReview(true) : createRequest} disabled={(!isProfessionalDriverService && location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !isProfessionalDriverService && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isCarService && !selectedCarServicePackage) || (isCarFlatPuncture && !punctureDispatchConsent)}>
+              <Button className="mt-2 w-full" onClick={isCarWash ? () => setShowCarWashQuoteReview(true) : isCarService ? () => setShowCarServiceQuoteReview(true) : createRequest} disabled={(!isProfessionalDriverService && !isInsuranceClaim && location?.serviceable === false) || ((isCarWash || isCarService) && !location) || creating || (isOtherIssue && !isCarEssentialsDelivery && !isProfessionalDriverService && !problemDetails.trim()) || (isCarWash && normalizedWashCart.length === 0) || (isCarService && !selectedCarServicePackage) || (isCarFlatPuncture && !punctureDispatchConsent)}>
                 <ApperIcon name="Send" size={17} />
                 {creating ? tr('Sharing request…', language) : isCarWash ? 'Book My Car Wash' : isCarService ? 'Book Your Car Service' : isBikeCareRequest ? 'Submit Request to LOCAL' : isCarFlatPuncture ? 'Find Nearby Help' : isCarEssentialsDelivery ? 'Submit Delivery Request' : isInsuranceClaim ? 'Get Free Consultation' : isProfessionalDriverService ? 'Request a Driver' : /driver/i.test(requestedService) ? 'Find LOCAL Drivers' : pricingMode === 'Fixed Price' ? tr('Continue with listed price', language) : pricingMode === 'Urgent Dispatch' ? 'Find LOCAL Service Providers' : tr('Find LOCAL Service Providers', language)}
               </Button>
