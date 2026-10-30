@@ -56,7 +56,7 @@ export default function VehicleIssueSelect() {
 
   return (
     <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
-      <Card className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-[#F4F8FC] p-4 shadow-sm sm:mb-7 sm:p-6">
+      <Card className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-[#F4F8FC] p-3 shadow-sm sm:mb-7 sm:p-4">
         <div className="flex items-center gap-3 sm:items-start sm:gap-4">
           <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#132F55] text-white sm:size-16">
             <ApperIcon name="Headset" size={30} />
@@ -72,7 +72,7 @@ export default function VehicleIssueSelect() {
             </div>
           </div>
         </div>
-        <a href="tel:+919235559696" aria-label={tr('Call LOCAL Support', language)} className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-center text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:text-lg">
+        <a href="tel:+919235559696" aria-label={tr('Call LOCAL Support', language)} className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-center text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:text-lg">
           <ApperIcon name="PhoneCall" size={22} />
           <span>{tr('CALL LOCAL SUPPORT', language)}</span>
         </a>
