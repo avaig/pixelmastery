@@ -1,5 +1,5 @@
-const CACHE = 'local-static-v3';
-const PRECACHE = ['/favicon.ico', '/local-logo.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png'];
+const CACHE = 'local-static-v4';
+const PRECACHE = ['/favicon.ico', '/local-logo.svg', '/local-square-logo.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
