@@ -76,7 +76,6 @@ export default function VehicleIssueSelect() {
           <ApperIcon name="PhoneCall" size={22} />
           <span>{tr('CALL LOCAL SUPPORT', language)}</span>
         </a>
-        <p className="mt-3 text-center text-sm font-semibold leading-snug text-slate-700 sm:text-base">{tr('One call. Help on the way.', language)}</p>
       </Card>
       <div className="mb-3 sm:mb-4">
         <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">{tr('Roadside issues we can help with', language)}</h2>
