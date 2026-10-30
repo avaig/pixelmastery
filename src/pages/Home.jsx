@@ -483,7 +483,7 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-3 max-w-2xl px-2 text-base font-semibold tracking-wide text-slate-600 sm:mt-4 sm:text-xl">
-              {tr('Services At Your Doorstep', language)}
+              {tr('Doorstep Services', language)}
             </p>
 
 
