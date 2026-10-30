@@ -56,16 +56,6 @@ export default function VehicleIssueSelect() {
 
   return (
     <div className="mx-auto -mt-2 max-w-5xl sm:mt-0">
-      <div className="mb-1 flex justify-start sm:mb-3">
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={() => navigate('/customer')}
-          className="flex size-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-        >
-          <ApperIcon name="ArrowLeft" size={19} />
-        </button>
-      </div>
       <Card className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-[#F4F8FC] p-4 shadow-sm sm:mb-7 sm:p-6">
         <div className="flex items-center gap-3 sm:items-start sm:gap-4">
           <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#132F55] text-white sm:size-16">
