@@ -34,37 +34,12 @@ export default function CarEssentialsDelivery() {
   const navigate = useNavigate();
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [vehicle, setVehicle] = useState('');
-  const [location, setLocation] = useState('');
-  const [coordinates, setCoordinates] = useState(null);
-  const [locating, setLocating] = useState(false);
 
   function toggleProduct(productId) {
     setSelectedProducts((current) =>
       current.includes(productId)
         ? current.filter((id) => id !== productId)
         : [...current, productId]
-    );
-  }
-
-  function useCurrentLocation() {
-    if (!navigator.geolocation) {
-      toast.error('Current location is not supported by this browser. Please enter your address.');
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const next = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-        setCoordinates(next);
-        setLocation((current) => current.trim() || 'Current location (' + next.latitude.toFixed(5) + ', ' + next.longitude.toFixed(5) + ')');
-        setLocating(false);
-        toast.success('Current location captured. Add your full address or landmark for accurate delivery.');
-      },
-      () => {
-        setLocating(false);
-        toast.error('Could not access your location. Please enter your delivery address manually.');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   }
 
@@ -77,40 +52,8 @@ export default function CarEssentialsDelivery() {
       toast.error('Enter your car make and model so we can help identify a compatible product.');
       return;
     }
-    if (!location.trim()) {
-      toast.error('Enter the delivery location.');
-      return;
-    }
-    let confirmedCoordinates = coordinates;
-    let confirmedAddress = location.trim();
-    if (!confirmedCoordinates) {
-      setLocating(true);
-      try {
-        const query = /prayagraj|allahabad|kanpur|lucknow|varanasi|noida|ghaziabad|delhi/i.test(confirmedAddress)
-          ? confirmedAddress
-          : confirmedAddress + ', Prayagraj, Uttar Pradesh, India';
-        const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=' + encodeURIComponent(query));
-        if (!response.ok) throw new Error('Address lookup unavailable');
-        const matches = await response.json();
-        if (!matches.length) {
-          toast.error('We could not locate this address. Add your locality and city, or use current location.');
-          return;
-        }
-        confirmedCoordinates = { latitude: Number(matches[0].lat), longitude: Number(matches[0].lon) };
-        confirmedAddress = matches[0].display_name.split(',').slice(0, 4).join(', ');
-        setCoordinates(confirmedCoordinates);
-        setLocation(confirmedAddress);
-      } catch {
-        toast.error('We could not confirm this delivery address right now. Please try again or use current location.');
-        return;
-      } finally {
-        setLocating(false);
-      }
-    }
     const orderDetails = {
       vehicle: vehicle.trim(),
-      deliveryLocation: confirmedAddress,
-      deliveryCoordinates: confirmedCoordinates,
       items: selectedProducts.map((id) => {
         const product = PRODUCTS.find((entry) => entry.id === id);
         return {
@@ -121,7 +64,6 @@ export default function CarEssentialsDelivery() {
       submittedAt: new Date().toISOString(),
     };
     window.sessionStorage.setItem('local_car_essentials_order_v1', JSON.stringify(orderDetails));
-    window.localStorage.setItem('local_service_location_c', JSON.stringify({ label: confirmedAddress, latitude: confirmedCoordinates.latitude, longitude: confirmedCoordinates.longitude, source: coordinates ? 'device GPS' : 'confirmed delivery address' }));
     navigate('/customer/request?vehicle=car&issue=Other%20Issue&service=Car%20Essentials%20Delivery');
   }
 
@@ -159,14 +101,9 @@ export default function CarEssentialsDelivery() {
       </div>
 
       <Card className="border-2 border-primary/15 p-3 sm:p-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-11 sm:rounded-xl">
-            <ApperIcon name="MapPin" size={20} />
-          </div>
-          <div>
-            <h2 className="font-semibold">Delivery details</h2>
-            <p className="text-sm text-muted-foreground">Tell us what you need and where to deliver it.</p>
-          </div>
+        <div className="mb-3">
+          <h2 className="font-semibold">Your requirement</h2>
+          <p className="text-sm text-muted-foreground">Select the products you need. Our Customer Care team will contact you.</p>
         </div>
 
         <div className="mt-2 grid gap-2.5 sm:mt-3 sm:grid-cols-2 sm:gap-3">
@@ -203,23 +140,6 @@ export default function CarEssentialsDelivery() {
             ) : (
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">No products selected yet. Choose one or more products above to see them here.</p>
             )}
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="car-essentials-location" className="text-sm font-medium">Full delivery address</label>
-            <Input
-              id="car-essentials-location"
-              value={location}
-              onChange={(event) => { setLocation(event.target.value); setCoordinates(null); }}
-              placeholder="House/flat, street, area and nearby landmark"
-              className="mt-2"
-            />
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">Include a landmark so the delivery partner can find you.</p>
-              <Button type="button" variant="outline" size="sm" onClick={useCurrentLocation} disabled={locating}>
-                <ApperIcon name="LocateFixed" size={15} />
-                {locating ? 'Getting location…' : 'Use current location'}
-              </Button>
-            </div>
           </div>
         </div>
 
