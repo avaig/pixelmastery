@@ -48,10 +48,6 @@ export default function CarEssentialsDelivery() {
       toast.error('Please select at least one product.');
       return;
     }
-    if (!vehicle.trim()) {
-      toast.error('Enter your car make and model so we can help identify a compatible product.');
-      return;
-    }
     const orderDetails = {
       vehicle: vehicle.trim(),
       items: selectedProducts.map((id) => {
@@ -108,7 +104,7 @@ export default function CarEssentialsDelivery() {
 
         <div className="mt-2 grid gap-2.5 sm:mt-3 sm:grid-cols-2 sm:gap-3">
           <div>
-            <label htmlFor="car-essentials-vehicle" className="text-sm font-medium">Car make and model</label>
+            <label htmlFor="car-essentials-vehicle" className="text-sm font-medium">Car make and model (Optional)</label>
             <Input
               id="car-essentials-vehicle"
               value={vehicle}
@@ -116,7 +112,7 @@ export default function CarEssentialsDelivery() {
               placeholder="e.g. Hyundai Creta 2022"
               className="mt-2"
             />
-            <p className="mt-1 text-xs text-muted-foreground">Helps identify the correct product specification.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Optional — helps us identify the correct product specification.</p>
           </div>
           <div className="rounded-lg border bg-muted/20 p-3 sm:p-4">
             <div className="flex items-center justify-between gap-2">
