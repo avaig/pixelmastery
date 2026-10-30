@@ -1070,16 +1070,18 @@ export default function CustomerRequestStart() {
         </section>
       )}
       <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card id="car-wash-selected-summary" className={'border-2 border-primary/20 ' + (isInsuranceClaim ? 'p-4' : 'p-6')}>
-          <div className={'flex items-center ' + (isInsuranceClaim ? 'gap-3' : 'gap-4')}>
-            <div className={'flex shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ' + (isInsuranceClaim ? 'size-14' : 'size-16')}>
-              <ApperIcon name={vehicle === 'car' ? 'Car' : 'Bike'} size={isInsuranceClaim ? 28 : 34} />
+        <Card id="car-wash-selected-summary" className={'border-2 border-primary/20 ' + (isInsuranceClaim ? 'p-2' : 'p-6')}>
+          {!isInsuranceClaim && (
+            <div className="flex items-center gap-4">
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <ApperIcon name={vehicle === 'car' ? 'Car' : 'Bike'} size={34} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Service Selected</div>
+                <div className="mt-1 text-lg font-semibold">{tr(isDieselRequest ? 'Diesel on Demand' : displayIssue, language)}</div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Service Selected</div>
-              <div className="mt-1 text-lg font-semibold">{isInsuranceClaim ? 'Car Insurance Claim' : tr(isDieselRequest ? 'Diesel on Demand' : displayIssue, language)}</div>
-            </div>
-          </div>
+          )}
           {isDieselRequest ? (
             <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 font-semibold"><ApperIcon name="Fuel" size={18} />Diesel Cost &amp; Delivery Charges</div>
@@ -1177,7 +1179,7 @@ export default function CustomerRequestStart() {
             </section>
           )}
           {isInsuranceClaim && (
-            <div className="mt-3 rounded-xl border-2 border-primary/25 bg-background p-3">
+            <div className="mt-0 rounded-lg border-2 border-primary/25 bg-background p-2">
               <input
                 id="insurance-copy-upload"
                 type="file"
@@ -1188,7 +1190,7 @@ export default function CustomerRequestStart() {
               />
               <label
                 htmlFor="insurance-copy-upload"
-                className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
+                className="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-center text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
               >
                 <ApperIcon name="Upload" size={18} />
                 Upload Car Insurance Copy
