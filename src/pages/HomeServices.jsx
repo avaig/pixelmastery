@@ -175,7 +175,7 @@ export default function HomeServices() {
     return (
       <Button
         type="button"
-        className={`${service.id === 'ac' ? 'mt-1' : 'mt-3'} min-h-10 w-full`}
+        className={`${service.id === 'ac' ? 'mt-0' : 'mt-3'} min-h-10 w-full`}
         onClick={() => requestCallback(service)}
         disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
       >
@@ -190,14 +190,14 @@ export default function HomeServices() {
       <main className="mx-auto max-w-5xl px-3 py-3 sm:px-6 sm:py-4">
         <section className="grid gap-4 md:grid-cols-2" aria-label="Home service categories">
           {SERVICES.map((service) => (
-            <Card key={service.id} className={`flex flex-col rounded-xl border-border p-3 shadow-sm sm:p-4 ${service.id === 'ac' ? 'h-auto self-start' : 'h-full'}`}>
+            <Card key={service.id} className={`flex flex-col rounded-xl border-border shadow-sm ${service.id === 'ac' ? 'h-auto self-start gap-3 p-3' : 'h-full p-3 sm:p-4'}`}>
               <div className="flex items-center gap-3">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <ApperIcon name={service.icon} size={24} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-semibold leading-tight">{service.title}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{service.id === 'computer' ? <><span className="block">Desktop &amp; Laptop</span><span className="block">Installation and Service</span></> : service.id === 'ac' ? <><span className="block">Window &amp; Split AC</span><span className="block">Installation and Service</span></> : service.subtitle}</p>
+                  <p className="mt-1 text-sm leading-snug text-muted-foreground">{service.id === 'computer' ? <><span className="block">Desktop &amp; Laptop</span><span className="block">Installation and Service</span></> : service.id === 'ac' ? <><span className="block">Window &amp; Split AC</span><span className="block">Installation and Service</span></> : service.subtitle}</p>
                 </div>
               </div>
               {renderCallbackButton(service)}
