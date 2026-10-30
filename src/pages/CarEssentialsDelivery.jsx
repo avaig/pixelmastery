@@ -136,18 +136,12 @@ export default function CarEssentialsDelivery() {
   }
 
   return (
-    <div className="mx-auto mt-3 max-w-5xl space-y-3 sm:mt-4 sm:space-y-6">
-      <header className="mb-2 text-center sm:mb-0">
-        <div className="mx-auto mb-1 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:mb-3 sm:size-14">
-          <ApperIcon name="PackageCheck" size={22} />
-        </div>
+    <div className="mx-auto mt-1 max-w-5xl space-y-2 sm:mt-2 sm:space-y-3">
+      <header className="text-center">
         <h1 className="text-lg font-bold tracking-tight sm:text-2xl">Car Essentials at Your Doorstep</h1>
-        <p className="mx-auto mt-1 max-w-2xl text-xs leading-snug text-muted-foreground sm:text-base">
-          Essential Car Fluids Delivered to Your Location
-        </p>
       </header>
 
-      <div className="mt-2 grid grid-cols-1 gap-2 sm:mt-0 sm:grid-cols-3 sm:gap-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         {PRODUCTS.map((product) => {
           const selected = selectedProducts.includes(product.id);
           return (
@@ -189,7 +183,7 @@ export default function CarEssentialsDelivery() {
         })}
       </div>
 
-      <Card className="border-2 border-primary/15 p-3 sm:p-6">
+      <Card className="border-2 border-primary/15 p-3 sm:p-4">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-11 sm:rounded-xl">
             <ApperIcon name="MapPin" size={20} />
@@ -200,7 +194,7 @@ export default function CarEssentialsDelivery() {
           </div>
         </div>
 
-        <div className="mt-3 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4">
+        <div className="mt-2 grid gap-2.5 sm:mt-3 sm:grid-cols-2 sm:gap-3">
           <div>
             <label htmlFor="car-essentials-vehicle" className="text-sm font-medium">Car make and model</label>
             <Input
@@ -255,23 +249,14 @@ export default function CarEssentialsDelivery() {
           </div>
         </div>
 
-        <div className="mt-3 rounded-lg border bg-muted/30 p-3 sm:mt-5 sm:rounded-xl sm:p-4">
-          <div className="flex items-start gap-3">
-            <ApperIcon name="MapPinned" size={21} className="mt-0.5 text-primary" />
-            <div className="space-y-1">
-              <p className="font-semibold">Confirm before you order</p>
-              <p className="text-sm leading-relaxed text-muted-foreground">We’ll confirm product availability, final price, delivery charges and estimated arrival before you decide whether to place the order.</p>
-            </div>
-          </div>
-        </div>
-
-        <Button type="button" className="mt-3 w-full sm:mt-5" onClick={checkAvailability}>
+        <Button type="button" className="mt-2 w-full sm:mt-3" onClick={checkAvailability}>
           <ApperIcon name="MapPinCheck" size={17} />
           Find a LOCAL Provider
         </Button>
-        <p className="mt-2 text-center text-[11px] leading-snug text-muted-foreground sm:mt-3 sm:text-xs">
-          This checks your request; it does not confirm an order or take payment.
-        </p>
+        <Button type="button" variant="outline" className="mt-2 w-full" disabled aria-label="Call Customer Care — phone number to be added">
+          <ApperIcon name="PhoneCall" size={17} />
+          Call Customer Care
+        </Button>
       </Card>
     </div>
   );
