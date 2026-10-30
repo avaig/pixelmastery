@@ -1091,7 +1091,7 @@ export default function CustomerRequestStart() {
                   ))}
                   <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>LOCAL Platform Fee <span className="text-xs text-muted-foreground">(per booking)</span></span><span className="font-semibold">₹{CAR_WASH_PLATFORM_FEE}</span></div>
                   {includePickupDrop && <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>Pickup &amp; Drop <span className="text-xs text-muted-foreground">(indicative)</span></span><span className="font-semibold">₹100</span></div>}
-                  <Button type="button" onClick={refreshEstimatedTotal} className="mt-3 flex w-full items-center justify-between rounded-lg border border-primary bg-primary px-3 py-3 text-primary-foreground shadow-sm hover:bg-primary/90"><span className="font-bold">Estimated total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></Button>
+                  <Button type="button" onClick={refreshEstimatedTotal} className="mt-3 flex w-full items-center justify-between rounded-lg border border-primary bg-primary px-3 py-3 text-primary-foreground shadow-sm hover:bg-primary/90"><span className="font-bold">Press For Total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></Button>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
