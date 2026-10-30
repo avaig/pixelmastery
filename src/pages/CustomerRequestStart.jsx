@@ -747,52 +747,47 @@ export default function CustomerRequestStart() {
       let essentialsGps = null;
       let essentialsAddress = '';
       if (isCarEssentialsDelivery) {
-        if (!navigator.geolocation) {
-          toast.error('Your browser does not support location access. Please enable location services or try another browser.');
+        // Reuse the location the customer already confirmed in LOCAL's location gate.
+        // Do not request browser GPS a second time during submission: that can fail even
+        // when the app already has a valid saved address and coordinates.
+        let savedServiceLocation = null;
+        try {
+          savedServiceLocation = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null');
+        } catch {
+          savedServiceLocation = null;
+        }
+        const confirmedLocation = location
+          && Number.isFinite(Number(location.latitude))
+          && Number.isFinite(Number(location.longitude))
+          ? location
+          : savedServiceLocation;
+        const latitude = Number(confirmedLocation?.latitude);
+        const longitude = Number(confirmedLocation?.longitude);
+        if (!confirmedLocation || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          toast.error('Please confirm your service location in LOCAL before submitting this requirement.');
           return;
         }
-        essentialsGps = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => resolve({
-              latitude: Number(position.coords.latitude),
-              longitude: Number(position.coords.longitude),
-            }),
-            (error) => reject(error),
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-          );
-        }).catch((error) => {
-          const message = error?.code === 1
-            ? 'Please allow LOCAL to access your current location to submit this requirement.'
-            : error?.code === 3
-              ? 'Could not get your current location in time. Please try submitting again.'
-              : 'Unable to get your current location. Please check your device location settings and try again.';
-          toast.error(message);
-          return null;
-        });
-        if (!essentialsGps) return;
-
+        essentialsGps = { latitude, longitude };
         const savedProfileAddress = String(customer?.location_c || '').trim();
-        let savedServiceAddress = '';
-        try {
-          const saved = JSON.parse(window.localStorage.getItem('local_service_location_c') || 'null');
-          savedServiceAddress = String(saved?.label || '').trim();
-        } catch {
-          savedServiceAddress = '';
-        }
+        const savedServiceAddress = String(confirmedLocation?.label || confirmedLocation?.text || '').trim();
         const isUsefulAddress = (value) => value && !/^(confirmed service location|current location|saved customer address not available|to be confirmed)/i.test(value);
-        essentialsAddress = isUsefulAddress(savedProfileAddress) ? savedProfileAddress : (isUsefulAddress(savedServiceAddress) ? savedServiceAddress : '');
+        essentialsAddress = isUsefulAddress(savedServiceAddress) ? savedServiceAddress : (isUsefulAddress(savedProfileAddress) ? savedProfileAddress : '');
         if (!essentialsAddress) {
           try {
-            const response = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=' + encodeURIComponent(essentialsGps.latitude) + '&lon=' + encodeURIComponent(essentialsGps.longitude), { headers: { Accept: 'application/json' } });
+            const response = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + encodeURIComponent(latitude) + '&longitude=' + encodeURIComponent(longitude) + '&localityLanguage=en');
             if (response.ok) {
               const result = await response.json();
-              essentialsAddress = String(result?.display_name || '').trim();
+              essentialsAddress = [result.locality, result.city || result.localityInfo?.administrative?.[0]?.name, result.principalSubdivision]
+                .filter(Boolean)
+                .filter((value, index, values) => values.indexOf(value) === index)
+                .slice(0, 3)
+                .join(', ');
             }
           } catch {
-            // Keep coordinates for the map link if reverse geocoding is temporarily unavailable.
+            // The confirmed coordinates are still saved and can open in Google Maps.
           }
         }
-        if (!essentialsAddress) essentialsAddress = 'Address could not be resolved; use View Customer Location for the map pin.';
+        if (!essentialsAddress) essentialsAddress = 'Address unavailable — use View Customer Location for the confirmed map pin.';
       }
       const res = await sdk.table('service_requests_c').create({
         Name: vehicle.toUpperCase() + ' • ' + (isCarWash ? 'Car Wash (' + washCart.reduce((sum, item) => sum + item.qty, 0) + ' items)' : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' — ' + selectedCarServicePackage.vehicleType : displayIssue),
