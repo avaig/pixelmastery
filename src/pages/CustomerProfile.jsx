@@ -34,8 +34,17 @@ export default function CustomerProfile() {
   const [form, setForm] = useState({ Name: '', email_c: '', phone_c: '', location_c: '', notes_c: '' });
   const [saving, setSaving] = useState(false);
   const { data: customer, loading } = useFetch(
-    () => sdk.table('customer_profiles_c').select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'notes_c', 'status_c']).where(eq('email_c', user?.emailAddress ?? user?.email ?? '')).page(1, 1).fetch().then((res) => res.data?.[0] ?? null),
-    [user?.emailAddress, user?.email],
+    async () => {
+      if (!user?.userId) return null;
+      const res = await sdk.table('customer_profiles_c')
+        .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'notes_c', 'status_c', 'Owner'])
+        .where(eq('Owner', user.userId))
+        .page(1, 10)
+        .fetch();
+      if (!res.success) throw new Error(res.message || 'Could not load your customer profile.');
+      return (res.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(user.userId)) ?? null;
+    },
+    [user?.userId],
   );
 
   useEffect(() => {
@@ -55,16 +64,18 @@ export default function CustomerProfile() {
     }
     setSaving(true);
     try {
-      const payload = { Name: form.Name.trim(), email_c: form.email_c, phone_c: form.phone_c.trim(), location_c: form.location_c.trim(), notes_c: form.notes_c || null, status_c: customer?.status_c ?? 'Active' };
+      const payload = { Name: form.Name.trim(), email_c: String(user?.emailAddress ?? user?.email ?? form.email_c).trim().toLowerCase(), phone_c: form.phone_c.trim(), location_c: form.location_c.trim(), notes_c: form.notes_c || null, status_c: customer?.status_c ?? 'Active' };
       const res = customer
         ? await sdk.table('customer_profiles_c').update({ Id: customer.Id, ...payload })
-        : await sdk.table('customer_profiles_c').create(payload);
+        : await sdk.table('customer_profiles_c').create({ ...payload, Owner: user?.userId });
       if (!res.data?.length) {
         toast.error(res.messages?.[0] ?? 'Profile was not saved.');
         return;
       }
       toast.success(customer ? 'Profile updated.' : 'Customer profile created.');
       navigate('/customer');
+    } catch (error) {
+      toast.error(error?.message || 'Could not save your profile. Please try again.');
     } finally {
       setSaving(false);
     }

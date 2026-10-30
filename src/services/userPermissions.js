@@ -36,7 +36,7 @@ export const TABLE_PERMISSIONS = {
   },
   Customer_c: {
     service_categories_c: { access: 'Read' },
-    customer_profiles_c: { access: 'Read,Update' },
+    customer_profiles_c: { access: 'Read,Create,Update' },
     technician_profiles_c: { access: 'Read' },
     service_requests_c: { access: 'Full' },
     technician_responses_c: { access: 'Read,Create,Update' },

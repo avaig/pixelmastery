@@ -497,29 +497,16 @@ export default function CustomerRequestStart() {
 
   const { data: customer } = useFetch(
     async () => {
-      const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
-      if (!email) return null;
-
-      const res = await sdk
-        .table('customer_profiles_c')
-        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
-        .where(eq('email_c', user?.emailAddress ?? user?.email ?? ''))
-        .page(1, 100)
+      if (!user?.userId) return null;
+      const res = await sdk.table('customer_profiles_c')
+        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c', 'Owner'])
+        .where(eq('Owner', user.userId))
+        .page(1, 10)
         .fetch();
-
       if (!res.success) throw new Error(res.message || 'Could not look up your customer profile.');
-      const exactMatch = (res.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email);
-      if (exactMatch) return exactMatch;
-
-      // Fall back to a bounded lookup for legacy records whose email casing differs.
-      const fallback = await sdk.table('customer_profiles_c')
-        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
-        .page(1, 1000)
-        .fetch();
-      if (!fallback.success) throw new Error(fallback.message || 'Could not look up your customer profile.');
-      return (fallback.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
+      return (res.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(user.userId)) ?? null;
     },
-    [user?.emailAddress, user?.email],
+    [user?.userId],
   );
 
   const isOtherIssue = issue === 'Other Issue' && !requestedService;
