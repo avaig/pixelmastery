@@ -33,7 +33,6 @@ const PRODUCTS = [
 export default function CarEssentialsDelivery() {
   const navigate = useNavigate();
   const [selectedProducts, setSelectedProducts] = useState([]);
-  const [quantities, setQuantities] = useState({});
   const [vehicle, setVehicle] = useState('');
   const [location, setLocation] = useState('');
   const [coordinates, setCoordinates] = useState(null);
@@ -45,10 +44,6 @@ export default function CarEssentialsDelivery() {
         ? current.filter((id) => id !== productId)
         : [...current, productId]
     );
-    setQuantities((current) => ({
-      ...current,
-      [productId]: current[productId] || '1',
-    }));
   }
 
   function useCurrentLocation() {
@@ -76,10 +71,6 @@ export default function CarEssentialsDelivery() {
   async function checkAvailability() {
     if (!selectedProducts.length) {
       toast.error('Please select at least one product.');
-      return;
-    }
-    if (selectedProducts.some((id) => !quantities[id] || Number(quantities[id]) < 1 || Number(quantities[id]) > 20)) {
-      toast.error('Enter a quantity between 1 and 20 for each selected product.');
       return;
     }
     if (!vehicle.trim()) {
@@ -125,7 +116,6 @@ export default function CarEssentialsDelivery() {
         return {
           id,
           title: product?.title ?? id,
-          quantity: Number(quantities[id] || 1),
         };
       }),
       submittedAt: new Date().toISOString(),
@@ -161,21 +151,6 @@ export default function CarEssentialsDelivery() {
                     <h2 className="font-semibold leading-snug">{product.title}</h2>
                     <ApperIcon name={selected ? 'CircleCheck' : 'Circle'} size={19} className={'shrink-0 ' + (selected ? 'text-primary' : 'text-muted-foreground')} />
                   </div>
-                  {selected && (
-                    <div className="mt-2 border-t pt-2 sm:mt-4 sm:pt-3" onClick={(event) => event.stopPropagation()}>
-                      <label htmlFor={'quantity-' + product.id} className="text-sm font-medium">Quantity / pack count</label>
-                      <Input
-                        id={'quantity-' + product.id}
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={quantities[product.id] || '1'}
-                        onChange={(event) => setQuantities((current) => ({ ...current, [product.id]: event.target.value }))}
-                        onClick={(event) => event.stopPropagation()}
-                        className="mt-2"
-                      />
-                    </div>
-                  )}
                 </div>
               </Card>
             </button>
@@ -209,7 +184,7 @@ export default function CarEssentialsDelivery() {
           <div className="rounded-lg border bg-muted/20 p-3 sm:p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">Selected products</p>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{selectedProducts.reduce((sum, id) => sum + Math.max(0, Number(quantities[id]) || 0), 0)} items</span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{selectedProducts.length} selected</span>
             </div>
             {selectedProducts.length ? (
               <ul className="mt-3 space-y-2">
@@ -219,7 +194,6 @@ export default function CarEssentialsDelivery() {
                     <li key={id} className="flex items-start justify-between gap-2 border-t pt-2 first:border-t-0 first:pt-0">
                       <div className="min-w-0">
                         <p className="text-sm font-medium leading-snug">{product?.title ?? id}</p>
-                        <p className="text-xs text-muted-foreground">Quantity: {quantities[id] || '1'}</p>
                       </div>
                       <button type="button" onClick={() => toggleProduct(id)} className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10" aria-label={'Remove ' + (product?.title ?? id)}>Remove</button>
                     </li>
