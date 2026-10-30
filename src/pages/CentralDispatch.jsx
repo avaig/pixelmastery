@@ -229,8 +229,8 @@ function RequestServiceLocation({ request, customerAddress }) {
       return () => { active = false; };
     }
     setResolvedAddress('Resolving address from the captured location…');
-    const latitude = Number(request?.latitude_c);
-    const longitude = Number(request?.longitude_c);
+    const latitude = request?.latitude_c == null || request.latitude_c === '' ? NaN : Number(request.latitude_c);
+    const longitude = request?.longitude_c == null || request.longitude_c === '' ? NaN : Number(request.longitude_c);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       setResolvedAddress('Address not recorded');
       return () => { active = false; };
