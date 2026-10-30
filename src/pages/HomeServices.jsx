@@ -197,7 +197,7 @@ export default function HomeServices() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-semibold leading-tight">{service.title}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{service.id === 'computer' ? <><span className="block">Desktop &amp; Laptop</span><span className="block">Installation and Service</span></> : service.subtitle}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{service.id === 'computer' ? <><span className="block">Desktop &amp; Laptop</span><span className="block">Installation and Service</span></> : service.id === 'ac' ? <><span className="block">Window &amp; Split AC</span><span className="block">Installation and Service</span></> : service.subtitle}</p>
                 </div>
               </div>
               {renderCallbackButton(service)}
