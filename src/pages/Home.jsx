@@ -300,7 +300,7 @@ export default function Home() {
   return (
     <div className="min-h-svh bg-white text-[#102c4d]">
       <header className="relative z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-7xl flex-nowrap items-start justify-between gap-2 px-2 py-2 sm:h-20 sm:items-center sm:gap-3 sm:px-8 sm:py-0 lg:px-10">
+        <div className="mx-auto flex min-h-0 max-w-7xl flex-nowrap items-center justify-between gap-2 px-2 py-1 sm:h-20 sm:gap-3 sm:px-8 sm:py-0 lg:px-10">
           <Link to="/" className="shrink-0 self-start sm:self-auto">
             <img
               src={LOCAL_LOGO}
