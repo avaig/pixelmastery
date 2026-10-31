@@ -124,6 +124,11 @@ export default function OwnerLayout() {
                 end={item.to === homeRoute || item.to === '/admin' || item.to === '/admin/provider-onboarding'}
                 onClick={() => {
                   setMobileOpen(false);
+                  // Re-selecting Central Dispatch should return to its main request list,
+                  // not merely scroll the currently open request detail to the top.
+                  if (item.to === '/admin/dispatch') {
+                    window.dispatchEvent(new Event('local-central-dispatch-home'));
+                  }
                   // Always reset scroll, including when the user clicks the already-active nav item.
                   scrollPageToTop();
                 }}

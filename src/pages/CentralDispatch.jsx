@@ -271,6 +271,11 @@ export default function CentralDispatch() {
   const [dateFilter, setDateFilter] = useState('30');
   const [page, setPage] = useState(1);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
+  useEffect(() => {
+    const returnToDispatchList = () => setSelectedRequestId(null);
+    window.addEventListener('local-central-dispatch-home', returnToDispatchList);
+    return () => window.removeEventListener('local-central-dispatch-home', returnToDispatchList);
+  }, []);
   const [providerChoice, setProviderChoice] = useState({});
   const [busyKey, setBusyKey] = useState('');
   const [carWashQuoteInputs, setCarWashQuoteInputs] = useState({});
