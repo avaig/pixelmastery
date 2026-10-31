@@ -1144,7 +1144,7 @@ export default function CentralDispatch() {
                   <p className="mt-3 text-xs text-muted-foreground">Customer Care to call and confirm quantity, brand/specification, stock availability, final price and delivery arrangements.</p>
                 </section>;
               })()}
-              {getStructuredServiceDetails(request).type !== 'Car Wash' && !isDriverBookingRequest(request) && <section className="rounded-lg border p-4">
+              {getStructuredServiceDetails(request).type !== 'Car Wash' && !isDriverBookingRequest(request) && !getCarEssentialsAdminDetails(request.problem_description_c) && <section className="rounded-lg border p-4">
                 <h3 className="font-semibold">Price review</h3>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <span className="text-sm text-muted-foreground">{request.pricing_mode_c === 'Fixed Price' ? 'Detected fixed service total' : 'Inspection / estimate amount'}</span>
