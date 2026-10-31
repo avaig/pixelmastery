@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import ApperIcon from '@/components/ApperIcon';
 import UserMenu from '@/components/UserMenu';
 import NotificationBell from '@/components/NotificationBell';
+import CustomerBottomNav from '@/components/local/CustomerBottomNav';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { getLanguage, setLanguage, tr } from '@/services/i18n';
 import LanguageRuntime from '@/components/LanguageRuntime';
@@ -193,15 +194,16 @@ export default function OwnerLayout() {
           </div>
         </header>
         {mobileOpen && <div className="max-h-[calc(100svh-4.5rem)] overflow-y-auto border-b border-border bg-sidebar p-3 lg:hidden">{navigation}</div>}
-        <main className="min-w-0 px-3 py-4 sm:p-4 md:p-6 lg:p-8">
+        <main className={`min-w-0 px-3 py-4 sm:p-4 md:p-6 lg:p-8 ${user?.profile === 'Customer_c' ? 'pb-24 md:pb-8' : ''}`}>
           <ErrorBoundary><Outlet /></ErrorBoundary>
         </main>
+        {user?.profile === 'Customer_c' && <CustomerBottomNav />}
         <button
           type="button"
           onClick={scrollPageToTop}
           aria-label="Scroll to top"
           title="Back to top"
-          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-lg transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className={`fixed ${user?.profile === 'Customer_c' ? 'bottom-24 md:bottom-6' : 'bottom-6'} right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-lg transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2`}
         >
           <ApperIcon name="ArrowUp" size={22} />
         </button>
