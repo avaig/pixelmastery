@@ -635,25 +635,6 @@ export default function Home() {
 
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl justify-center px-4 py-3 sm:px-8 sm:py-6 lg:px-10">
-          <Link
-            to="/"
-            aria-label="LOCAL — Happy to Help"
-            className="inline-flex shrink-0 cursor-pointer"
-            onClick={(event) => {
-              event.preventDefault();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          >
-            <img
-              src={LOCAL_LOGO}
-              alt="LOCAL — Happy to Help"
-              className="h-9 w-auto sm:h-11"
-            />
-          </Link>
-        </div>
-      </footer>
     </div>
   );
 }
