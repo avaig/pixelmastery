@@ -624,10 +624,15 @@ export default function CentralDispatch() {
 
   function getCarEssentialsAdminDetails(value) {
     const text = String(value ?? '');
-    if (!/Car Essentials requirement/i.test(text)) return null;
-    const itemsText = text.match(/Selected products:\\s*(.*?)\\.\\s*Vehicle:/i)?.[1] ?? '';
-    const vehicle = text.match(/Vehicle:\\s*([^.]+)/i)?.[1]?.trim() ?? '';
-    const items = itemsText.split(';').map((item) => item.trim()).filter(Boolean);
+    const marker = 'Selected products:';
+    const markerIndex = text.indexOf(marker);
+    if (markerIndex < 0 || !/Car Essentials requirement/i.test(text)) return null;
+    const afterMarker = text.slice(markerIndex + marker.length).trim();
+    const vehicleMarkerIndex = afterMarker.toLowerCase().indexOf('. vehicle:');
+    const itemsText = (vehicleMarkerIndex >= 0 ? afterMarker.slice(0, vehicleMarkerIndex) : afterMarker).replace(/[.]$/, '').trim();
+    const vehicleText = vehicleMarkerIndex >= 0 ? afterMarker.slice(vehicleMarkerIndex + '. Vehicle:'.length) : '';
+    const vehicle = vehicleText.split('. LOCAL Customer Care')[0].trim().replace(/[.]$/, '');
+    const items = itemsText.split(';').map((item) => item.trim().replace(/[.]$/, '')).filter(Boolean);
     return { items, vehicle: vehicle && vehicle !== 'Not specified' ? vehicle : '' };
   }
 
