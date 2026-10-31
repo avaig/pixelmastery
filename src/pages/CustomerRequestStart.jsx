@@ -19,6 +19,14 @@ const { eq } = window.ApperSDK.CoreSDK;
 
 const CUSTOMER_CARE_PHONE = '';
 
+function getCustomerDeviceType() {
+  const userAgent = String(navigator.userAgent || '').toLowerCase();
+  if (/ipad|tablet|playbook|silk|kindle|sm-t|lenovo tab|xiaomi pad/.test(userAgent)) return 'Tablet';
+  if (/macintosh/.test(userAgent) && Number(navigator.maxTouchPoints || 0) > 1) return 'Tablet';
+  if (navigator.userAgentData?.mobile === true || /iphone|ipod|android.*mobile|windows phone|iemobile|opera mini/.test(userAgent)) return 'Mobile';
+  return 'Desktop';
+}
+
 const VEHICLE_CATEGORY = {
   car: 'Car Assistance',
   bike: 'Bike Assistance',
@@ -799,6 +807,7 @@ export default function CustomerRequestStart() {
         customer_c: customer.Id,
         service_category_c: category.Id,
         required_capability_c: requiredCapability.Id,
+        device_type_c: getCustomerDeviceType(),
         problem_description_c: (requestedService
           ? (isProfessionalDriverService ? 'Customer requested a driver. LOCAL Customer Care must call the customer to understand trip requirements and share a quote for approval before assigning a driver.' : isCarWash ? 'Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ' + normalizedWashCart.map((item) => item.title + ' — ' + item.variant + ' × ' + item.qty + ' = ₹' + (item.price * item.qty).toLocaleString('en-IN')).join('; ') + '; LOCAL Platform Fee: ₹' + CAR_WASH_PLATFORM_FEE + ' (once per booking)' + (includePickupDrop ? '; Pickup & Drop requested — indicative menu charge ₹100, subject to Customer Care location confirmation' : '; Pickup & Drop not requested yet — Customer Care to ask during confirmation call') + '. Service subtotal: ₹' + washCartSummary.subtotal.toLocaleString('en-IN') + '. Customer menu estimate including platform fee' + (includePickupDrop ? ' and indicative Pickup & Drop' : '') + ': ₹' + estimatedTotalValue.toLocaleString('en-IN') + '. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:' + JSON.stringify(normalizedWashCart.map((item) => ({ id: item.id, title: item.title, variant: item.variant, quantity: item.qty, baseUnitPrice: item.basePrice, listedUnitPrice: item.price, decision: 'customer_selected', proposedUnitPrice: null })).concat(includePickupDrop ? [{ id: 'pickup-drop', title: 'Pickup & Drop', variant: 'Requested', quantity: 1, listedUnitPrice: 100, decision: 'customer_requested', proposedUnitPrice: null, fixed: true }] : [])) : isCarService && selectedCarServicePackage ? selectedCarServicePackage.title + ' (' + selectedCarServicePackage.checkup + ') — ' + selectedCarServicePackage.vehicleType + '. Listed package price: ₹' + selectedCarServicePackage.price.toLocaleString('en-IN') + '. LOCAL Platform Fee: ₹' + CAR_SERVICE_PLATFORM_FEE + ' (once per booking). Indicative total including platform fee: ₹' + (Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN') + '. Covered items: ' + selectedCarServicePackage.covered.join('; ') + '. Customer selected this package and requests provider availability/confirmation through the normal offer flow.' : isBikeCareRequest ? requestedService + '. Customer requested a callback from LOCAL Customer Care. No bike model details or bidding are required. Confirm availability and the full service price, including the ₹25 LOCAL Platform Fee, with the customer before confirming payment.' : requestedService) + (vehicle === 'bike' ? '.' : ' for their car.')
           : isOtherIssue

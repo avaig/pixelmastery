@@ -30,7 +30,12 @@ export const nav = {
   section: 'Admin',
 };
 
-const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'problem_description_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'scheduled_at_c', 'pricing_mode_c', 'pricing_mode_description_c', 'CreatedOn'];
+const REQUEST_FIELDS = ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'problem_description_c', 'device_type_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'scheduled_at_c', 'pricing_mode_c', 'pricing_mode_description_c', 'CreatedOn'];
+
+function formatDispatchRequestId(id) {
+  const value = String(id ?? '').replace(/-/g, '').toUpperCase();
+  return value ? 'REQ-' + value.slice(0, 8) : 'Not recorded';
+}
 
 function readDriverTripMetadata(note, marker) {
   const source = String(note ?? '');
@@ -1003,6 +1008,16 @@ export default function CentralDispatch() {
               <StatusBadge value={request.status_c} />
             </div>
             <div className="space-y-5 p-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Request ID</p>
+                  <p className="mt-1 font-semibold text-foreground">{formatDispatchRequestId(request.Id)}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Device</p>
+                  <p className="mt-1 font-semibold text-foreground">{request.device_type_c || 'Not recorded'}</p>
+                </div>
+              </div>
               {String(request.status_c ?? '') === 'Cancelled' && <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-4"><div className="flex items-center gap-2 font-semibold text-destructive"><ApperIcon name="XCircle" size={18} /> Booking Cancelled</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Cancelled by</p><p className="mt-1 font-medium">{cancellationDetails?.actorName || cancellationDetails?.actor || 'Details not recorded'}</p><p className="text-xs text-muted-foreground">{cancellationDetails?.actor || 'Actor unknown'}</p></div><div><p className="text-xs text-muted-foreground">Cancelled on</p><p className="mt-1 font-medium">{formatCancellationTime(cancellationDetails?.cancelledAt)}</p></div><div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Reason</p><p className="mt-1 text-sm">{cancellationDetails?.reason || 'Reason not recorded'}</p></div><div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Booking stage</p><p className="mt-1 text-sm">{cancellationDetails?.stage || 'Not recorded'}</p></div></div></section>}
               <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-3 text-primary"><ApperIcon name="CarFront" size={26} /></div>
@@ -1274,7 +1289,7 @@ export default function CentralDispatch() {
                 <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(170px,1.05fr)_minmax(175px,1.12fr)_minmax(145px,0.92fr)_minmax(175px,1.12fr)_145px]">
                   <div className="flex min-w-0 items-start gap-3 p-4">
                     <div className={'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ' + (/ambulance/i.test(capabilityName) ? 'bg-rose-50 text-rose-600' : /ac|air condition/i.test(capabilityName) ? 'bg-violet-50 text-violet-600' : /wash/i.test(capabilityName) ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600')}><ApperIcon name={serviceIcon(request)} size={27} /></div>
-                    <div className="min-w-0"><h2 className="break-words font-semibold leading-5 text-slate-900">{request.Name}</h2><p className="mt-1 text-xs text-slate-500">{formatCreated(request.CreatedOn)}</p><span className="mt-2 inline-flex max-w-full rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{capabilityName}</span></div>
+                    <div className="min-w-0"><h2 className="break-words font-semibold leading-5 text-slate-900">{request.Name}</h2><p className="mt-1 text-xs text-slate-500">{formatCreated(request.CreatedOn)}</p><p className="mt-1 text-xs font-medium text-slate-600">{formatDispatchRequestId(request.Id)} · {request.device_type_c || 'Device not recorded'}</p><span className="mt-2 inline-flex max-w-full rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{capabilityName}</span></div>
                   </div>
                   <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="MapPin" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{request.location_c || 'Location not recorded'}</span></p><p className="flex items-start gap-2 text-sm font-semibold text-slate-800"><ApperIcon name="IndianRupee" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{(total !== null && total !== undefined ? '₹' + Number(total).toLocaleString('en-IN') : request.pricing_mode_c === 'Fixed Price' ? 'Price review needed' : 'Inspection charge / estimate')}{/wash/i.test(capabilityName) && /Pickup\s*&\s*Drop\s*—?\s*₹?\s*100/i.test(String(request.problem_description_c ?? '')) ? ' (incl. Pickup & Drop ₹100)' : ''}</span></p><p className="flex items-start gap-2 text-sm text-slate-700"><ApperIcon name="CalendarDays" size={16} className="mt-0.5 shrink-0 text-slate-500" /><span>{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.scheduled_at_c ? new Date(request.scheduled_at_c).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : request.preferred_time_c || 'Time not recorded'}</span></p></div>
                   <div className="space-y-2 border-t border-slate-100 p-4 xl:border-l xl:border-t-0"><p className="flex items-center gap-2 text-xs text-slate-500"><ApperIcon name="UserRound" size={15} /> Customer</p><p className="flex items-start gap-2 text-sm font-medium text-slate-800"><ApperIcon name="User" size={15} className="mt-0.5 shrink-0 text-slate-500" /><span>{customerName}</span></p>{customerPhone ? <a href={'tel:' + String(customerPhone).replace(/[^+\d]/g, '')} className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ApperIcon name="Phone" size={15} /><span>{customerPhone} · Call</span></a> : <p className="text-xs font-medium text-amber-700">Customer phone number missing</p>}</div>
