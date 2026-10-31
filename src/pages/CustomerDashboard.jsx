@@ -51,13 +51,6 @@ export default function CustomerDashboard() {
 
       </section>
 
-      <section className="mt-6 rounded-2xl border border-dashed p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-foreground">Need a service?</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Choose a service from LOCAL and find help near your location.</p>
-        <Link to="/" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90">
-          Find local help <ApperIcon name="ArrowRight" size={16} />
-        </Link>
-      </section>
     </main>
   );
 }
