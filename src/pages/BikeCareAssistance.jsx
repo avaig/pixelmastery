@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { getLanguage, tr } from '@/services/i18n';
 import { getCapabilityName } from '@/services/providerMatching';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -91,6 +92,10 @@ export default function BikeCareAssistance() {
   }
 
   async function submitRequest() {
+    if (!getLocalServiceAreaStatus().serviceable) {
+      toast.error(getServiceAreaMessage());
+      return;
+    }
     if (!selected) {
       toast.error('Please select Bike RSA or Bike Maintenance.');
       return;

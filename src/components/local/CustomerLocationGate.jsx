@@ -66,7 +66,7 @@ export default function CustomerLocationGate({ required = true, allowProviderByp
     if (distance > SERVICE_RADIUS_KM) {
       setOutsideLocation(confirmed);
       setOutsideArea(true);
-      setMessage('LOCAL is currently available in Naini and nearby Prayagraj, within about 25 km of Naini. Your selected location appears to be outside this area. You can still explore LOCAL, but bookings will remain unavailable for this location.');
+      setMessage('LOCAL is coming soon to your area! We are currently launching in Naini and nearby Prayagraj, within about 25 km of Naini. You can explore the app, but service requests cannot be submitted from this location yet.');
       return;
     }
     try {
@@ -212,15 +212,21 @@ export default function CustomerLocationGate({ required = true, allowProviderByp
         )}
         {outsideArea && (
           <div className="mt-3 space-y-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+              <p className="font-bold text-amber-900">LOCAL is coming soon to your area!</p>
+              <p className="mt-1 text-xs leading-5 text-amber-800">
+                We are starting in Naini, Prayagraj. We will expand to more locations soon.
+              </p>
+            </div>
             <p className="text-center text-xs leading-5 text-slate-500">
-              You can still explore LOCAL, but customer bookings for this area are not enabled yet.
+              You can continue exploring LOCAL. Requests and bookings will be enabled when service launches in your area.
             </p>
             <button
               type="button"
               onClick={continueExploringOutsideArea}
               className="w-full rounded-xl bg-[#102c4d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#183c64]"
             >
-              Continue exploring LOCAL
+              Explore LOCAL
             </button>
           </div>
         )}

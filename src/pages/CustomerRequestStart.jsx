@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { getCapabilityName } from '@/services/providerMatching';
 import { getLanguage, tr } from '@/services/i18n';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -692,6 +693,10 @@ export default function CustomerRequestStart() {
   }
 
   async function createRequest() {
+    if (!getLocalServiceAreaStatus().serviceable) {
+      toast.error(getServiceAreaMessage());
+      return;
+    }
     if (isCarFlatPuncture && !punctureDispatchConsent) {
       toast.error('Please accept the puncture pricing and cancellation policy before dispatch.');
       return;

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
+import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -140,6 +141,10 @@ export default function ACTechnicianRequest() {
   }
 
   async function createRequest() {
+    if (!getLocalServiceAreaStatus().serviceable) {
+      toast.error(getServiceAreaMessage());
+      return;
+    }
     if (!customer?.Id) {
       toast.error('Your customer profile could not be matched. Please complete your profile first.');
       return;

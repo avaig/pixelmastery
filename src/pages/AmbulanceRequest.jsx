@@ -8,6 +8,7 @@ import { getLanguage, tr } from '@/services/i18n';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -69,6 +70,10 @@ export default function AmbulanceRequest() {
   }
 
   async function requestAmbulance() {
+    if (!getLocalServiceAreaStatus().serviceable) {
+      toast.error(getServiceAreaMessage());
+      return;
+    }
     if (!customer?.Id || !location) {
       toast.error(tr('Please confirm your location first.', language));
       return;
