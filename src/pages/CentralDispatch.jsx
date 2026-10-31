@@ -622,6 +622,15 @@ export default function CentralDispatch() {
       .trim();
   }
 
+  function getCarEssentialsAdminDetails(value) {
+    const text = String(value ?? '');
+    if (!/Car Essentials requirement/i.test(text)) return null;
+    const itemsText = text.match(/Selected products:\\s*(.*?)\\.\\s*Vehicle:/i)?.[1] ?? '';
+    const vehicle = text.match(/Vehicle:\\s*([^.]+)/i)?.[1]?.trim() ?? '';
+    const items = itemsText.split(';').map((item) => item.trim()).filter(Boolean);
+    return { items, vehicle: vehicle && vehicle !== 'Not specified' ? vehicle : '' };
+  }
+
   function getCarWashAdminSummary(value) {
     const text = String(value ?? '');
     const marker = 'CAR_WASH_DECISIONS_JSON:';
@@ -1114,6 +1123,20 @@ export default function CentralDispatch() {
                   </div>
                   <Button className="w-full" disabled={Boolean(busyKey) || quoteSent} onClick={() => sendCarWashQuote(request, details)}><ApperIcon name="Send" size={16} /> {busyKey === 'car-wash-quote:' + request.Id ? 'Sending quote…' : quoteSent ? 'Revised quote sent · Editing locked' : 'Send Revised Quote to Customer'}</Button>
                   <p className="text-xs text-muted-foreground">Assignment stays locked until the customer approves this exact quote and amount.</p>
+                </section>;
+              })()}
+              {(() => {
+                const essentials = getCarEssentialsAdminDetails(request.problem_description_c);
+                if (!essentials) return null;
+                return <section className="rounded-lg border border-primary/25 bg-primary/5 p-4">
+                  <div className="flex items-center gap-2">
+                    <ApperIcon name="Package" size={18} className="text-primary" />
+                    <h3 className="font-semibold">Customer Order · Car Essentials</h3>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">Products selected by the customer</p>
+                  {essentials.items.length ? <ul className="mt-3 space-y-2">{essentials.items.map((item, index) => <li key={item + index} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><ApperIcon name="CheckCircle2" size={16} className="shrink-0 text-primary" />{item}</li>)}</ul> : <p className="mt-3 text-sm text-amber-700">No selected products were recorded in this request.</p>}
+                  {essentials.vehicle && <p className="mt-3 text-sm"><span className="font-semibold">Car make and model:</span> {essentials.vehicle}</p>}
+                  <p className="mt-3 text-xs text-muted-foreground">Customer Care to call and confirm quantity, brand/specification, stock availability, final price and delivery arrangements.</p>
                 </section>;
               })()}
               {getStructuredServiceDetails(request).type !== 'Car Wash' && !isDriverBookingRequest(request) && <section className="rounded-lg border p-4">
