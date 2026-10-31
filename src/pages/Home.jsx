@@ -171,7 +171,6 @@ function findHelp(text) {
 }
 
 export default function Home() {
-  const [city, setCity] = useState('Prayagraj');
   const session = useSelector((state) => state.user.user);
   const { logout } = useAuth();
   const [language, setLanguageState] = useState(getLanguage);
@@ -224,53 +223,6 @@ export default function Home() {
       }
     };
     removeAaravSeedRequests();
-  }, []);
-
-  useEffect(() => {
-    if (!('geolocation' in navigator)) return undefined;
-
-    let active = true;
-    let lastLookup = 0;
-
-    const updateCity = async (position) => {
-      const now = Date.now();
-      if (now - lastLookup < 60000) return;
-      lastLookup = now;
-
-      try {
-        const { latitude, longitude } = position.coords;
-        const response = await fetch(
-          'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' +
-            latitude +
-            '&longitude=' +
-            longitude +
-            '&localityLanguage=en'
-        );
-        if (!response.ok) return;
-        const data = await response.json();
-        const resolvedCity = data.city || data.locality || data.principalSubdivision;
-        if (active && resolvedCity) setCity(resolvedCity);
-      } catch {
-        // Keep the launch-city fallback when reverse geocoding is unavailable.
-      }
-    };
-
-    navigator.geolocation.getCurrentPosition(updateCity, () => {}, {
-      enableHighAccuracy: false,
-      maximumAge: 300000,
-      timeout: 10000,
-    });
-
-    const watchId = navigator.geolocation.watchPosition(updateCity, () => {}, {
-      enableHighAccuracy: false,
-      maximumAge: 300000,
-      timeout: 15000,
-    });
-
-    return () => {
-      active = false;
-      navigator.geolocation.clearWatch(watchId);
-    };
   }, []);
 
   const isCustomer = session?.profile === 'Customer_c';
@@ -347,7 +299,6 @@ export default function Home() {
   }
   return (
     <div className="min-h-svh bg-white text-[#102c4d]">
-      <CustomerLocationGate required={!isProvider && !isAdmin} allowProviderBypass />
       <header className="relative z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-7xl flex-nowrap items-start justify-between gap-2 px-2 py-2 sm:h-20 sm:items-center sm:gap-3 sm:px-8 sm:py-0 lg:px-10">
           <Link to="/" className="shrink-0 self-start sm:self-auto">
@@ -462,10 +413,7 @@ export default function Home() {
             </div>
             )}
 
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800 sm:px-4 sm:py-2 sm:text-xs">
-              <span className="size-2 rounded-full bg-emerald-600" />
-              {tr('LOCAL Help in', language)} {city}
-            </div>
+            <CustomerLocationGate required={!isProvider && !isAdmin} allowProviderBypass />
 
             <h1 className="mx-auto mt-4 max-w-3xl text-3xl font-black leading-none tracking-tight text-[#102c4d] sm:mt-6 sm:text-5xl lg:text-6xl">
               {tr('Happy to Help', language)}
@@ -490,9 +438,6 @@ export default function Home() {
 
             <div id="services" className="mx-auto mt-5 max-w-3xl sm:mt-8">
               <div className="rounded-3xl border border-slate-200 bg-white p-3 text-left shadow-lg shadow-slate-200/50 sm:p-4">
-                <div className="px-2 pb-2 text-xs font-bold uppercase tracking-[0.12em] text-[#102c4d]/60 sm:px-3">
-                  {tr('What do you need help with?', language)}
-                </div>
                 <div className="flex items-center gap-2">
                   <div className="relative min-w-0 flex-1">
                     <ApperIcon name="Search" size={19} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -507,8 +452,8 @@ export default function Home() {
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') searchHelp();
                       }}
-                      placeholder={tr('Type your problem or tap the mic', language)}
-                      aria-label={tr('Type your problem or tap the mic', language)}
+                      placeholder={tr('Search LOCAL', language)}
+                      aria-label={tr('Search LOCAL', language)}
                       className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-11 text-sm font-medium text-[#102c4d] outline-none transition focus:border-[#f4b61a] focus:ring-2 focus:ring-[#f4b61a]/20 sm:text-base"
                     />
                     <button
