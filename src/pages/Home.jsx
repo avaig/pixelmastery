@@ -358,7 +358,7 @@ export default function Home() {
             />
           </Link>
 
-          <div className="flex min-w-0 shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+          <div className="flex min-w-0 shrink-0 flex-row items-center justify-end gap-2 sm:gap-3">
             <div className="flex items-center justify-end gap-1 sm:gap-2">
             <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-bold">
               <button
@@ -388,7 +388,7 @@ export default function Home() {
               <>
                 <Link
                   to={isAdmin ? '/admin' : isProvider ? '/service-provider' : '/customer'}
-                  className="whitespace-nowrap rounded-full bg-[#102c4d] px-2.5 py-2 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5 sm:text-sm"
+                  className="hidden whitespace-nowrap rounded-full bg-[#102c4d] px-2.5 py-2 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] md:inline-flex sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   {tr(isAdmin ? 'Admin Dashboard' : 'My Dashboard', language)}
                 </Link>
@@ -396,7 +396,7 @@ export default function Home() {
             ) : (
               <Link
                 to="/login"
-                className="rounded-full bg-[#102c4d] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] sm:px-5 sm:py-2.5"
+                className="hidden rounded-full bg-[#102c4d] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#183c64] md:inline-flex sm:px-5 sm:py-2.5"
               >
                 {tr('Sign In', language)}
               </Link>
@@ -406,7 +406,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={logout}
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-[#102c4d] transition hover:bg-slate-50 sm:px-5 sm:py-2.5 sm:text-sm"
+                className="hidden rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-[#102c4d] transition hover:bg-slate-50 md:inline-flex sm:px-5 sm:py-2.5 sm:text-sm"
               >
                 {tr('Sign out', language)}
               </button>
