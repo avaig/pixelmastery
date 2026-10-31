@@ -45,13 +45,53 @@ export default function CustomerLocationGate({ required = true, allowProviderByp
       return false;
     }
   });
+  const [savedLocation, setSavedLocation] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(LOCATION_KEY) || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [busy, setBusy] = useState(false);
   const [manualAddress, setManualAddress] = useState('');
   const [message, setMessage] = useState('');
   const [outsideArea, setOutsideArea] = useState(false);
   const [outsideLocation, setOutsideLocation] = useState(null);
 
-  if (!required || complete) return null;
+  if (!required) return null;
+
+  function changeLocation() {
+    try {
+      window.localStorage.removeItem(CHECK_KEY);
+      window.sessionStorage.removeItem(CHECK_KEY);
+    } catch {
+      // The modal can still reopen for this page session.
+    }
+    setComplete(false);
+    setOutsideArea(false);
+    setMessage('');
+    setManualAddress('');
+  }
+
+  if (complete) {
+    return (
+      <div className="relative z-10 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-[#102c4d] sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <ApperIcon name="MapPin" size={15} className={savedLocation?.serviceable ? 'shrink-0 text-emerald-700' : 'shrink-0 text-amber-700'} />
+            <span className="truncate">
+              {savedLocation?.serviceable
+                ? 'Serving: ' + (savedLocation.label || 'Naini and nearby Prayagraj')
+                : 'Coming soon: ' + (savedLocation?.label || 'your area') + ' · Currently serving Naini and nearby Prayagraj'}
+            </span>
+          </div>
+          <button type="button" onClick={changeLocation} className="shrink-0 font-bold underline underline-offset-2 hover:text-emerald-800">
+            Change
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function saveLocation(location) {
     const distance = distanceKm(SERVICE_CENTER, location);
@@ -71,6 +111,7 @@ export default function CustomerLocationGate({ required = true, allowProviderByp
     }
     try {
       window.localStorage.setItem(LOCATION_KEY, JSON.stringify(confirmed));
+      setSavedLocation(confirmed);
       window.localStorage.setItem(CHECK_KEY, 'true');
       window.sessionStorage.setItem(CHECK_KEY, 'true');
     } catch {
@@ -112,6 +153,7 @@ export default function CustomerLocationGate({ required = true, allowProviderByp
     if (!outsideLocation) return;
     try {
       window.localStorage.setItem(LOCATION_KEY, JSON.stringify(outsideLocation));
+      setSavedLocation(outsideLocation);
       window.localStorage.setItem(CHECK_KEY, 'true');
       window.sessionStorage.setItem(CHECK_KEY, 'true');
       setComplete(true);
