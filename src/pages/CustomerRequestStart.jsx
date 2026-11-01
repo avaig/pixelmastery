@@ -1413,11 +1413,14 @@ export default function CustomerRequestStart() {
         </div>
       )}
       {showVehicleChangeConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowVehicleChangeConfirm(false); }}>
-          <section role="alertdialog" aria-modal="true" aria-labelledby="vehicle-change-confirm-title" className="w-full max-w-md rounded-t-2xl border bg-background p-5 shadow-xl sm:rounded-2xl sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowVehicleChangeConfirm(false); }}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="vehicle-change-confirm-title" className="my-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-2xl border bg-background p-5 shadow-2xl sm:p-6">
             <h2 id="vehicle-change-confirm-title" className="text-lg font-extrabold">Cancel Booking &amp; Change Vehicle?</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Changing your vehicle will clear the current {isCarWash ? 'Car Wash selections and quote' : 'Car Service package and quote review'}. Nothing has been submitted to Customer Care yet. Do you want to continue?</p>
-            <div className="mt-5 grid grid-cols-2 gap-3"><Button type="button" variant="outline" onClick={() => setShowVehicleChangeConfirm(false)}>Keep Current Booking</Button><Button type="button" onClick={cancelCurrentVehicleDraft}>Yes, Change Vehicle</Button></div>
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+              <Button type="button" variant="outline" className="w-full whitespace-normal" onClick={() => setShowVehicleChangeConfirm(false)}>Keep Current Booking</Button>
+              <Button type="button" className="w-full whitespace-normal" onClick={cancelCurrentVehicleDraft}>Yes, Change Vehicle</Button>
+            </div>
           </section>
         </div>
       )}
