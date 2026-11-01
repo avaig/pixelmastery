@@ -181,11 +181,12 @@ export default function ComputerServicesRequest() {
           <div className="rounded-lg bg-muted/40 p-3">
             <p className="text-sm font-semibold">Customer Details</p>
             <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-              <p><span className="text-muted-foreground">Name: </span>{customerLoading ? 'Loading…' : customer?.Name || 'Not available'}</p>
-              <p><span className="text-muted-foreground">Mobile: </span>{customerLoading ? 'Loading…' : customer?.phone_c || 'Not available'}</p>
-              <p className="sm:col-span-2"><span className="text-muted-foreground">Saved Location: </span>{customerLoading ? 'Loading…' : customer?.location_c || 'Please add your address in My Profile'}</p>
+              <p><span className="text-muted-foreground">Name: </span>{customerLoading ? 'Loading…' : customerError ? 'Unable to load' : customer?.Name || 'Not available'}</p>
+              <p><span className="text-muted-foreground">Mobile: </span>{customerLoading ? 'Loading…' : customerError ? 'Unable to load' : customer?.phone_c || 'Not available'}</p>
+              <p className="sm:col-span-2"><span className="text-muted-foreground">Saved Location: </span>{customerLoading ? 'Loading…' : customerError ? 'Unable to load' : customer?.location_c || 'Please add your address in My Profile'}</p>
             </div>
           </div>
+          {customerError && <p role="alert" className="text-xs text-destructive">Customer details could not be loaded: {customerError}. Please refresh and try again.</p>}
           <p className="text-xs leading-5 text-muted-foreground">No technical specifications or documents are required now. LOCAL Customer Care will contact you if more information is needed.</p>
           <div className="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => navigate('/customer/home-services')}>Cancel</Button>
