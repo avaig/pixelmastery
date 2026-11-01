@@ -11,7 +11,7 @@ export async function getCustomerProfile(userId) {
 
   let timeoutId;
   const lookup = sdk.table('customer_profiles_c')
-    .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'latitude_c', 'longitude_c', 'Owner'])
+    .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'latitude_c', 'longitude_c', 'notes_c', 'status_c', 'Owner'])
     .where(eq('Owner', userId))
     .page(1, 10)
     .fetch();
