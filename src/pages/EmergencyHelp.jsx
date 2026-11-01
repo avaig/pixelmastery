@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/local/EntityPages';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getCustomerProfile } from '@/services/customerProfile';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -25,13 +26,10 @@ export default function EmergencyHelp() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   const [selectedTab, setSelectedTab] = useState('normal');
-  const { data, loading } = useFetch(async () => {
-    const profileRes = await sdk.table('customer_profiles_c').select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c']).where(eq('email_c', user?.emailAddress ?? user?.email ?? '')).page(1, 1).fetch();
-    if (!profileRes.success) return { customer: null };
-    return { customer: profileRes.data?.[0] };
-  }, [user?.emailAddress, user?.email]);
-
-  const customer = data?.customer;
+  const { data: customer, loading, error: customerError } = useFetch(
+    () => getCustomerProfile(user?.userId),
+    [user?.userId],
+  );
   const latitude = customer?.latitude_c ?? 25.454;
   const longitude = customer?.longitude_c ?? 81.833;
   const location = customer?.location_c ?? 'Current Location';

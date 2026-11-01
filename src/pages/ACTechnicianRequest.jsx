@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getCapabilityCatalog } from '@/services/capabilityCatalog';
 import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
+import { getCustomerProfile } from '@/services/customerProfile';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -43,7 +44,6 @@ export const route = {
 export default function ACTechnicianRequest() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
   const [groups, setGroups] = useState([createGroup(1)]);
   const [nextGroupId, setNextGroupId] = useState(2);
   const [location, setLocation] = useState(null);
@@ -53,17 +53,9 @@ export default function ACTechnicianRequest() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const { data: customer } = useFetch(
-    async () => {
-      if (!email) return null;
-      const result = await sdk.table('customer_profiles_c')
-        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
-        .page(1, 1000)
-        .fetch();
-      if (!result.success) throw new Error(result.message);
-      return (result.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
-    },
-    [email],
+  const { data: customer, loading: customerLoading, error: customerError } = useFetch(
+    () => getCustomerProfile(user?.userId),
+    [user?.userId],
   );
 
   const { data: homeCategory } = useFetch(

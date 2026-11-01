@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
+import { getCustomerProfile } from '@/services/customerProfile';
 
 const { eq } = window.ApperSDK.CoreSDK;
 const DEVICE_TYPES = ['Laptop', 'Desktop Computer', 'Both'];
@@ -33,23 +34,16 @@ export const route = {
 export default function ComputerServicesRequest() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
   const [deviceType, setDeviceType] = useState('Laptop');
   const [problem, setProblem] = useState('');
   const [details, setDetails] = useState('');
   const [contactTime, setContactTime] = useState('Anytime');
   const [saving, setSaving] = useState(false);
 
-  // Use the same customer-profile lookup pattern already used by the Home Services page.
-  const { data: customer, loading: customerLoading } = useFetch(async () => {
-    if (!email) return null;
-    const result = await sdk.table('customer_profiles_c')
-      .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c'])
-      .page(1, 1000)
-      .fetch();
-    if (!result.success) throw new Error(result.message);
-    return (result.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
-  }, [email]);
+  const { data: customer, loading: customerLoading, error: customerError } = useFetch(
+    () => getCustomerProfile(user?.userId),
+    [user?.userId],
+  );
 
   const { data: homeCategory } = useFetch(async () => {
     const result = await sdk.table('service_categories_c')

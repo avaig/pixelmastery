@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
+import { getCustomerProfile } from '@/services/customerProfile';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -26,16 +27,9 @@ export default function AmbulanceRequest() {
   const [creating, setCreating] = useState(false);
   const language = getLanguage();
 
-  const { data: customer } = useFetch(
-    () =>
-      sdk
-        .table('customer_profiles_c')
-        .select(['Id', 'Name', 'email_c', 'location_c', 'latitude_c', 'longitude_c'])
-        .where(eq('email_c', user?.emailAddress ?? user?.email ?? ''))
-        .page(1, 1)
-        .fetch()
-        .then((res) => res.data?.[0] ?? null),
-    [user?.emailAddress, user?.email],
+  const { data: customer, loading: customerLoading, error: customerError } = useFetch(
+    () => getCustomerProfile(user?.userId),
+    [user?.userId],
   );
 
   function useDemoLocation() {

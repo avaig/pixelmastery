@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { getCustomerProfile } from '@/services/customerProfile';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -33,17 +34,8 @@ export default function CustomerProfile() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ Name: '', email_c: '', phone_c: '', location_c: '', notes_c: '' });
   const [saving, setSaving] = useState(false);
-  const { data: customer, loading } = useFetch(
-    async () => {
-      if (!user?.userId) return null;
-      const res = await sdk.table('customer_profiles_c')
-        .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'notes_c', 'status_c', 'Owner'])
-        .where(eq('Owner', user.userId))
-        .page(1, 10)
-        .fetch();
-      if (!res.success) throw new Error(res.message || 'Could not load your customer profile.');
-      return (res.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(user.userId)) ?? null;
-    },
+  const { data: customer, loading, error: customerError } = useFetch(
+    () => getCustomerProfile(user?.userId),
     [user?.userId],
   );
 

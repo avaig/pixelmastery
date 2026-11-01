@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { getLanguage, tr } from '@/services/i18n';
 import { getLocalServiceAreaStatus, getServiceAreaMessage } from '@/services/serviceArea';
+import { getCustomerProfile } from '@/services/customerProfile';
 
 const { eq } = window.ApperSDK.CoreSDK;
 
@@ -42,22 +43,13 @@ export const route = {
 export default function HomeServices() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
   const [selectedAppliances, setSelectedAppliances] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submittingService, setSubmittingService] = useState('');
 
   const { data: customer } = useFetch(
-    async () => {
-      if (!email) return null;
-      const result = await sdk.table('customer_profiles_c')
-        .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c'])
-        .page(1, 1000)
-        .fetch();
-      if (!result.success) throw new Error(result.message);
-      return (result.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
-    },
-    [email],
+    () => getCustomerProfile(user?.userId),
+    [user?.userId],
   );
 
   const { data: homeCategory } = useFetch(
