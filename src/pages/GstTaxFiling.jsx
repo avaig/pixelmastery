@@ -33,21 +33,22 @@ export const route = {
 export default function GstTaxFiling() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
+  const userId = user?.userId;
   const [service, setService] = useState('');
   const [customerType, setCustomerType] = useState('Individual');
   const [details, setDetails] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const { data: customer, loading } = useFetch(async () => {
-    if (!email) return null;
+  const { data: customer, loading, error: customerLoadError } = useFetch(async () => {
+    if (!userId) return null;
     const result = await sdk.table('customer_profiles_c')
-      .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c'])
-      .page(1, 1000)
+      .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'Owner'])
+      .where(eq('Owner', userId))
+      .page(1, 10)
       .fetch();
-    if (!result.success) throw new Error(result.message);
-    return (result.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
-  }, [email]);
+    if (!result.success) throw new Error(result.message || 'Could not load your customer profile.');
+    return (result.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(userId)) ?? null;
+  }, [userId]);
 
   async function submitRequest(event) {
     event.preventDefault();
@@ -143,8 +144,8 @@ export default function GstTaxFiling() {
           </div>
           <div className="grid gap-3 rounded-lg bg-muted/40 p-3 sm:grid-cols-2">
             <div><p className="text-xs text-muted-foreground">Name</p><p className="mt-1 font-medium">{loading ? 'Loading…' : customer?.Name || 'Not available'}</p></div>
-            <div><p className="text-xs text-muted-foreground">Mobile</p><p className="mt-1 font-medium">{customer?.phone_c || 'Not available'}</p></div>
-            <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Saved service location</p><p className="mt-1 font-medium">{customer?.location_c || 'Please add your address in My Profile'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Mobile</p><p className="mt-1 font-medium">{loading ? 'Loading…' : customer?.phone_c || 'Not available'}</p></div>
+            <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Saved service location</p><p className="mt-1 font-medium">{loading ? 'Loading…' : customer?.location_c || (customerLoadError ? 'Could not load profile. Please refresh and try again.' : 'Please add your address in My Profile')}</p></div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="gst-details">Additional details (optional)</Label>
