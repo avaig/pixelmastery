@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { sdk } from '@/services/sdk';
-import { useFetch } from '@/hooks/useFetch';
 import ApperIcon from '@/components/ApperIcon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -33,22 +32,64 @@ export const route = {
 export default function GstTaxFiling() {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  const userId = user?.userId;
+  const email = String(user?.emailAddress ?? user?.email ?? '').trim().toLowerCase();
   const [service, setService] = useState('');
   const [customerType, setCustomerType] = useState('Individual');
   const [details, setDetails] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const { data: customer, loading, error: customerLoadError } = useFetch(async () => {
-    if (!userId) return null;
-    const result = await sdk.table('customer_profiles_c')
-      .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'Owner'])
-      .where(eq('Owner', userId))
-      .page(1, 10)
-      .fetch();
-    if (!result.success) throw new Error(result.message || 'Could not load your customer profile.');
-    return (result.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(userId)) ?? null;
-  }, [userId]);
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [customerLoadError, setCustomerLoadError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setCustomerLoadError('');
+    setCustomer(null);
+    if (!email) {
+      setLoading(false);
+      setCustomerLoadError('Your signed-in email is not available. Please sign out and sign in again.');
+      return () => { active = false; };
+    }
+
+    const loadCustomer = async () => {
+      try {
+        const lookup = sdk.table('customer_profiles_c')
+          .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c'])
+          .where(eq('email_c', email))
+          .page(1, 1)
+          .fetch();
+        const timeout = new Promise((_, reject) => window.setTimeout(() => reject(new Error('Customer profile lookup timed out. Please refresh and try again.')), 12000));
+        let result = await Promise.race([lookup, timeout]);
+        if (!result.success) throw new Error(result.message || 'Could not load your customer profile.');
+        let match = result.data?.[0] ?? null;
+
+        // Fallback for email casing or SDK filter differences: use the same bounded lookup pattern as existing LOCAL service forms.
+        if (!match) {
+          const fallbackLookup = sdk.table('customer_profiles_c')
+            .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c'])
+            .page(1, 1000)
+            .fetch();
+          const fallbackTimeout = new Promise((_, reject) => window.setTimeout(() => reject(new Error('Customer profile lookup timed out. Please refresh and try again.')), 12000));
+          result = await Promise.race([fallbackLookup, fallbackTimeout]);
+          if (!result.success) throw new Error(result.message || 'Could not load your customer profile.');
+          match = (result.data ?? []).find((item) => String(item.email_c ?? '').trim().toLowerCase() === email) ?? null;
+        }
+        if (active) {
+          setCustomer(match);
+          if (!match) setCustomerLoadError('No customer profile was found for this signed-in account. Please check My Profile.');
+        }
+      } catch (error) {
+        if (active) setCustomerLoadError(error?.message || 'Could not load your customer profile.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadCustomer();
+    return () => { active = false; };
+  }, [email]);
 
   async function submitRequest(event) {
     event.preventDefault();
