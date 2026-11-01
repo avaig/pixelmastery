@@ -8,6 +8,11 @@ import { sdk } from '@/services/sdk';
 import CustomerLocationGate from '@/components/local/CustomerLocationGate';
 import { getManualInstallHint, hasInstallPrompt, promptInstall, subscribeInstall } from '@/services/pwa';
 
+function isAppleMobileDevice() {
+  const userAgent = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
 const LOCAL_LOGO = '/local-logo.svg';
 
 export const route = {
@@ -385,7 +390,7 @@ export default function Home() {
                 aria-expanded={installHelpOpen}
               >
                 <ApperIcon name="Download" size={20} />
-                {tr('Install LOCAL App', language)}
+                {isAppleMobileDevice() ? tr('Add LOCAL to Home Screen', language) : tr('Install LOCAL App', language)}
               </button>
               {installHelpOpen && (
                 <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-6 text-[#102c4d] shadow-sm" role="status">
@@ -394,7 +399,7 @@ export default function Home() {
                     <div className="min-w-0 flex-1">
                       <p className="font-extrabold">{tr('Add LOCAL to your phone', language)}</p>
                       <p className="mt-1">{getManualInstallHint()}</p>
-                      <p className="mt-2 text-xs font-medium text-slate-600">{tr('If you do not see an install option, open this link in Chrome on Android or Safari on iPhone.', language)}</p>
+                      {!isAppleMobileDevice() && <p className="mt-2 text-xs font-medium text-slate-600">{tr('If you do not see an install option, open this link in Chrome on Android or Safari on iPhone.', language)}</p>}
                     </div>
                     <button
                       type="button"
