@@ -29,7 +29,6 @@ const APPLIANCES = [
 ];
 
 const SERVICES = [
-  { id: 'tax', title: 'GST & Tax Filing', subtitle: 'Filing and consultation', icon: 'ReceiptText', capability: 'GST & Tax Filing' },
   { id: 'computer', title: 'Computer Services', subtitle: 'Desktop & Laptop · Installation and service', icon: 'MonitorCog', capability: 'Computer Services' },
   { id: 'ac', title: 'AC Technician', subtitle: 'Window & Split AC · Installation and service', icon: 'Snowflake', capability: 'AC Technician — Split & Window AC' },
 ];
@@ -181,7 +180,7 @@ export default function HomeServices() {
       <Button
         type="button"
         className="min-h-10 w-full"
-        onClick={() => service.id === 'tax' ? navigate('/customer/home-services/gst-tax-filing') : requestCallback(service)}
+        onClick={() => requestCallback(service)
         disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
       >
         <ApperIcon name="PhoneCall" size={16} />

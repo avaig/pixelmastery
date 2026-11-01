@@ -338,7 +338,7 @@ export default function CentralDispatch() {
     return provider.status_c === 'Active' && verification === 'approved';
   }), [providers]);
 
-  const getDispatchServiceName = (request) => request.required_capability_c?.Name ?? request.service_category_c?.Name ?? (String(request.Name ?? '').toLowerCase().includes('gst & tax filing') ? 'GST & Tax Filing' : request.Name ?? 'Service');
+  const getDispatchServiceName = (request) => request.required_capability_c?.Name ?? request.service_category_c?.Name ?? request.Name ?? 'Service';
   const serviceNames = useMemo(() => [...new Set(requests.map(getDispatchServiceName))].sort(), [requests]);
   const recentRequests = useMemo(() => requests.filter((request) => {
     if (dateFilter === 'All') return true;
@@ -1038,26 +1038,6 @@ export default function CentralDispatch() {
                 <div><p className="text-xs text-muted-foreground">Requested time</p><p className="mt-1 font-medium">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Not specified'}</p>{request.scheduled_at_c && <p className="text-sm text-muted-foreground">{new Date(request.scheduled_at_c).toLocaleString('en-IN')}</p>}</div>
                 <div><p className="text-xs text-muted-foreground">Nearby eligible providers</p><p className="mt-1 font-medium">{nearbyCount} with recorded location</p></div>
               </div>
-              {/gst & tax filing/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) && (() => {
-                const marker = 'LOCAL_GST_TAX_REQUEST_JSON:';
-                const raw = String(request.problem_description_c ?? '');
-                const markerIndex = raw.lastIndexOf(marker);
-                let tax = null;
-                if (markerIndex >= 0) { try { tax = JSON.parse(raw.slice(markerIndex + marker.length).trim()); } catch { tax = null; } }
-                return <section className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-                  <div className="flex items-center gap-2"><ApperIcon name="ReceiptText" size={19} /><h3 className="font-semibold">GST &amp; Tax Filing — LOCAL-managed request</h3></div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div><p className="text-xs text-muted-foreground">Requested service</p><p className="mt-1 font-medium">{tax?.service || request.Name}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Customer type</p><p className="mt-1 font-medium">{tax?.customerType || 'Not recorded'}</p></div>
-                    <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Additional details</p><p className="mt-1 whitespace-pre-wrap text-sm">{tax?.additionalDetails || 'No additional details provided.'}</p></div>
-                  </div>
-                  <div className="mt-4 rounded-lg bg-background p-3 text-sm">
-                    <p className="font-semibold">LOCAL Customer Care workflow</p>
-                    <p className="mt-1 text-muted-foreground">Contact customer → confirm requirement → identify verified tax professional → share total fee → obtain customer approval → assign professional → track completion and payment.</p>
-                    <p className="mt-2 text-xs text-muted-foreground">Do not send this request to open provider bidding. The professional is assigned by LOCAL after customer approval.</p>
-                  </div>
-                </section>;
-              })()}
               {linkedJob && <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
                 <h3 className="font-semibold">Job completion and payment</h3>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
