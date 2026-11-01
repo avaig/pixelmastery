@@ -42,13 +42,17 @@ export default function GstTaxFiling() {
   const { data: customer, loading, error: customerLoadError } = useFetch(
     async () => {
       if (!userId) return null;
-      const result = await sdk.table('customer_profiles_c')
+      const lookup = sdk.table('customer_profiles_c')
         .select(['Id', 'Name', 'email_c', 'phone_c', 'location_c', 'Owner'])
         .where(eq('Owner', userId))
         .page(1, 10)
         .fetch();
-      if (!result.success) throw new Error(result.message || 'Could not load your customer profile.');
-      return (result.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(userId)) ?? null;
+      const timeout = new Promise((_, reject) => window.setTimeout(() => reject(new Error('The customer profile database query did not respond within 10 seconds. Please check the customer profile data permissions or database connection.')), 10000));
+      const result = await Promise.race([lookup, timeout]);
+      if (!result?.success) throw new Error(result?.message || 'The customer profile query failed. Please check the customer profile data permissions.');
+      const match = (result.data ?? []).find((item) => String(item.Owner?.Id ?? item.Owner ?? '') === String(userId)) ?? null;
+      if (!match) throw new Error('No customer profile is linked to this signed-in account. Open My Profile and confirm your profile is saved.');
+      return match;
     },
     [userId],
   );
@@ -146,9 +150,10 @@ export default function GstTaxFiling() {
             </Select>
           </div>
           <div className="grid gap-3 rounded-lg bg-muted/40 p-3 sm:grid-cols-2">
-            <div><p className="text-xs text-muted-foreground">Name</p><p className="mt-1 font-medium">{loading ? 'Loading…' : customer?.Name || 'Not available'}</p></div>
-            <div><p className="text-xs text-muted-foreground">Mobile</p><p className="mt-1 font-medium">{loading ? 'Loading…' : customer?.phone_c || 'Not available'}</p></div>
-            <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Saved service location</p><p className="mt-1 font-medium">{loading ? 'Loading…' : customer?.location_c || (customerLoadError ? 'Could not load profile: ' + customerLoadError : 'Please add your address in My Profile')}</p></div>
+            <div><p className="text-xs text-muted-foreground">Name</p><p className="mt-1 font-medium">{loading ? 'Checking profile…' : customer?.Name || 'Not available'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Mobile</p><p className="mt-1 font-medium">{loading ? 'Checking profile…' : customer?.phone_c || 'Not available'}</p></div>
+            <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Saved service location</p><p className="mt-1 font-medium">{loading ? 'Checking profile…' : customer?.location_c || 'Please add your address in My Profile'}</p></div>
+            {customerLoadError && <div className="sm:col-span-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{customerLoadError}</div>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="gst-details">Additional details (optional)</Label>
@@ -157,7 +162,7 @@ export default function GstTaxFiling() {
           <p className="text-xs leading-5 text-muted-foreground">Please do not enter PAN, Aadhaar, GSTIN, bank details or upload financial documents here. LOCAL will explain the secure document-sharing process if required.</p>
           <div className="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => navigate('/customer/home-services')}>Cancel</Button>
-            <Button type="submit" disabled={saving || loading || !customer?.Id || !service}>
+            <Button type="submit" disabled={saving || loading || !customer?.Id || !customer?.location_c || !service}>
               {saving ? <><ApperIcon name="LoaderCircle" size={16} className="animate-spin" /> Sending…</> : 'Send Request to LOCAL'}
             </Button>
           </div>
