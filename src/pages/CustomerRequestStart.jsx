@@ -364,9 +364,8 @@ export default function CustomerRequestStart() {
     window.sessionStorage.setItem('local_car_wash_pickup_v1', String(includePickupDrop));
     window.sessionStorage.setItem('local_car_wash_reviewed_total_v1', String(nextTotal));
     window.sessionStorage.setItem('local_car_wash_total_refreshed_v1', 'true');
-    // Remember the selected-service card as the return point before reloading the persisted cart.
-    window.sessionStorage.setItem('local_car_wash_restore_summary_scroll_v1', 'true');
-    window.location.reload();
+    // Reveal the calculated total immediately without reloading the booking page.
+    setTotalRefreshed(true);
   }
 
   useEffect(() => {
@@ -1186,7 +1185,7 @@ export default function CustomerRequestStart() {
                   ))}
                   <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>LOCAL Platform Fee <span className="text-xs text-muted-foreground">(per booking)</span></span><span className="font-semibold">₹{CAR_WASH_PLATFORM_FEE}</span></div>
                   {includePickupDrop && <div className="flex items-center justify-between gap-3 border-b border-primary/10 pb-2 text-sm"><span>Pickup &amp; Drop <span className="text-xs text-muted-foreground">(indicative)</span></span><span className="font-semibold">₹100</span></div>}
-                  <Button type="button" onClick={refreshEstimatedTotal} className="mt-3 flex w-full items-center justify-between rounded-lg border border-primary bg-primary px-3 py-3 text-primary-foreground shadow-sm hover:bg-primary/90"><span className="font-bold">Press For Total</span><span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span></Button>
+                  <Button type="button" onClick={refreshEstimatedTotal} disabled={totalRefreshed} className="mt-3 flex w-full items-center justify-between rounded-lg border border-primary bg-primary px-3 py-3 text-primary-foreground shadow-sm hover:bg-primary/90 disabled:cursor-default disabled:opacity-100"><span className="font-bold">{totalRefreshed ? 'Your Selected Services Total' : 'Press For Total'}</span>{totalRefreshed && <span className="text-lg font-extrabold">₹{estimatedTotalValue.toLocaleString('en-IN')}</span>}</Button>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">No package selected yet.</p>
