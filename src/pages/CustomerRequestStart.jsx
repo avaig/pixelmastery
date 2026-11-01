@@ -1363,19 +1363,28 @@ export default function CustomerRequestStart() {
         </Card>
       </div>
       {isCarService && showCarServiceQuoteReview && selectedCarServicePackage && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowCarServiceQuoteReview(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="car-service-quote-title" className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border bg-background p-5 shadow-xl sm:rounded-2xl sm:p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">LOCAL · Car Service</p><h2 id="car-service-quote-title" className="mt-1 text-xl font-extrabold">Review Your Car Service Booking</h2><p className="mt-1 text-sm text-muted-foreground">Check your selected vehicle, package and listed price before submitting.</p></div>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setShowCarServiceQuoteReview(false)} aria-label="Close quote review"><ApperIcon name="X" size={18} /></Button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-2 sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setShowCarServiceQuoteReview(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="car-service-quote-title" className="flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border bg-background p-3 shadow-2xl sm:p-5">
+            <div className="flex shrink-0 items-start justify-between gap-2">
+              <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">LOCAL · Car Service</p><h2 id="car-service-quote-title" className="mt-0.5 text-lg font-extrabold sm:text-xl">Review Your Car Service Booking</h2><p className="mt-0.5 text-xs text-muted-foreground">Check your selected vehicle, package and price before submitting.</p></div>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowCarServiceQuoteReview(false)} aria-label="Close quote review"><ApperIcon name="X" size={18} /></Button>
             </div>
-            <div className="mt-5 rounded-xl border p-4">
-              <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Vehicle type</p><p className="mt-1 font-semibold">{selectedCarServicePackage.vehicleType}</p><p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Selected package</p><p className="mt-1 text-lg font-bold">{selectedCarServicePackage.title}</p><p className="mt-1 text-sm text-muted-foreground">{selectedCarServicePackage.checkup}</p></div><strong className="shrink-0 text-xl">₹{selectedCarServicePackage.price.toLocaleString('en-IN')}</strong></div>
-              <div className="mt-4 border-t pt-3 space-y-2 text-sm"><div className="flex items-center justify-between gap-3"><span>Package price</span><strong>₹{Number(selectedCarServicePackage.price).toLocaleString('en-IN')}</strong></div><div className="flex items-center justify-between gap-3"><span>LOCAL Platform Fee (per booking)</span><strong>₹{CAR_SERVICE_PLATFORM_FEE}</strong></div><div className="flex items-center justify-between gap-3 border-t pt-3 text-base"><strong>Indicative total</strong><strong className="text-lg">₹{(Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN')}</strong></div></div>
-              <div className="mt-4 border-t pt-3"><p className="text-sm font-semibold">What's included</p><ul className="mt-2 space-y-2 text-sm text-muted-foreground">{selectedCarServicePackage.covered.map((item) => <li key={item} className="flex gap-2"><ApperIcon name="Check" size={15} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>)}</ul></div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <div className="mt-3 rounded-xl border p-3 sm:p-4">
+                <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Vehicle type</p><p className="mt-1 text-sm font-semibold">{selectedCarServicePackage.vehicleType}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Selected package</p><p className="mt-1 text-base font-bold">{selectedCarServicePackage.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{selectedCarServicePackage.checkup}</p></div><strong className="shrink-0 text-lg">₹{selectedCarServicePackage.price.toLocaleString('en-IN')}</strong></div>
+                <div className="mt-3 space-y-2 border-t pt-3 text-sm">
+                  <div className="flex items-center justify-between gap-3"><span>Package price</span><strong>₹{Number(selectedCarServicePackage.price).toLocaleString('en-IN')}</strong></div>
+                  <div className="flex items-center justify-between gap-3"><span>LOCAL Platform Fee (per booking)</span><strong>₹{CAR_SERVICE_PLATFORM_FEE}</strong></div>
+                  <div className="flex items-center justify-between gap-3 border-t pt-2 text-base"><strong>Indicative total</strong><strong className="text-lg">₹{(Number(selectedCarServicePackage.price) + CAR_SERVICE_PLATFORM_FEE).toLocaleString('en-IN')}</strong></div>
+                </div>
+                <div className="mt-3 border-t pt-3"><p className="text-sm font-semibold">What's included</p><ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">{selectedCarServicePackage.covered.map((item) => <li key={item} className="flex gap-2"><ApperIcon name="Check" size={14} className="mt-0.5 shrink-0 text-emerald-600" /><span>{item}</span></li>)}</ul></div>
+              </div>
+              <div className="mt-3 rounded-lg bg-muted/50 p-2.5 text-[10px] leading-snug text-muted-foreground">The ₹25 LOCAL Platform Fee is charged once per booking and is included in the indicative total above. This is not a final invoice. LOCAL Customer Care will confirm availability and any additional work or revised price with you before service starts.</div>
             </div>
-            <div className="mt-4 rounded-lg bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">The ₹25 LOCAL Platform Fee is charged once per booking and is included in the indicative total above. This is not a final invoice. LOCAL Customer Care will confirm availability and any additional work or revised price with you before service starts.</div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2"><Button type="button" variant="outline" onClick={() => setShowCarServiceQuoteReview(false)} disabled={creating}>Back to packages</Button><Button type="button" onClick={createRequest} disabled={creating || !selectedCarServicePackage || !location || location.serviceable === false}>{creating ? 'Sending request…' : 'Confirm & Book Your Car Service'}</Button></div>
+            <div className="mt-3 grid shrink-0 grid-cols-1 gap-2 border-t bg-background pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:grid-cols-2 sm:gap-3 sm:pb-0">
+              <Button type="button" variant="outline" className="w-full whitespace-normal" onClick={() => setShowCarServiceQuoteReview(false)} disabled={creating}>Back to packages</Button>
+              <Button type="button" className="w-full whitespace-normal" onClick={createRequest} disabled={creating || !selectedCarServicePackage || !location || location.serviceable === false}>{creating ? 'Sending request…' : 'Confirm & Book Your Car Service'}</Button>
+            </div>
           </section>
         </div>
       )}
