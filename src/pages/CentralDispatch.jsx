@@ -1038,6 +1038,26 @@ export default function CentralDispatch() {
                 <div><p className="text-xs text-muted-foreground">Requested time</p><p className="mt-1 font-medium">{request.preferred_time_c === 'ASAP' ? 'Book Now' : request.preferred_time_c || 'Not specified'}</p>{request.scheduled_at_c && <p className="text-sm text-muted-foreground">{new Date(request.scheduled_at_c).toLocaleString('en-IN')}</p>}</div>
                 <div><p className="text-xs text-muted-foreground">Nearby eligible providers</p><p className="mt-1 font-medium">{nearbyCount} with recorded location</p></div>
               </div>
+              {/computer services/i.test(String(request.Name ?? '') + ' ' + String(request.problem_description_c ?? '')) && (() => {
+                const marker = 'LOCAL_COMPUTER_SERVICE_REQUEST_JSON:';
+                const raw = String(request.problem_description_c ?? '');
+                const markerIndex = raw.lastIndexOf(marker);
+                let computer = null;
+                if (markerIndex >= 0) { try { computer = JSON.parse(raw.slice(markerIndex + marker.length).trim()); } catch { computer = null; } }
+                return <section className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                  <div className="flex items-center gap-2"><ApperIcon name="MonitorCog" size={19} /><h3 className="font-semibold">Computer Service Requirement</h3></div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div><p className="text-xs text-muted-foreground">Device Type</p><p className="mt-1 font-medium">{computer?.deviceType || request.device_type_c || 'Not recorded'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Problem</p><p className="mt-1 font-medium">{computer?.problem || 'Not recorded'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Preferred Contact Time</p><p className="mt-1 font-medium">{computer?.preferredContactTime || 'Anytime'}</p></div>
+                    <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Additional Details</p><p className="mt-1 whitespace-pre-wrap text-sm">{computer?.additionalDetails || 'No additional details provided.'}</p></div>
+                  </div>
+                  <div className="mt-4 rounded-lg bg-background p-3 text-sm">
+                    <p className="font-semibold">LOCAL Customer Care Action</p>
+                    <p className="mt-1 text-muted-foreground">Contact the customer, confirm the issue, identify a suitable computer technician, and agree on the appointment and estimate before work begins.</p>
+                  </div>
+                </section>;
+              })()}
               {linkedJob && <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
                 <h3 className="font-semibold">Job completion and payment</h3>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">

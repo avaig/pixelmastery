@@ -180,7 +180,7 @@ export default function HomeServices() {
       <Button
         type="button"
         className="min-h-10 w-full"
-        onClick={() => requestCallback(service)}
+        onClick={() => service.id === 'computer' ? navigate('/customer/home-services/computer-services') : requestCallback(service)}
         disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
       >
         <ApperIcon name="PhoneCall" size={16} />
