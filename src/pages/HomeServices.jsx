@@ -105,7 +105,7 @@ export default function HomeServices() {
       toast.error('Your customer profile could not be matched. Please complete your profile first.');
       return;
     }
-    if (service.id !== 'tax' && !homeCategory?.Id) {
+    if (!homeCategory?.Id) {
       toast.error('Home Services is not configured yet. Please contact LOCAL Customer Care.');
       return;
     }
@@ -180,7 +180,7 @@ export default function HomeServices() {
       <Button
         type="button"
         className="min-h-10 w-full"
-        onClick={() => requestCallback(service)
+        onClick={() => requestCallback(service)}
         disabled={submitting || (service.id === 'appliances' && selectedAppliances.length === 0)}
       >
         <ApperIcon name="PhoneCall" size={16} />
