@@ -84,7 +84,7 @@ export function getManualInstallHint() {
   const isAndroid = /Android/i.test(userAgent);
   const isChrome = /Chrome|CriOS/i.test(userAgent) && !/Edg|OPR|SamsungBrowser/i.test(userAgent);
 
-  if (isIos) return 'To add LOCAL on your iPhone: 1. Open this page in Safari. 2. Tap the Share icon (square with the upward arrow) at the bottom of Safari. 3. Tap Add to Home Screen. 4. Tap Add at the top. LOCAL will then appear as an app icon on your iPhone Home Screen. Apple requires these steps; iPhone does not show the automatic Install App prompt used by Android.';
+  if (isIos) return 'To add LOCAL on your iPhone: 1. Tap the Share icon (the square with the upward arrow) at the bottom of this screen. 2. In the Share menu, choose Add to Home Screen. You may need to scroll the menu to find it. 3. Tap Add at the top. LOCAL will then appear on your Home Screen. If Add to Home Screen is not available here, choose Open in Safari from the browser menu, then repeat these steps in the Safari app.';
   if (isAndroid && isChrome) return 'In Chrome, tap ⋮ (three dots), then choose Install app or Add to Home screen.';
   if (isAndroid) return 'Open this page in Chrome, tap ⋮ (three dots), then choose Install app or Add to Home screen.';
   if (isChrome) return 'Look for the Install icon in the address bar, or open Chrome ⋮ and choose Install LOCAL.';
