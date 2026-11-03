@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "LOCAL",
+    "slug": "local-mobile",
+    "scheme": "localapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.local.mobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "LOCAL uses your location only when you tap Use my location to check service coverage and find nearby providers."
+      }
+    },
+    "android": {
+      "package": "com.local.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#132f55"
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow LOCAL to use your location when you tap Use my location."
+        }
+      ],
+      "expo-secure-store",
+      [
+        "react-native-maps"
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "backgroundColor": "#f6f7fb"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
