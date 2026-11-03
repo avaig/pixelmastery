@@ -1,3 +1,3 @@
-# Placeholder assets
+# Mobile app assets
 
-`icon.png` and `splash.png` were generated with Python Pillow as simple LOCAL-branded placeholders for the prototype. Replace with approved production brand artwork before release.
+`icon.png` and `splash.png` are copies of the LOCAL logo from `public/icons/icon-512.png` (512x512 source, upscaled by the stores' pipeline). This source is low resolution: a 1024x1024 icon and a vector or high-resolution splash source are needed before store release. The adaptive icon foreground is not safe-zone padded.
