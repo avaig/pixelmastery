@@ -6,13 +6,26 @@ import { AppButton, Card, Notice, PageTitle, Screen } from '../components/Screen
 import { postAction } from '../api/client';
 import { DISCOVERY_RADIUS_KM, SERVICE_AREA, THEME } from '../config';
 
+// Nearby providers are disabled for the first live milestone (the edge action answers 404 until per-IP and
+// abuse protection exist). While false this screen makes NO network call and requests no location; the
+// map/GPS/search code below is kept for a later release.
+const NEARBY_PROVIDERS_ENABLED = false;
+const DISABLED_MESSAGE = 'Nearby providers will be available in a later release.';
+
 export default function NearbyScreen() {
   const [point, setPoint] = useState(null);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('Tap below to check nearby Car Wash providers. Location access is requested only when you choose to use it.');
+  const [message, setMessage] = useState(NEARBY_PROVIDERS_ENABLED
+    ? 'Tap below to check nearby Car Wash providers. Location access is requested only when you choose to use it.'
+    : DISABLED_MESSAGE);
 
   async function findProviders() {
+    if (!NEARBY_PROVIDERS_ENABLED) {
+      // No location request and no API call while the feature is disabled.
+      setMessage(DISABLED_MESSAGE);
+      return;
+    }
     setLoading(true);
     setMessage('');
     try {
@@ -57,7 +70,7 @@ export default function NearbyScreen() {
 
   return (
     <Screen>
-      <PageTitle eyebrow="Discovery" detail={`Search for approved, available Car Wash providers within ${DISCOVERY_RADIUS_KM} km. The app does not display exact provider locations or phone numbers.`}>Nearby providers</PageTitle>
+      <PageTitle eyebrow="Discovery" detail={NEARBY_PROVIDERS_ENABLED ? `Search for approved, available Car Wash providers within ${DISCOVERY_RADIUS_KM} km. The app does not display exact provider locations or phone numbers.` : null}>Nearby providers</PageTitle>
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <MapView style={{ height: 300 }} region={mapRegion}>
           {point ? <>
@@ -66,11 +79,13 @@ export default function NearbyScreen() {
           </> : <Marker coordinate={SERVICE_AREA.centre} title="Naini · Prayagraj service area" pinColor={THEME.navy} />}
         </MapView>
         <View style={{ padding: 14, gap: 7 }}>
-          <Text style={{ color: THEME.ink, fontWeight: '800' }}>Search radius · {DISCOVERY_RADIUS_KM} km</Text>
-          <Text style={{ color: THEME.muted, lineHeight: 19 }}>The map shows your search area. Provider pins are intentionally not shown: the API returns only approximate distance and no provider coordinates.</Text>
+          {NEARBY_PROVIDERS_ENABLED ? <>
+            <Text style={{ color: THEME.ink, fontWeight: '800' }}>Search radius · {DISCOVERY_RADIUS_KM} km</Text>
+            <Text style={{ color: THEME.muted, lineHeight: 19 }}>The map shows your search area. Provider pins are intentionally not shown: the API returns only approximate distance and no provider coordinates.</Text>
+          </> : <Text style={{ color: THEME.muted, lineHeight: 19 }}>The map shows the current Naini · Prayagraj service area. You can book a Car Wash from the Services tab.</Text>}
         </View>
       </Card>
-      <AppButton title={loading ? 'Checking nearby providers…' : 'Use my location & search'} onPress={findProviders} disabled={loading} />
+      {NEARBY_PROVIDERS_ENABLED ? <AppButton title={loading ? 'Checking nearby providers…' : 'Use my location & search'} onPress={findProviders} disabled={loading} /> : null}
       {loading ? <ActivityIndicator color={THEME.navy} /> : null}
       {message ? <Notice>{message}</Notice> : null}
       {providers.map((provider) => (
