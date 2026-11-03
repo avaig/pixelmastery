@@ -24,8 +24,15 @@ export async function postAction(action, payload) {
   } catch {
     throw new Error('The service returned an unreadable response. Please retry.');
   }
-  if (!response.ok || result.success !== true) {
-    throw new Error(result.message || 'The request could not be completed.');
+  if (response.status === 202 || result?.pending === true) {
+    // Booking outcome is not confirmed yet. Callers must not show success and must not resubmit automatically.
+    return {
+      pending: true,
+      message: result?.message || 'Your booking is being confirmed. Please do not submit it again. Customer Care will confirm it.',
+    };
+  }
+  if (!response.ok || result?.success !== true) {
+    throw new Error(result?.message || 'The request could not be completed.');
   }
   return result;
 }

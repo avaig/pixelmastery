@@ -41,6 +41,7 @@ export default function CarWashScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
+  const [pendingMessage, setPendingMessage] = useState('');
   const idempotencyRef = useRef({ fingerprint: '', key: '' });
 
   const visibleOptions = useMemo(() => CAR_WASH_OPTIONS.map((option) => ({
@@ -156,6 +157,7 @@ export default function CarWashScreen() {
   }
 
   async function submitBooking() {
+    if (pendingMessage) return; // An unconfirmed booking exists; never resubmit from this screen.
     setError('');
     const cleanName = fullName.trim();
     const cleanMobile = mobile.replace(/\D/g, '');
@@ -212,6 +214,11 @@ export default function CarWashScreen() {
         serviceDetails,
         idempotencyKey: idempotencyRef.current.key,
       });
+      if (result.pending) {
+        // Keep the same idempotency key; no success confirmation and no automatic resubmission.
+        setPendingMessage(result.message);
+        return;
+      }
       setPendingVerification(!bookingPoint);
       setSuccess(result.requestId || 'Submitted');
       setShowBooking(false);
@@ -330,7 +337,8 @@ export default function CarWashScreen() {
             {coordinates && serviceable === false ? <Notice tone="error">This location is outside the current 25 km service area. We cannot accept this booking in the app.</Notice> : null}
             {!coordinates && locationText.trim().length > 0 ? <Notice tone="warning">Manual address entered without coordinates. We’ll try the device geocoder when you submit (Android may request location permission for this); you can decline and still book. If no coordinates are found, Customer Care must verify before dispatch or any provider offer. You can also drop a pin.</Notice> : null}
             {error ? <Notice tone="error">{error}</Notice> : null}
-            <AppButton title={submitting ? 'Submitting…' : `Submit request · ${formatRupees(totals.total)} est.`} onPress={submitBooking} disabled={submitting || gpsBusy || geocodeBusy} />
+            {pendingMessage ? <Notice tone="warning">{pendingMessage}</Notice> : null}
+            <AppButton title={submitting ? 'Submitting…' : `Submit request · ${formatRupees(totals.total)} est.`} onPress={submitBooking} disabled={submitting || gpsBusy || geocodeBusy || Boolean(pendingMessage)} />
             <AppButton title="Back to options" secondary onPress={() => setShowBooking(false)} />
           </ScrollView>
         </View>
