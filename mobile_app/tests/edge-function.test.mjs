@@ -11,6 +11,16 @@ assert.match(source, /apper\.serve\(handler\);\s*$/);
 assert.doesNotMatch(source, /^\s*(?:import|export)\s/m);
 const testedSource = source.replace(/apper\.serve\(handler\);\s*$/, '');
 const database = new Map();
+const IDS = { customer: '01a144b6-1111-7111-8111-111111111111', request: '01a144b6-2222-7222-8222-222222222222', category: '01a144b6-7ef0-78e4-aa61-ba16fce3f9bf', capability: '01a144b6-ef8a-71fc-8bbb-3e16e0f647c0', competing: '01a144b6-0000-7000-8000-000000000001', provider: '01a144b6-3333-7333-8333-333333333333', link: '01a144b6-4444-7444-8444-444444444444' };
+const guardId = (number) => `01a144b6-${number.toString(16).padStart(4, '0')}-7000-8000-000000000000`;
+async function expectedPayloadHash() {
+  const response = await handler(bookingRequest());
+  assert.equal(response.status, 200);
+  const hash = recordsFor('guest_booking_guard_c').find((row) => row.Name.startsWith('idem:')).payload_hash_c;
+  database.clear();
+  calls.length = 0;
+  return hash;
+}
 const calls = [];
 let failServiceRequestCreate = false;
 let failGuard = false;
@@ -55,11 +65,11 @@ globalThis.fetch = async (url, options = {}) => {
     }
     const stored = recordsFor(targetTable);
     const results = body.records.map((record) => {
-      const created = method === 'PUT' ? { ...stored.find((row) => row.Id === record.Id), ...record } : { Id: targetTable === 'customer_profiles_c' ? 201 : targetTable === 'service_requests_c' ? 901 : stored.length + 1001, ...record, CreatedOn: new Date().toISOString() };
+      const created = method === 'PUT' ? { ...stored.find((row) => row.Id === record.Id), ...record } : { Id: targetTable === 'customer_profiles_c' ? IDS.customer : targetTable === 'service_requests_c' ? IDS.request : guardId(stored.length + 1002), ...record, CreatedOn: new Date().toISOString() };
       if (method === 'PUT') stored.splice(stored.findIndex((row) => row.Id === record.Id), 1, created);
       else stored.push(created);
       if (competingClaim && targetTable === 'guest_booking_guard_c' && record.status_c === 'Pending') {
-        stored.push({ Id: 999, Name: record.Name, status_c: 'Pending', attempts_c: 1, created_at_c: record.created_at_c, expires_at_c: record.expires_at_c });
+        stored.push({ Id: IDS.competing, Name: record.Name, payload_hash_c: record.payload_hash_c, status_c: 'Pending', attempts_c: 1, created_at_c: record.created_at_c, expires_at_c: record.expires_at_c });
       }
       return { success: true, message: '', data: created };
     });
@@ -77,15 +87,15 @@ globalThis.fetch = async (url, options = {}) => {
     return false;
   }));
   const seeds = table === 'service_categories_c'
-    ? [{ Id: 18, Name: 'Car Assistance', status_c: 'Active' }]
+    ? [{ Id: IDS.category, Name: 'Car Assistance', status_c: 'Active' }]
     : table === 'service_capabilities_c'
-      ? [{ Id: 39, Name: 'Car Wash', status_c: 'Active' }]
+      ? [{ Id: IDS.capability, Name: 'Car Wash', status_c: 'Active' }]
       : [];
   const rows = filtered.length ? filtered : seeds.filter((row) => (body.where || []).every((condition) => row[condition.fieldName] === condition.values?.[0]));
-  return makeResponse({ success: true, data: rows.slice(0, body.pagingInfo?.limit || 100) });
+  return makeResponse({ success: true, data: rows.slice(0, body.pagingInfo?.limit || 100).map((row) => Object.fromEntries(body.fields.map((field) => [field, ['technician_c', 'capability_c', 'customer_c', 'service_category_c', 'required_capability_c'].includes(field) && row[field] ? { Id: row[field], Name: 'Test lookup' } : row[field]]))) });
 };
 
-const edge = new Function(`${testedSource}\nreturn { handler, validateApperOperation, TABLE_ALLOWLIST, getDistanceKm, normalizeIndianMobile, validateWashDetails };`)();
+const edge = new Function(`${testedSource}\nreturn { handler, validateApperOperation, TABLE_ALLOWLIST, extractLookupId, getDistanceKm, normalizeIndianMobile, validateWashDetails };`)();
 handler = edge.handler;
 
 function clearMock() {
@@ -136,7 +146,7 @@ test('edge creates documented Apper record payloads and returns a linked request
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.success, true);
-  assert.equal(result.requestId, 901);
+  assert.equal(result.requestId, IDS.request);
   assert.equal(recordsFor('customer_profiles_c').length, 1);
   assert.equal(recordsFor('service_requests_c').length, 1);
 
@@ -149,18 +159,19 @@ test('edge creates documented Apper record payloads and returns a linked request
   assert.equal('Owner' in customerCreate.body.records[0], false);
   assert.equal('email_c' in customerCreate.body.records[0], false);
   const requestRecord = requestCreate.body.records[0];
-  assert.equal(requestRecord.customer_c, 201);
-  assert.equal(requestRecord.service_category_c, 18);
-  assert.equal(requestRecord.required_capability_c, 39);
+  assert.equal(requestRecord.customer_c, IDS.customer);
+  assert.equal(requestRecord.service_category_c, IDS.category);
+  assert.equal(requestRecord.required_capability_c, IDS.capability);
   assert.equal(requestRecord.device_type_c, 'Mobile');
   assert.doesNotMatch(requestRecord.problem_description_c, /LOCAL_GUEST_(IDEMPOTENCY|RATE_)/);
   assert.match(requestRecord.problem_description_c, /^Customer submitted this Car Wash quote/);
   assert.equal(requestRecord.latitude_c, 25.382);
   assert.equal(requestRecord.longitude_c, 81.875);
   const guardRows = recordsFor('guest_booking_guard_c');
-  assert.equal(guardRows.some((row) => row.Name === `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}` && row.request_id_c === 901 && row.status_c === 'Done'), true);
+  assert.equal(guardRows.some((row) => row.Name === `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}` && row.request_id_c === IDS.request && row.status_c === 'Done'), true);
   assert.equal(guardRows.some((row) => row.Name === `rate:${hmac('phone', '+919876543210')}:${new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')}`), true);
   assert.equal(guardRows.some((row) => !row.expires_at_c || !row.created_at_c), false);
+  assert.match(guardRows.find((row) => row.Name.startsWith('idem:')).payload_hash_c, /^[a-f0-9]{64}$/);
   assert.equal(JSON.stringify(guardRows).includes('9876543210'), false);
   assert.equal(JSON.stringify(guardRows).includes('11111111-1111-4111-8111-111111111111'), false);
   assert.equal(JSON.stringify(guardRows).includes(guardSecret), false);
@@ -186,8 +197,11 @@ test('allowlist rejects unknown tables, read fields, write fields, and malformed
   assert.throws(() => edge.validateApperOperation('POST', 'service_requests_c', 'service_requests_c/records', { records: [{ Name: 'x', customer_c: 1, secret_c: 'bad' }] }));
   assert.throws(() => edge.validateApperOperation('POST', 'customer_profiles_c', 'customer_profiles_c/records', { records: [{ latitude_c: 25 }] }));
   assert.throws(() => edge.validateApperOperation('POST', 'guest_booking_guard_c', 'guest_booking_guard_c/records', { records: [{ phone_c: 'raw phone' }] }));
+  assert.throws(() => edge.validateApperOperation('PUT', 'guest_booking_guard_c', 'guest_booking_guard_c/records', { records: [{ Id: 999, status_c: 'Failed' }] }), /UUID/);
+  assert.throws(() => edge.validateApperOperation('POST', 'service_requests_c', 'service_requests_c/records', { records: [{ customer_c: 999 }] }), /UUID/);
+  assert.throws(() => edge.validateApperOperation('PUT', 'guest_booking_guard_c', 'guest_booking_guard_c/records', { records: [{ Id: guardId(1002), request_id_c: 999 }] }), /UUID/);
   assert.deepEqual(edge.TABLE_ALLOWLIST.customer_profiles_c.write, ['Name', 'phone_c', 'location_c', 'status_c']);
-  assert.deepEqual(edge.TABLE_ALLOWLIST.guest_booking_guard_c.write, ['Id', 'Name', 'request_id_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c']);
+  assert.deepEqual(edge.TABLE_ALLOWLIST.guest_booking_guard_c.write, ['Id', 'Name', 'request_id_c', 'payload_hash_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c']);
 });
 
 test('idempotent retry returns existing request without repeating customer or request writes', async () => {
@@ -247,7 +261,7 @@ test('guard hourly limits rate-limit before customer or request writes', async (
   clearMock();
   const phoneHash = hmac('phone', '+919876543210');
   const hour = new Date().toISOString().slice(0, 13).replace(/[-T]/g, '');
-  database.set('guest_booking_guard_c', [{ Id: 1001, Name: `rate:${phoneHash}:${hour}`, attempts_c: 5 }]);
+  database.set('guest_booking_guard_c', [{ Id: guardId(1001), Name: `rate:${phoneHash}:${hour}`, attempts_c: 5 }]);
   const response = await handler(bookingRequest());
   assert.equal(response.status, 429);
   assert.equal(recordsFor('customer_profiles_c').length, 0);
@@ -301,7 +315,7 @@ test('network hash rate cap prevents a fresh phone from booking', async () => {
   clearMock();
   const ipHash = hmac('ip', '203.0.113.77');
   const hour = new Date().toISOString().slice(0, 13).replace(/[-T]/g, '');
-  database.set('guest_booking_guard_c', [{ Id: 1001, Name: `rate:${ipHash}:${hour}`, attempts_c: 5 }]);
+  database.set('guest_booking_guard_c', [{ Id: guardId(1001), Name: `rate:${ipHash}:${hour}`, attempts_c: 5 }]);
   const response = await handler(bookingRequest({}, { 'x-forwarded-for': '203.0.113.77' }));
   assert.equal(response.status, 429);
   assert.equal(recordsFor('customer_profiles_c').length, 0);
@@ -338,8 +352,8 @@ test('missing HMAC secret fails closed without accessing guard or writing bookin
 test('fresh Pending claim returns 409 before creating a customer/request', async () => {
   clearMock();
   database.set('guest_booking_guard_c', [{
-    Id: 1001, Name: `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}`,
-    status_c: 'Pending', created_at_c: new Date().toISOString(), attempts_c: 1,
+    Id: guardId(1001), Name: `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}`,
+    payload_hash_c: await expectedPayloadHash(), status_c: 'Pending', created_at_c: new Date().toISOString(), attempts_c: 1,
   }]);
   const response = await handler(bookingRequest());
   assert.equal(response.status, 409);
@@ -350,12 +364,12 @@ test('fresh Pending claim returns 409 before creating a customer/request', async
 test('stale Pending claim permits a new claim and completes booking', async () => {
   clearMock();
   database.set('guest_booking_guard_c', [{
-    Id: 1001, Name: `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}`,
-    status_c: 'Pending', created_at_c: new Date(Date.now() - 3 * 60000).toISOString(), attempts_c: 1,
+    Id: guardId(1001), Name: `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}`,
+    payload_hash_c: await expectedPayloadHash(), status_c: 'Pending', created_at_c: new Date(Date.now() - 3 * 60000).toISOString(), attempts_c: 1,
   }]);
   const response = await handler(bookingRequest());
   assert.equal(response.status, 200);
-  assert.equal(recordsFor('guest_booking_guard_c').find((row) => row.Name.startsWith('idem:') && row.status_c === 'Done').request_id_c, 901);
+  assert.equal(recordsFor('guest_booking_guard_c').find((row) => row.Name.startsWith('idem:') && row.status_c === 'Done').request_id_c, IDS.request);
 });
 
 test('simulated concurrent claim elects the lowest Id and loser creates nothing', async () => {
@@ -365,7 +379,7 @@ test('simulated concurrent claim elects the lowest Id and loser creates nothing'
   assert.equal(response.status, 409);
   assert.equal(recordsFor('customer_profiles_c').length, 0);
   assert.equal(recordsFor('service_requests_c').length, 0);
-  assert.equal(recordsFor('guest_booking_guard_c').find((row) => row.Id === 1002).status_c, 'Failed');
+  assert.equal(recordsFor('guest_booking_guard_c').find((row) => row.Name.startsWith('idem:') && row.Id !== IDS.competing).status_c, 'Failed');
 });
 
 test('guard keys are domain-separated 32-hex HMACs and no booking response exposes identifiers', async () => {
@@ -398,7 +412,7 @@ test('guard keys are domain-separated 32-hex HMACs and no booking response expos
 test('nearby provider API returns coarse fields only and applies discovery radius', async () => {
   clearMock();
   database.set('technician_profiles_c', [{
-    Id: 70,
+    Id: IDS.provider,
     Name: 'Mira Singh',
     verification_status_c: 'Approved',
     status_c: 'Active',
@@ -409,9 +423,9 @@ test('nearby provider API returns coarse fields only and applies discovery radiu
     phone_c: '+919999999999',
   }]);
   database.set('service_provider_capabilities_c', [{
-    Id: 71,
-    technician_c: 70,
-    capability_c: 39,
+    Id: IDS.link,
+    technician_c: IDS.provider,
+    capability_c: IDS.capability,
     status_c: 'Active',
   }]);
   const response = await handler(new Request('https://edge.test/guest-create-service-request', {
@@ -430,4 +444,85 @@ test('nearby provider API returns coarse fields only and applies discovery radiu
   assert.equal('Id' in result.providers[0], false);
   assert.equal('latitude' in result.providers[0], false);
   assert.equal('longitude' in result.providers[0], false);
+});
+
+
+test('lookup extraction accepts string and {Id, Name} UUIDs but rejects integer IDs', () => {
+  assert.equal(edge.extractLookupId(IDS.capability), IDS.capability);
+  assert.equal(edge.extractLookupId({ Id: IDS.capability, Name: 'Car Wash' }), IDS.capability);
+  assert.equal(edge.extractLookupId(39), null);
+  assert.equal(edge.extractLookupId({ Id: 39, Name: 'Car Wash' }), null);
+});
+
+test('reusing attempt key with different booking payload returns 409 and writes nothing else', async () => {
+  clearMock();
+  assert.equal((await handler(bookingRequest())).status, 200);
+  const count = calls.length;
+  const response = await handler(bookingRequest({ fullName: 'Different Person' }));
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { success: false, message: 'This booking attempt key was already used for a different request' });
+  assert.equal(calls.length, count + 1);
+  assert.equal(recordsFor('service_requests_c').length, 1);
+  assert.equal(recordsFor('customer_profiles_c').length, 1);
+});
+
+test('same key with different payload on fresh Pending or Failed claim creates nothing', async () => {
+  for (const status of ['Pending', 'Failed']) {
+    clearMock();
+    database.set('guest_booking_guard_c', [{ Id: guardId(1001), Name: `idem:${hmac('idem', '11111111-1111-4111-8111-111111111111')}`, payload_hash_c: 'a'.repeat(64), status_c: status, created_at_c: new Date().toISOString(), attempts_c: 1 }]);
+    const response = await handler(bookingRequest());
+    assert.equal(response.status, 409);
+    assert.equal(calls.length, 1);
+    assert.equal(recordsFor('service_requests_c').length, 0);
+  }
+});
+
+test('different payload racing after claim is rejected before customer creation', async () => {
+  clearMock();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    const response = await originalFetch(url, options);
+    if (String(url).endsWith('/guest_booking_guard_c/records') && options.method === 'POST' && JSON.parse(options.body).records[0].status_c === 'Pending') {
+      recordsFor('guest_booking_guard_c').push({ Id: IDS.competing, Name: JSON.parse(options.body).records[0].Name, payload_hash_c: 'f'.repeat(64), status_c: 'Pending', created_at_c: new Date().toISOString() });
+    }
+    return response;
+  };
+  try {
+    const response = await handler(bookingRequest());
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).message, 'This booking attempt key was already used for a different request');
+    assert.equal(recordsFor('service_requests_c').length, 0);
+    assert.equal(recordsFor('customer_profiles_c').length, 0);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('payload digest is canonical across normalized mobile and validated numeric details', async () => {
+  clearMock();
+  assert.equal((await handler(bookingRequest())).status, 200);
+  const firstHash = recordsFor('guest_booking_guard_c').find((row) => row.Name.startsWith('idem:')).payload_hash_c;
+  const response = await handler(bookingRequest({
+    fullName: '  Test Customer  ', mobile: '+91 98765 43210',
+    latitude: '25.382', longitude: '81.875',
+    serviceDetails: {
+      vehicleType: 'small', items: [{ title: 'Complete Car Wash', variant: 'Small Car (Hatchback / Sedan)', quantity: '1' }],
+      pickupDropRequested: false, subtotal: '400', platformFee: '25', pickupDropCharge: '0', total: '425',
+    },
+  }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).duplicate, true);
+  assert.equal(recordsFor('guest_booking_guard_c').find((row) => row.Name.startsWith('idem:')).payload_hash_c, firstHash);
+  assert.equal(recordsFor('service_requests_c').length, 1);
+});
+
+test('changing coordinates or selected details for the same attempt key returns conflict', async () => {
+  for (const change of [
+    { latitude: 25.383 },
+    { serviceDetails: { vehicleType: 'small', items: [{ title: 'Exterior Only', variant: 'Small Car — Without Body Polish', quantity: 1 }], pickupDropRequested: false, subtotal: 300, platformFee: 25, pickupDropCharge: 0, total: 325 } },
+  ]) {
+    clearMock();
+    assert.equal((await handler(bookingRequest())).status, 200);
+    const response = await handler(bookingRequest(change));
+    assert.equal(response.status, 409);
+    assert.equal(recordsFor('service_requests_c').length, 1);
+  }
 });

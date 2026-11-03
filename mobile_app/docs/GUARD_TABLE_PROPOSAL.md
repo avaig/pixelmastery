@@ -1,45 +1,39 @@
-# Proposed internal guest-booking guard — NOT YET VERIFIED
+# Guest-booking guard proposal — controlled integration testing only; not production
 
-Do not deploy or enable guest booking until the table, secret, permissions, lookup records and behavior below have been checked in the actual Apper app. **This document proposes a table; it does not create one.** The self-contained edge function fails closed with HTTP 503 `Booking is temporarily unavailable` when the secret is unset or the guard cannot be read/written before customer/request creation.
+The internal `guest_booking_guard_c` table does **not** exist in the live Apper app. Do not deploy/enable bookings until it is provisioned and validated. The edge function fails closed with 503 when `GUARD_HMAC_SECRET` is missing or guard reads/writes fail before a booking write. A failed final Done update can occur **after** a request was created, so 503 does not imply rollback.
 
-## Proposed schema
+## Exact proposed schema (not created)
 
-Table name: `guest_booking_guard_c`.
-
-| Field | Type | Values / use |
+| Field | Type | Values / purpose |
 | --- | --- | --- |
-| `Name` | Text | `idem:<32-hex-HMAC>` or `rate:<32-hex-HMAC>:<yyyymmddhh>` (UTC hour). Keys must not contain raw identifiers. |
-| `request_id_c` | Number | Set on an idempotency row only after request creation. |
-| `attempts_c` | Number | Rate-bucket attempt count; idempotency claims start at 1. |
-| `status_c` | Picklist | Exact proposed values `Pending`, `Done`, `Failed`. A rate row is `Done`. |
-| `expires_at_c` | DateTime | Idempotency claim: creation +24h. Rate bucket: creation +2h. |
-| `created_at_c` | DateTime | Claim/bucket creation UTC time; a `Pending` claim less than two minutes old blocks another submission. |
+| `Name` | Text | `idem:<32 hex HMAC>` or `rate:<32 hex HMAC>:<yyyymmddhh>` UTC. |
+| `request_id_c` | Text | Created service-request UUID string; set only after the request succeeds. NOT Number. |
+| `payload_hash_c` | Text | Full 64-hex HMAC-SHA256 digest of the canonical booking payload on idempotency claims. |
+| `attempts_c` | Number | Rate bucket counter or claim initial value 1. |
+| `status_c` | Picklist | Exactly `Pending`, `Done`, `Failed` (rate bucket uses `Done`). |
+| `expires_at_c` | DateTime | Claim +24 hours, rate bucket +2 hours. |
+| `created_at_c` | DateTime | UTC creation time; Pending less than 2 minutes old blocks retry. |
 
-`Id` is the platform record ID used for comparisons and updates, not a custom schema field. Provisioning these fields and verifying DateTime/picklist serialization is required before live use.
+`Id` is the Apper platform UUID-string record ID, not a custom table field. Lookup values read as `{Id, Name}` objects and written as UUID strings. Observed IDs are UUIDv7; **lowest-Id election assumes lexical UUID string order tracks creation order**; this assumption and its behavior need a controlled integration test before reliance. Guard DateTime, Number and picklist serialization are not verified.
 
-## Secret and access
+## Secrets and access rules
 
-Set `GUARD_HMAC_SECRET` as an **Apper server secret** available through `Deno.env.get` to the deployed edge function, never as an Expo/mobile variable. Use a high-entropy value managed through the server's secret process; do not log it or include it in responses. HMAC-SHA256 signs `phone:<normalized E.164 number>`, `idem:<uuid>` or `ip:<forwarded IP>` with separate domains, and stores only the first 32 hexadecimal digits of each digest in guard keys. The optional forwarded IP header is not trustworthy. Even HMAC-derived keys are sensitive internal data. Rotating the secret changes every key: existing idempotency and hourly rate records become invisible to the new secret; plan rotation and a temporary overlap/cleanup policy explicitly. Never store a raw phone, IP or idempotency UUID in this table.
+Only the edge function's **server-side API key** may read/create/update this table. **NO Customer, ServiceProvider, Anonymous, public API/client, or Admin read access** (no Admin grant, per decision). Verify permissions for the actual deployed key; never embed a key or secret in `EXPO_PUBLIC_`, other mobile files or responses. `GUARD_HMAC_SECRET` must remain stable: **never rotate casually**. Rotation orphans existing guard records (old idempotency/rate keys become invisible); any planned rotation needs an explicitly reviewed migration/overlap and cleanup policy.
 
-Grant read/create/update **only to the edge function's server-side API key**. No mobile/client direct access, no `Customer_c` or `ServiceProvider_c` grants, and no anonymous or API-view exposure. `Admin_c` may have at most read access, **subject to the user's explicit decision**; do not assume an Admin grant. Check permissions for the actual deployed API key before enabling bookings.
+The guard stores only domain-separated HMAC-SHA256 results: phone (`phone:`), attempt key (`idem:`), and optional untrusted forwarded IP (`ip:`) use first 32 hex digits in keys. For idempotency, `payload_hash_c` is the **full** HMAC-SHA256 with domain prefix `payload:` over canonical sorted-key JSON of `{serviceKey, mobile (normalised E.164), fullName, location, coordinates, serviceDetails}`. Coordinates use validated numeric latitude/longitude or null; service details use server-validated menu values. Never log or return keys, hashes or the secret. No technical guard marker is placed in `problem_description_c`.
 
-## Request flow and retention
+## Flow and retention
 
-Read idempotency claims first. A `Done` row returns its request ID as a duplicate. A fresh `Pending` claim returns 409. A `Failed` or older-than-two-minute `Pending` claim allows a new attempt. Read the phone bucket and optional IP bucket (up to five each per hour), increment the attempt count, create a `Pending` claim, read claims again and choose the lowest active `Id`. A loser returns 409 without creating a customer or request. The winner reuses a customer by phone when present, creates the request, then updates its claim to `Done` with `request_id_c`; a pre-request-completion failure updates the claim to `Failed`. Guard failures return a safe 503. The edge response does not contain hashes, raw identifiers from the guard, or the secret.
+Read claim rows for the key first: a different `payload_hash_c` always returns 409 `This booking attempt key was already used for a different request` without creating a customer/request (including Pending, Failed, Done and stale claims). Same payload + Done returns its existing UUID requestId. Fresh Pending returns 409. Stale Pending or Failed allows retry. Read phone and optional IP buckets, reject at five attempts per hour, increment/create buckets, create a Pending claim with the payload hash, then re-read claims. A different hash discovered on recheck also returns 409; otherwise only the lowest active UUID Id proceeds. A loser is marked Failed. The winner reuses/creates the customer, creates the request and sets Done with the request UUID; pre-request failures mark Failed. An absent/unreadable/unwritable guard or absent secret fails closed with a safe 503.
 
-Proposed retention: purge rows with `expires_at_c` in the past, with idempotency rows set to +24 hours and rate rows to +2 hours. A separately reviewed scheduled function or an authorized manual purge could list expired IDs and use the documented bulk-delete endpoint `POST /v1/data/{appId}/tables/{table}/records/delete`. **Neither cleanup path is implemented here.** Confirm exact delete payload/permissions, observe per-record errors, and do not expose the cleanup route to clients.
+**Retention/cleanup proposal only, not implemented:** purge rows past `expires_at_c` (claim 24h, rate bucket 2h). A separately reviewed server-side scheduled cleanup or authorized manual purge would list expired records and use documented bulk delete, checking per-record errors and permissions. Do not expose cleanup to clients. Confirm expiry and deletion semantics before building it.
 
-## NOT PRODUCTION-GRADE
+## Best-effort duplicate protection, NOT guaranteed under concurrency
 
-The reviewed Apper API docs describe record endpoints and per-record errors, but show **no unique constraint, upsert, transaction, or atomic insert** for these operations. Therefore lowest-`Id` election is **best-effort only; duplicates are NOT guaranteed to be prevented under concurrency.** Read-after-write consistency has not been verified. Concurrent rate increments may be lost; two claims may not see each other. A failed final `Done` update can leave a *created* request with a `Pending` claim; a later retry may create another request. A customer write can succeed before a request write fails, leaving an orphan customer. A 503 cannot undo already committed writes. Production requires server-enforced unique/atomic reservation, transactional/reconciled writes and robust abuse controls. Do not use this prototype as exactly-once or production-grade rate limiting. Locationless requests must be checked by Customer Care before any provider offer.
+No documented unique constraint, atomic insert/upsert or transaction makes claim-then-recheck **best-effort only; it does not guarantee duplicate prevention under concurrency**. Read-after-write consistency is unverified; competing claims can fail to see each other, rate increments may be lost, final Done update can fail after request creation, and customer creation can precede failed request creation. A 503 cannot undo committed writes. Production needs server-enforced atomic uniqueness and reconciled writes plus abuse protection. A locationless request must not be offered to providers until Customer Care verifies it.
 
-## Pre-live verification checklist — all NOT YET VERIFIED
+## Live read-only verification results (2026-11-03)
 
-- [ ] **NOT YET VERIFIED:** provision all guard fields, `Pending`/`Done`/`Failed` picklist values, actual DateTime/Number semantics, and the key's read/create/update privileges; deny client/API-view exposure.
-- [ ] **NOT YET VERIFIED:** read-only schema inspection with `GET /v1/meta/{appId}/tables/{table}/fields` for guard, customer and service request tables. Confirm the metadata route and field names before writes.
-- [ ] **NOT YET VERIFIED:** live `Car Assistance` category and `Car Wash` capability records exist and are `Active`; confirm exact names, status and lookup IDs before deployment.
-- [ ] **NOT YET VERIFIED:** all live picklist values used by customer, request, provider and capability-link writes/reads, including guard statuses; confirm `device_type_c` value `Mobile`.
-- [ ] **NOT YET VERIFIED:** isolated authorized read-after-write claim test, competing claims, per-record failures, stale-claim retry and cleanup semantics (with no real customer bookings).
-- [ ] **NOT YET VERIFIED:** existing web offer flow cannot offer a no-coordinate request before Customer Care verifies it.
+**Verified:** category `service_categories_c` Name `Car Assistance` has exactly one Active record; capability `service_capabilities_c` Name `Car Wash` has exactly one Active record; record IDs are UUID strings, lookup reads are `{Id, Name}`; metadata confirms customer fields Name Text, phone_c Text, location_c Text, status_c Picklist `[Active,Blocked]`, and request fields in the allowlist (including device_type_c Text, latitude_c/longitude_c Decimal, pricing_mode_description_c MultilineText), with request picklist values for status `[Open,Quoted,Negotiating,Confirmed,Completed,Cancelled]`, preferred_time `[ASAP,Scheduled,Within 1 hour,Today,Tomorrow]`, service_mode `[Normal,Urgent,Emergency]`, pricing_mode `[Fixed Price,Provider Quote,Urgent Dispatch]`. Category and capability status picklists are `[Active,Paused]`. Name EqualTo filtering works; CreatedOn GreaterThan filtering was verified in the supplied findings. The metadata/list check reads no personal rows. Provider metadata/picklist findings are in `LIVE_SCHEMA_FINDINGS.md` but not re-fetched by the restricted five-table script.
 
-No live Apper access, table creation, deployment or cleanup was performed for this prototype.
+**NOT verified:** any live writes or update semantics, guard table existence/permissions (currently **MISSING**), guard DateTime/picklist operation, read-after-write consistency, UUIDv7 order across competing claims, Decimal precision, live customer/request booking or deployed edge invocation. `Mobile` is a Text value, not a picklist option. Controlled integration testing only; not production.

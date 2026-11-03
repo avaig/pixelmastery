@@ -1,7 +1,7 @@
 const API_ROOT = 'https://api.apper.io/v1/data';
 const GUARD_TABLE = 'guest_booking_guard_c';
 const LOCATION_PENDING_PREFIX = '[LOCATION VERIFICATION PENDING] ';
-// These lookup names have NOT been verified against live records; confirm before deploy.
+// Names were verified in live read-only checks; resolve their IDs on each request.
 const CATEGORY_NAME = 'Car Assistance';
 const CAPABILITY_NAME = 'Car Wash';
 const PICKLIST = Object.freeze({
@@ -20,16 +20,16 @@ const INDIA_BOUNDS = { minLatitude: 6.5, maxLatitude: 35.7, minLongitude: 68, ma
 const SERVICE_KEYS = new Set(['car-wash']);
 const TABLE_ALLOWLIST = Object.freeze({
   customer_profiles_c: {
-    read: ['Id', 'Name', 'phone_c'],
+    read: ['Id', 'phone_c'],
     write: ['Name', 'phone_c', 'location_c', 'status_c'],
   },
   [GUARD_TABLE]: {
-    read: ['Id', 'Name', 'request_id_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c'],
-    write: ['Id', 'Name', 'request_id_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c'],
+    read: ['Id', 'Name', 'request_id_c', 'payload_hash_c', 'attempts_c', 'status_c', 'created_at_c'],
+    write: ['Id', 'Name', 'request_id_c', 'payload_hash_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c'],
   },
   service_requests_c: {
-    read: ['Id', 'Name', 'problem_description_c', 'CreatedOn'],
-    write: ['Id', 'Name', 'customer_c', 'service_category_c', 'required_capability_c', 'device_type_c', 'problem_description_c', 'location_c', 'service_area_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'requested_at_c', 'scheduled_at_c', 'service_mode_c', 'pricing_mode_c', 'pricing_mode_description_c'],
+    read: [],
+    write: ['Name', 'customer_c', 'service_category_c', 'required_capability_c', 'device_type_c', 'problem_description_c', 'location_c', 'service_area_c', 'latitude_c', 'longitude_c', 'status_c', 'preferred_time_c', 'requested_at_c', 'scheduled_at_c', 'service_mode_c', 'pricing_mode_c', 'pricing_mode_description_c'],
   },
   service_categories_c: { read: ['Id', 'Name', 'status_c'], write: [] },
   service_capabilities_c: { read: ['Id', 'Name', 'status_c'], write: [] },
@@ -208,11 +208,27 @@ function buildWashDescription(details) {
   return `Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ${itemsSummary}; LOCAL Platform Fee: ₹${WASH_PLATFORM_FEE} (once per booking)${pickupText}. Service subtotal: ₹${formatRupees(details.subtotal)}. ${totalDescription}: ₹${formatRupees(details.total)}. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:${JSON.stringify(decisions)} for their car.`;
 }
 
-async function guardHmac(secret, domain, value) {
+async function guardHmac(secret, domain, value, truncate = true) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${domain}:${value}`));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return truncate ? hex.slice(0, 32) : hex;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function extractLookupId(value) {
+  const id = value && typeof value === 'object' && !Array.isArray(value) ? value.Id : value;
+  return typeof id === 'string' && UUID_RE.test(id) ? id : null;
 }
 
 function getConfig() {
@@ -235,7 +251,13 @@ function validateApperOperation(method, table, path, body) {
     for (const record of body.records) {
       if (!record || typeof record !== 'object' || Array.isArray(record)) throw new Error('Invalid Apper record.');
       if (Object.keys(record).some((field) => !policy.write.includes(field))) throw new Error('Apper write fields are not allowed.');
-      if (method === 'PUT' && (!Number.isInteger(Number(record.Id)) || Number(record.Id) <= 0)) throw new Error('Update requires a numeric record Id.');
+      if (method === 'PUT' && !extractLookupId(record.Id)) throw new Error('Update requires a UUID record Id.');
+      const lookupFields = table === 'service_requests_c'
+        ? ['customer_c', 'service_category_c', 'required_capability_c'] : [];
+      if (table === GUARD_TABLE) lookupFields.push('request_id_c');
+      if (lookupFields.some((field) => field in record && !extractLookupId(record[field]))) {
+        throw new Error('Record reference requires a UUID string.');
+      }
     }
     return;
   }
@@ -283,12 +305,6 @@ async function createRecord(config, table, record) {
   return row.data;
 }
 
-function extractLookupId(value) {
-  if (value && typeof value === 'object') value = value.Id ?? value.id ?? value.value;
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
-
 async function queryExactName(config, table, name) {
   const records = await queryRecords(config, table, ['Id', 'Name', 'status_c'], [
     { fieldName: 'Name', operator: 'EqualTo', values: [name] },
@@ -304,7 +320,8 @@ async function readGuardRows(config, name) {
   });
   if (!Array.isArray(result.data) || result.data.length >= 100
     || result.data.some((row) => row.Name !== name || !extractLookupId(row.Id))) throw new Error('Guard read failed.');
-  return result.data.sort((a, b) => Number(a.Id) - Number(b.Id));
+  // Apper IDs observed are UUIDv7; lexicographic order is assumed to track creation order.
+  return result.data.sort((a, b) => a.Id < b.Id ? -1 : a.Id > b.Id ? 1 : 0);
 }
 
 function pendingIsFresh(row, nowMs) {
@@ -369,12 +386,20 @@ async function createGuestBooking(config, req, body) {
     const hourBucket = nowIso.slice(0, 13).replace(/[-T]/g, '');
     const phoneHmac = await guardHmac(secret, 'phone', mobile);
     const idemHmac = await guardHmac(secret, 'idem', idempotencyKey);
+    const payloadHash = await guardHmac(secret, 'payload', canonicalJson({
+      serviceKey, mobile, fullName, location,
+      coordinates: { latitude: coordinates.latitude, longitude: coordinates.longitude },
+      serviceDetails: washDetails,
+    }), false);
     const ip = getRequestIp(req);
     const ipHmac = ip ? await guardHmac(secret, 'ip', ip) : null;
     const idemName = `idem:${idemHmac}`;
     const phoneName = `rate:${phoneHmac}:${hourBucket}`;
     const ipName = ipHmac ? `rate:${ipHmac}:${hourBucket}` : null;
     const priorClaims = await readGuardRows(config, idemName);
+    if (priorClaims.some((row) => row.payload_hash_c !== payloadHash)) {
+      return jsonResponse(409, { success: false, message: 'This booking attempt key was already used for a different request' });
+    }
     const done = priorClaims.find((row) => row.status_c === 'Done');
     if (done) {
       const requestId = extractLookupId(done.request_id_c);
@@ -394,12 +419,16 @@ async function createGuestBooking(config, req, body) {
     await recordAttempt(config, phoneName, phoneRows, nowIso);
     if (ipName) await recordAttempt(config, ipName, ipRows, nowIso);
     const claim = await createRecord(config, GUARD_TABLE, {
-      Name: idemName, status_c: 'Pending', attempts_c: 1, created_at_c: nowIso,
+      Name: idemName, payload_hash_c: payloadHash, status_c: 'Pending', attempts_c: 1, created_at_c: nowIso,
       expires_at_c: new Date(nowMs + 24 * 60 * 60 * 1000).toISOString(),
     });
     const claimId = extractLookupId(claim.Id);
     if (!claimId) throw new Error('Invalid claim.');
     const claims = await readGuardRows(config, idemName);
+    if (claims.some((row) => row.payload_hash_c !== payloadHash)) {
+      await apperRequest(config, 'PUT', `${GUARD_TABLE}/records`, { records: [{ Id: claimId, status_c: 'Failed' }] });
+      return jsonResponse(409, { success: false, message: 'This booking attempt key was already used for a different request' });
+    }
     const winner = claims.filter((row) => activeClaim(row, nowMs))[0];
     if (!winner) throw new Error('Claim was not visible.');
     if (extractLookupId(winner.Id) !== claimId) {
@@ -410,10 +439,10 @@ async function createGuestBooking(config, req, body) {
     try {
     const category = await queryExactName(config, 'service_categories_c', CATEGORY_NAME);
     const capability = await queryExactName(config, 'service_capabilities_c', CAPABILITY_NAME);
-    if (!category || !capability) throw new Error('Service lookup unavailable.');
+    if (!category || !capability || !extractLookupId(category.Id) || !extractLookupId(capability.Id)) throw new Error('Service lookup unavailable.');
 
     const customerSearchVariants = [mobile, mobile.slice(3)];
-    const customerMatches = await Promise.all(customerSearchVariants.map((phone) => queryRecords(config, 'customer_profiles_c', ['Id', 'Name', 'phone_c'], [
+    const customerMatches = await Promise.all(customerSearchVariants.map((phone) => queryRecords(config, 'customer_profiles_c', ['Id', 'phone_c'], [
       { fieldName: 'phone_c', operator: 'EqualTo', values: [phone] },
     ], 10)));
     const matchingCustomers = customerMatches.flat();
@@ -427,6 +456,7 @@ async function createGuestBooking(config, req, body) {
       });
     }
 
+    if (!extractLookupId(customer.Id)) throw new Error('Invalid customer ID.');
     const problemDescription = buildWashDescription(washDetails);
     const now = new Date().toISOString().replace(/\.\d{3}Z$/, '');
     const record = {
@@ -497,7 +527,7 @@ async function findNearbyProviders(config, body) {
   try {
     const capability = await queryExactName(config, 'service_capabilities_c', CAPABILITY_NAME);
     if (!capability) return jsonResponse(503, { success: false, message: 'Car Wash booking is temporarily unavailable. Please contact Customer Care.' });
-    const capabilityId = String(extractLookupId(capability.Id));
+    const capabilityId = extractLookupId(capability.Id);
     const [profiles, links] = await Promise.all([
       listAll(config, 'technician_profiles_c', ['Id', 'Name', 'verification_status_c', 'status_c', 'availability_c', 'latitude_c', 'longitude_c', 'service_radius_km_c'], MAX_PROVIDER_ROWS),
       listAll(config, 'service_provider_capabilities_c', ['Id', 'technician_c', 'capability_c', 'status_c'], MAX_LINK_ROWS),
@@ -511,10 +541,10 @@ async function findNearbyProviders(config, body) {
       if (!PICKLIST.availability.some((value) => value.toLowerCase() === availabilityLower)) continue;
       const matchedCapability = links.some((link) => {
         const linkStatus = String(link.status_c ?? '').trim().toLowerCase();
-        const linkedTechnician = String(extractLookupId(link.technician_c));
-        const linkedCapability = String(extractLookupId(link.capability_c));
+        const linkedTechnician = extractLookupId(link.technician_c);
+        const linkedCapability = extractLookupId(link.capability_c);
         return PICKLIST.capabilityLinkStatus.some((value) => value.toLowerCase() === linkStatus)
-          && linkedTechnician === String(profile.Id)
+          && linkedTechnician === extractLookupId(profile.Id)
           && linkedCapability === capabilityId;
       });
       if (!matchedCapability) continue;
