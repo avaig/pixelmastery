@@ -36,6 +36,9 @@ const PICKUP_DROP_FEE = 100;
 const SERVICE_AREA = { latitude: 25.382, longitude: 81.875, radiusKm: 25 };
 const INDIA_BOUNDS = { minLatitude: 6.5, maxLatitude: 35.7, minLongitude: 68, maxLongitude: 97.5 };
 const SERVICE_KEYS = new Set(['car-wash']);
+// nearbyProviders is DISABLED for the first live milestone (no per-IP/abuse protection yet). While false the
+// action answers 404 before any secret loading or Apper/Redis call; findNearbyProviders() is kept for later.
+const ENABLE_NEARBY_PROVIDERS = false;
 const SECRET_NAMES = Object.freeze(['APPER_API_KEY', 'APPER_APP_ID', 'GUARD_HMAC_SECRET', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN']);
 const APPER_SECRET_NAMES = Object.freeze(['APPER_API_KEY', 'APPER_APP_ID']);
 const UNAVAILABLE_MESSAGE = 'Booking is temporarily unavailable';
@@ -55,15 +58,21 @@ const TABLE_ALLOWLIST = Object.freeze({
   service_provider_capabilities_c: { read: ['Id', 'technician_c', 'capability_c', 'status_c'], write: [] },
 });
 // Redis Lua scripts (exact strings; each runs atomically inside Redis).
-// Rate limit: INCR and set the window expiry on the first hit, in one atomic script.
-const RATE_LIMIT_SCRIPT = "local c=redis.call('INCR',KEYS[1]); if c==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return c";
+// Claim + rate limit in ONE atomic script. KEYS[1] = idem key, KEYS[2] = rate key;
+// ARGV[1] = pending-claim JSON, ARGV[2] = claim TTL (s), ARGV[3] = rate-window TTL (s), ARGV[4] = limit.
+//   idem key exists          -> {0, existingValue}  (no rate change, nothing created)
+//   rate count >= limit      -> {2, count}          (NOT incremented, no claim created)
+//   otherwise                -> INCR rate (EXPIRE on first hit) + SET idem NX EX -> {1, newCount}
+// So concurrent submissions with one attempt key consume at most one attempt, retries of an existing claim
+// never consume an attempt, and a claim is only ever created together with its rate increment. No cjson.
+const CLAIM_AND_RATE_SCRIPT = "local v=redis.call('GET',KEYS[1]) if v then return {0,v} end local c=tonumber(redis.call('GET',KEYS[2]) or '0') if c>=tonumber(ARGV[4]) then return {2,c} end c=redis.call('INCR',KEYS[2]) if c==1 then redis.call('EXPIRE',KEYS[2],tonumber(ARGV[3])) end redis.call('SET',KEYS[1],ARGV[1],'NX','EX',tonumber(ARGV[2])) return {1,c}";
 // Compare-and-set: replace the claim only if it still holds EXACTLY the pending value this invocation wrote
 // (that value contains state 'pending' and this payloadHash, so the check is at least as strict as
 // "state is pending and payloadHash equal" without depending on Lua cjson). ARGV[3] = 'KEEPTTL' or seconds.
 const CAS_UPDATE_SCRIPT = "if redis.call('GET',KEYS[1])==ARGV[1] then if ARGV[3]=='KEEPTTL' then redis.call('SET',KEYS[1],ARGV[2],'KEEPTTL') else redis.call('SET',KEYS[1],ARGV[2],'EX',tonumber(ARGV[3])) end return 1 end return 0";
 // Compare-and-delete: release the claim only if it still holds exactly this invocation's pending value.
 const CAS_DELETE_SCRIPT = "if redis.call('GET',KEYS[1])==ARGV[1] then redis.call('DEL',KEYS[1]) return 1 end return 0";
-const REDIS_SCRIPTS = Object.freeze({ rateLimit: RATE_LIMIT_SCRIPT, casUpdate: CAS_UPDATE_SCRIPT, casDelete: CAS_DELETE_SCRIPT });
+const REDIS_SCRIPTS = Object.freeze({ claimAndRate: CLAIM_AND_RATE_SCRIPT, casUpdate: CAS_UPDATE_SCRIPT, casDelete: CAS_DELETE_SCRIPT });
 const WASH_CATALOG = [
   {
     title: 'Complete Car Wash',
@@ -528,13 +537,15 @@ function buildRequestRecord(input, customerId, categoryId, capabilityId) {
 
 // ---------------------------------------------------------------------------------------------------------
 // createBooking
-// 1. GET idem claim -> existing claims are answered without consuming the rate limit or creating anything.
-// 2. Atomic per-phone rate limit (5 per UTC hour) for new claims only.
-// 3. SET NX EX claim. Lost race -> answer as an existing claim.
+// 1-3. ONE atomic claim-and-rate script: an existing claim is answered without consuming the rate limit or
+//      creating anything; over the per-phone limit (5 per UTC hour) -> 429 with no increment and no claim;
+//      otherwise the rate counter is incremented and the pending claim is created in the same script.
 // 4. Find-or-create customer, CAS stage update, create request.
 // 5. Success -> CAS to done (EX COMPLETED_TTL_SECONDS).
-// 6. Definitive failure (nothing requested) -> compare-and-delete release; user may retry.
-// 7. Uncertain failure -> keep pending (no delete, no Apper retry) and answer 202; manual reconciliation.
+// 6. Definitive failure before/without any write (lookup read failure, explicit customer/request rejection,
+//    stage-update failure before the request write) -> compare-and-delete release; user may retry.
+// 7. Uncertain failure (customer write or request write may exist) -> keep pending (no delete, no Apper
+//    retry) and answer 202; manual reconciliation.
 // Not a distributed transaction; no exactly-once guarantee; Redis operations are atomic individually only.
 // ---------------------------------------------------------------------------------------------------------
 async function createGuestBooking(req, body) {
@@ -560,25 +571,23 @@ async function createGuestBooking(req, body) {
       serviceDetails: input.washDetails,
     }));
 
-    // 1. Existing claim? (retries never consume the rate limit)
-    const existing = await redisCommand(config, ['GET', idemKey]);
-    if (existing !== null) return respondToExistingClaim(existing, payloadHash);
-
-    // 2. Rate limit new claims: single atomic EVAL.
-    const count = Number(await redisCommand(config, ['EVAL', RATE_LIMIT_SCRIPT, 1, `rate:${phoneHash}:${utcHourBucket()}`, RATE_WINDOW_TTL_SECONDS]));
-    if (!Number.isSafeInteger(count) || count < 1) throw new RedisError('redis-rate-result');
-    if (count > MAX_PER_HOUR) {
+    // 1-3. Existing claim / rate limit / new claim: one atomic script (the only decision path).
+    const claimValue = JSON.stringify({ state: 'pending', payloadHash, stage: 'claimed', createdAt: new Date().toISOString() });
+    const rateKey = `rate:${phoneHash}:${utcHourBucket()}`;
+    const result = await redisCommand(config, ['EVAL', CLAIM_AND_RATE_SCRIPT, 2, idemKey, rateKey,
+      claimValue, PENDING_TTL_SECONDS, RATE_WINDOW_TTL_SECONDS, MAX_PER_HOUR]);
+    if (!Array.isArray(result) || result.length !== 2) throw new RedisError('redis-claim-result');
+    const [code, detail] = result;
+    if (Number(code) === 0) {
+      if (typeof detail !== 'string') throw new RedisError('redis-claim-result');
+      return respondToExistingClaim(detail, payloadHash);
+    }
+    const count = Number(detail);
+    if (!Number.isSafeInteger(count) || count < 0) throw new RedisError('redis-claim-result');
+    if (Number(code) === 2) {
       return jsonResponse(429, { success: false, message: 'Too many booking requests. Please try again later.' });
     }
-
-    // 3. Claim atomically.
-    const claimValue = JSON.stringify({ state: 'pending', payloadHash, stage: 'claimed', createdAt: new Date().toISOString() });
-    const claimed = await redisCommand(config, ['SET', idemKey, claimValue, 'NX', 'EX', PENDING_TTL_SECONDS]);
-    if (claimed !== 'OK') {
-      const winner = await redisCommand(config, ['GET', idemKey]);
-      if (winner === null) return unavailableResponse(); // claim vanished (released); safe for the user to retry.
-      return respondToExistingClaim(winner, payloadHash);
-    }
+    if (Number(code) !== 1 || count < 1 || count > MAX_PER_HOUR) throw new RedisError('redis-claim-result');
     currentValue = claimValue;
   } catch {
     logEvent('redis-unavailable');
@@ -602,10 +611,11 @@ async function createGuestBooking(req, body) {
   };
   const claimBase = JSON.parse(currentValue);
 
-  // 4a. Lookups and customer (definitive failures before the request write release the claim).
+  // 4a. Lookups (reads only, before any write): any failure is definitive and releases the claim.
   let customerId;
   let categoryId;
   let capabilityId;
+  let existingCustomerId = null;
   try {
     const category = await queryExactName(config, 'service_categories_c', CATEGORY_NAME);
     const capability = await queryExactName(config, 'service_capabilities_c', CAPABILITY_NAME);
@@ -615,28 +625,48 @@ async function createGuestBooking(req, body) {
     const customerMatches = await Promise.all([input.mobile, input.mobile.slice(3)].map((phone) => queryRecords(config, 'customer_profiles_c', ['Id', 'phone_c'], [
       { fieldName: 'phone_c', operator: 'EqualTo', values: [phone] },
     ], 10)));
-    const existingCustomer = customerMatches.flat().find((record) => normalizeIndianMobile(record.phone_c) === input.mobile && extractLookupId(record.Id));
-    if (existingCustomer) {
-      customerId = extractLookupId(existingCustomer.Id);
-    } else {
-      const created = await createRecordOutcome(config, 'customer_profiles_c', {
-        Name: input.fullName,
-        phone_c: input.mobile,
-        location_c: input.location,
-        status_c: PICKLIST.customerStatus,
-      });
-      // No service request has been attempted yet, so even an uncertain customer write is released
-      // (a retry looks the customer up by phone first; an orphan/duplicate profile is possible).
-      if (created.outcome !== 'created') throw new Error('Customer write failed.');
-      customerId = created.id;
-    }
+    const phoneMatches = customerMatches.flat().filter((record) => record && normalizeIndianMobile(record.phone_c) === input.mobile);
+    // A profile with this phone exists but its Id is unusable: the lookup cannot decide safely. Nothing has
+    // been written yet, so release rather than create a possible duplicate profile.
+    if (phoneMatches.length && !phoneMatches.some((record) => extractLookupId(record.Id))) throw new Error('Customer lookup unusable.');
+    const existingCustomer = phoneMatches.find((record) => extractLookupId(record.Id));
+    if (existingCustomer) existingCustomerId = extractLookupId(existingCustomer.Id);
   } catch {
-    logEvent('pre-request-failure');
+    logEvent('pre-write-lookup-failure');
     await release();
     return unavailableResponse();
   }
 
-  // 4b. Record the stage (UUID only) before the request write. If this fails, nothing was requested: release.
+  // 4b. Customer profile create (only when no profile with this phone exists).
+  if (existingCustomerId) {
+    customerId = existingCustomerId;
+  } else {
+    const created = await createRecordOutcome(config, 'customer_profiles_c', {
+      Name: input.fullName,
+      phone_c: input.mobile,
+      location_c: input.location,
+      status_c: PICKLIST.customerStatus,
+    });
+    if (created.outcome === 'definitive') {
+      // Apper explicitly rejected the record (4xx / per-record success:false): no profile exists. Release.
+      logEvent('customer-rejected');
+      await release();
+      return unavailableResponse();
+    }
+    if (created.outcome !== 'created') {
+      // Uncertain: the profile MAY exist. Keep the claim pending, never attempt the request, never release.
+      logEvent('customer-write-uncertain');
+      try {
+        await casUpdate({ ...claimBase, stage: 'customer-write-uncertain', ...(created.id ? { customerId: created.id } : {}) }, 'KEEPTTL');
+      } catch {
+        logEvent('uncertain-stage-update-failed'); // claim remains pending ('claimed'); still never released.
+      }
+      return pendingResponse();
+    }
+    customerId = created.id;
+  }
+
+  // 4c. Record the stage (UUID only) before the request write. If this fails, nothing was requested: release.
   try {
     await casUpdate({ ...claimBase, stage: 'request-writing', customerId }, 'KEEPTTL');
   } catch {
@@ -645,7 +675,7 @@ async function createGuestBooking(req, body) {
     return unavailableResponse();
   }
 
-  // 4c. Service request write: attempted exactly once, never retried here.
+  // 4d. Service request write: attempted exactly once, never retried here.
   const request = await createRecordOutcome(config, 'service_requests_c', buildRequestRecord(input, customerId, categoryId, capabilityId));
   if (request.outcome === 'definitive') {
     logEvent('request-rejected');
@@ -783,7 +813,11 @@ const handler = async (req) => {
   const action = cleanText(body.action);
   try {
     if (action === 'createBooking') return await createGuestBooking(req, body);
-    if (action === 'nearbyProviders') return await findNearbyProviders(body);
+    if (action === 'nearbyProviders') {
+      // Disabled for the first live milestone: answered before any secret loading or Apper/Redis call.
+      if (!ENABLE_NEARBY_PROVIDERS) return jsonResponse(404, { success: false, message: 'This action is not available.' });
+      return await findNearbyProviders(body);
+    }
   } catch {
     logEvent('unhandled-error');
     return unavailableResponse();
