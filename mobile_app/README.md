@@ -13,13 +13,13 @@ Customer-facing mobile prototype for LOCAL. The only implemented booking flow in
    npx expo start
    ```
 
-4. Use a development build for Google Maps / native modules. GPS access is requested only after the user taps **Use my location** or **Use my location & search**. Manual address geocoding uses the platform geocoder (`expo-location`); Android also requires foreground location permission for geocoding and may prompt when the user checks the address or submits. Declining does not block manual-only submission. Platform behavior has not been device-tested. A draggable map pin is an alternative.
+4. Use a development build for Google Maps / native modules. GPS access is requested only after the user taps **Use my location** in the Car Wash booking sheet (the Nearby tab's **Use my location & search** is hidden while Nearby providers are disabled). Manual address geocoding uses the platform geocoder (`expo-location`); Android also requires foreground location permission for geocoding and may prompt when the user checks the address or submits. Declining does not block manual-only submission. Platform behavior has not been device-tested. A draggable map pin is an alternative.
 
 Useful variables:
 
 - `EXPO_PUBLIC_API_BASE` — HTTPS edge-function URL (public).
 - `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` — optional public Google Maps SDK key; restrict it by app identifier and API in Google Cloud.
-- `EXPO_PUBLIC_DISCOVERY_RADIUS_KM` — nearby search radius; default 15 km, clamped to 1–50 km.
+- `EXPO_PUBLIC_DISCOVERY_RADIUS_KM` — nearby search radius; default 15 km, clamped to 1–50 km (unused while Nearby providers are disabled).
 - `EXPO_PUBLIC_CUSTOMER_CARE_PHONE` — optional verified phone number in E.164 format; blank means the app will not dial an unverified number.
 
 The edge function (`edge-function-draft/guest-create-service-request.js`) reads five server-side secrets with `await apper.getSecret(...)`: `APPER_API_KEY`, `APPER_APP_ID`, `GUARD_HMAC_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. They live only on Apper's Secrets page and must never be added to `.env`, Expo, EAS variables or app code. `EXPO_PUBLIC_API_BASE` is the app's only backend setting. Deployment steps: [docs/DEPLOYMENT_AND_SMOKE_TEST.md](docs/DEPLOYMENT_AND_SMOKE_TEST.md).
@@ -42,12 +42,12 @@ npx eas-cli build --profile production --platform all
 - Car Care catalogue matching the live web menu: Car Wash, Car Service, Car Essentials at Your Doorstep and Car Insurance Claim.
 - Full guest Car Wash selection and quote: Small Car vs SUV, exact catalogue variants, one selected item per catalogue group, quantity, optional Pickup & Drop, ₹25 booking platform fee and indicative ₹100 pickup/drop. Server re-computes every rate and rejects submitted totals that do not match.
 - Booking sheet asks only for Full Name, Indian 10-digit Mobile Number and Service Location. Manual address entry is accepted without treating it as verified. At submit the app attempts on-device geocoding; the user can also drop/drag a map pin. Coordinates from GPS, geocoding or pin are checked against the 25 km Naini/Prayagraj pilot radius in both app and edge function. Without coordinates, the request location carries `[LOCATION VERIFICATION PENDING] ` and the customer sees a Customer Care verification warning before dispatch.
-- Nearby search calls the edge function and renders a map of the customer’s search area plus coarse provider name/availability/distance cards. The edge API does not return provider coordinates, identifiers or phone numbers, so the app intentionally does not create provider pins.
+- Nearby providers are **disabled for the first live milestone**: the Nearby tab shows the service-area map and "Nearby providers will be available in a later release." and makes no network call or location request; the edge `nearbyProviders` action answers 404 (`ENABLE_NEARBY_PROVIDERS = false`). The search code is kept for a later release, which needs per-IP/per-phone rate limiting and abuse controls first (see [docs/DEPLOYMENT_AND_SMOKE_TEST.md](docs/DEPLOYMENT_AND_SMOKE_TEST.md)).
 - SecureStore token-store wrapper and authentication stub for later; no fake login is provided.
 
 ## Verification status — controlled integration testing only; not production
 
-Local validation uses `npm test`, `npx expo-doctor` and `npx expo export --platform android --no-bytecode`. Edge tests evaluate the exact draft source (final `apper.serve` line stripped, a test `apper` global injected) against an in-memory fake Upstash REST server and a fake Apper REST API. They cover concurrent claims, retries, 409 key reuse, the 202 pending/uncertain paths, definitive-failure release, the atomic 5/hour rate limit, fail-closed Redis/secret handling, allowlists, UUIDs, price recompute and the location-pending prefix. These are **sandbox (mocked) tests only**. No native device UI, live Redis or live API write was validated.
+Local validation uses `npm test`, `npx expo-doctor` and `npx expo export --platform android --no-bytecode`. Edge tests evaluate the exact draft source (final `apper.serve` line stripped, a test `apper` global injected) against an in-memory fake Upstash REST server and a fake Apper REST API. They cover concurrent claims, retries, 409 key reuse, the 202 pending/uncertain paths (request and customer writes), definitive-failure release, the single atomic claim-and-rate script (5/hour), fail-closed Redis/secret handling, allowlists, UUIDs, price recompute and the location-pending prefix. These are **sandbox (mocked) tests only**. No native device UI, live Redis or live API write was validated.
 
 Not verified: live deployment, the `apper.getSecret` return shape, the public invoke URL, Upstash access from Apper's runtime, actual guest customer/request writes, `Mobile` text-field write behavior, Decimal precision, maps API-key setup, native GPS/geocoder/pin behavior, EAS signing/builds or authentication. Live read-only metadata (2026-11-03) verified the customer/request/category/capability field types and picklists, and one Active Car Assistance category and one Active Car Wash capability, via non-personal Name filters. Provider fields are covered by supplied read-only findings. No customer/provider rows were read and no live writes were performed. `scripts/live-smoke-test.mjs` (`--probe`, `--confirm-test`) was **not run**.
 
@@ -56,10 +56,10 @@ App icon/splash artwork are placeholders, not production brand assets. `app.json
 ## Booking guard and unverified locations
 
 Guest booking guards use Upstash Redis over REST (final design: [docs/EXTERNAL_GUARD_STORAGE_PROPOSAL.md](docs/EXTERNAL_GUARD_STORAGE_PROPOSAL.md); the Apper guard table proposal is superseded). Summary:
-- An HMAC-keyed idempotency claim (`SET NX EX`, 7 days) and an atomic 5-per-phone-per-UTC-hour limit. There is no duplicate-by-phone block.
+- An HMAC-keyed idempotency claim (7 days) and a 5-per-phone-per-UTC-hour limit, decided together by one atomic Redis script: retries never consume an attempt and over-limit attempts neither increment nor claim. There is no duplicate-by-phone block.
 - Same key + same payload returns the original request UUID; a different payload gets 409.
 - Missing secrets or any Redis failure fail closed with 503 before any Apper write.
-- Uncertain Apper outcomes return HTTP 202 `pending`. The app then shows "Your booking is being confirmed…", keeps the same attempt key, shows no success screen and does not resubmit. Customer Care must reconcile these by hand.
+- Uncertain Apper outcomes (customer or request write) return HTTP 202 `pending`. The app then shows "Your booking is being confirmed…", keeps the same attempt key, shows no success screen and does not resubmit. Customer Care must reconcile these by hand.
 
 This is not a distributed transaction and has no exactly-once guarantee. No guard markers are written to `problem_description_c`.
 
@@ -67,13 +67,15 @@ A no-coordinate request **may appear eligible to every provider in the existing 
 
 ## Local verification commands
 
+Run these from the `mobile_app` directory (`cd mobile_app` in a checkout of `feature/mobile-app`).
+
 ```sh
 npm test
 npx expo-doctor
 npx expo export --platform android --no-bytecode
 node --check edge-function-draft/guest-create-service-request.js
 node scripts/live-readonly-check.mjs # requires server-shell APPER_API_KEY and APPER_APP_ID; metadata and non-personal catalog rows only
-node scripts/live-smoke-test.mjs --probe # after deployment; harmless, creates nothing
+node scripts/live-smoke-test.mjs --probe # after deployment, from mobile_app with EXPO_PUBLIC_API_BASE set; harmless, creates nothing
 ```
 
 Hermes bytecode export is disabled in the Linux ARM64 sandbox because the installed Hermes compiler executable is x86-64; JavaScript bundle export succeeds without bytecode. This does not verify a native EAS build.
