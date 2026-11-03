@@ -5,7 +5,9 @@ const apiKey = process.env.APPER_API_KEY;
 const appId = process.env.APPER_APP_ID;
 if (!apiKey || !appId) throw new Error('Set APPER_API_KEY and APPER_APP_ID in the server shell environment.');
 const root = 'https://api.apper.io/v1';
-const tables = ['customer_profiles_c', 'service_requests_c', 'service_categories_c', 'service_capabilities_c', 'guest_booking_guard_c'];
+// Read-only metadata check for the four Apper tables the guest-booking function touches for writes/lookups.
+// Guard state lives in Upstash Redis (not Apper), so there is no guard table to check.
+const tables = ['customer_profiles_c', 'service_requests_c', 'service_categories_c', 'service_capabilities_c'];
 const expected = {
   customer_profiles_c: { Name: 'Text', phone_c: 'Text', location_c: 'Text', status_c: 'Picklist' },
   service_requests_c: {
@@ -16,7 +18,6 @@ const expected = {
   },
   service_categories_c: { Name: 'Text', status_c: 'Picklist' },
   service_capabilities_c: { Name: 'Text', status_c: 'Picklist' },
-  guest_booking_guard_c: { Name: 'Text', request_id_c: 'Text', payload_hash_c: 'Text', attempts_c: 'Number', status_c: 'Picklist', expires_at_c: 'DateTime', created_at_c: 'DateTime' },
 };
 const choices = {
   customer_profiles_c: { status_c: ['Active', 'Blocked'] },
@@ -28,12 +29,11 @@ const choices = {
   },
   service_categories_c: { status_c: ['Active', 'Paused'] },
   service_capabilities_c: { status_c: ['Active', 'Paused'] },
-  guest_booking_guard_c: { status_c: ['Pending', 'Done', 'Failed'] },
 };
-const source = await readFile(new URL('../../edge-function/guest-create-service-request.js', import.meta.url), 'utf8');
-const allowlistText = source.match(/const TABLE_ALLOWLIST = Object\.freeze\((\{[\s\S]*?\})\);\nconst WASH_CATALOG/);
+const source = await readFile(new URL('../edge-function-draft/guest-create-service-request.js', import.meta.url), 'utf8');
+const allowlistText = source.match(/const TABLE_ALLOWLIST = Object\.freeze\((\{[\s\S]*?\n\})\);\n/);
 assert.ok(allowlistText, 'Edge allowlist not found; stop rather than assuming fields.');
-const allowlist = new Function('GUARD_TABLE', `return (${allowlistText[1]});`)('guest_booking_guard_c');
+const allowlist = new Function(`return (${allowlistText[1]});`)();
 
 async function request(method, path, body) {
   const response = await fetch(`${root}/${path}`, {
@@ -43,7 +43,6 @@ async function request(method, path, body) {
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`${method} metadata/list returned HTTP ${response.status}`);
   const result = await response.json();
-  if (result.success === false && method === 'GET' && path.endsWith('/guest_booking_guard_c/fields') && /does not exist/i.test(result.message ?? '')) return null;
   if (result.success === false) throw new Error(`${method} metadata/list reported failure`);
   return result;
 }
@@ -58,15 +57,9 @@ function rows(result) {
 const tableNames = rows(await request('GET', `meta/${encodeURIComponent(appId)}/tables`))
   .map((table) => table.name ?? table.Name ?? table.tableName);
 console.log('GET tables list: OK');
-let missing = false;
 for (const table of tables) {
   const result = await request('GET', `meta/${encodeURIComponent(appId)}/tables/${table}/fields`);
-  if (!result) {
-    console.log(`${table}: MISSING (not yet created)`);
-    if (table !== 'guest_booking_guard_c') throw new Error(`Required table ${table} missing`);
-    missing = true;
-    continue;
-  }
+  if (!result) throw new Error(`Required table ${table} missing`);
   assert.ok(tableNames.includes(table), `${table} missing from tables list`);
   const fields = new Map(rows(result).map((field) => [field.name ?? field.Name ?? field.fieldName, field]));
   for (const fieldName of new Set([...allowlist[table].read, ...allowlist[table].write])) {
@@ -85,7 +78,7 @@ for (const table of tables) {
   }
   console.log(`${table}: metadata allowlist fields/types OK`);
 }
-// Provider tables are deliberately not fetched: this check is limited to the five named tables.
+// Provider tables are deliberately not fetched: this check is limited to the four named tables.
 // Their read allowlists were inspected separately in the supplied live schema findings.
 for (const [table, name] of [['service_categories_c', 'Car Assistance'], ['service_capabilities_c', 'Car Wash']]) {
   const result = await request('POST', `data/${encodeURIComponent(appId)}/tables/${table}`, {
@@ -97,4 +90,4 @@ for (const [table, name] of [['service_categories_c', 'Car Assistance'], ['servi
   assert.match(matches[0].Id, /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
   console.log(`${table}: exact Name filter ${name} => one Active UUID record (Id not printed)`);
 }
-console.log(`Read-only check complete; guard table ${missing ? 'MISSING' : 'present'}. No personal rows read and no writes performed.`);
+console.log('Read-only check complete. No personal rows read and no writes performed.');

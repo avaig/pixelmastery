@@ -32,7 +32,6 @@ globalThis.fetch = async (url, init) => {
   }
   const match = path.match(/^\\/v1\\/meta\\/test-app\\/tables\\/([^/]+)\\/fields$/);
   if (init.method === 'GET' && match) {
-    if (match[1] === 'guest_booking_guard_c') return Response.json({ success: false, message: 'Table guest_booking_guard_c does not exist' });
     return Response.json({ success: true, data: Object.entries(fields[match[1]]).map(([name, type]) => ({ name, type, options: options[match[1]]?.[name] })) });
   }
   if (init.method === 'POST' && ['service_categories_c', 'service_capabilities_c'].some((table) => path === '/v1/data/test-app/tables/' + table)) {
@@ -50,12 +49,13 @@ process.on('exit', () => console.log('MOCK_CALLS=' + JSON.stringify(calls)));
   return result;
 }
 
-test('read-only verifier touches only five metadata endpoints and two non-personal list queries', () => {
+test('read-only verifier touches only the tables list, four field-metadata endpoints and two non-personal list queries', () => {
   const result = checkReadOnly();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /guest_booking_guard_c: MISSING/);
+  assert.match(result.stdout, /Read-only check complete/);
   const calls = JSON.parse(result.stdout.split('MOCK_CALLS=')[1]);
-  assert.equal(calls.filter(({ method }) => method === 'GET').length, 6);
+  assert.equal(calls.filter(({ method }) => method === 'GET').length, 5);
+  assert.equal(calls.some(({ path }) => path.includes('guest_booking_guard')), false);
   assert.equal(calls.filter(({ method }) => method === 'POST').length, 2);
   assert.equal(calls.some(({ path }) => path.includes('technician_profiles_c')), false);
   assert.equal(calls.some(({ path, method }) => method === 'POST' && path.includes('customer_profiles_c')), false);
