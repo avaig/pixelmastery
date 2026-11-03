@@ -1,0 +1,15 @@
+# Known limitations
+
+- Only Car Wash has an in-app customer booking flow. Car Service, Car Essentials and Insurance Claim screens clearly say **Coming soon on mobile** and do not fabricate menu data or create bookings.
+- Admin and Service Provider authentication is not implemented. The account screen is a status placeholder. No username/password form is present.
+- Customer Care phone number is not supplied. `EXPO_PUBLIC_CUSTOMER_CARE_PHONE` is optional; the app will not dial an invented number when it is blank.
+- The edge function can only be exercised against live Apper after deployment and configuration of server-side `APPER_API_KEY` and `APPER_APP_ID`. No live credentials are available in the build sandbox.
+- `device_type_c` is set to the existing web app value `Mobile`. The API field’s live picklist was not read from the deployed schema; `Mobile App` is not used without verification.
+- Service-request / profile field types, category and capability rows, picklist options (including `Mobile`, `Active`, `Open`, `ASAP`, `Normal`, `Fixed Price`) and lookup behavior have not been verified against the live LOCAL app. The implementation uses the documented Apper records endpoints, but schema mismatches may still need adjustment.
+- Idempotency and hourly request caps use markers stored in `service_requests_c` and DB-derived searches, not a verified KV store. Per-phone limits are currently five bookings per hour; IP limits are applied only when the edge runtime forwards an IP header. **This is not production-grade rate limiting:** DB counting is non-atomic, race conditions and concurrent duplicate requests are possible, marker searches can be constrained by data/index limits, and failed writes do not create a durable idempotency record.
+- The guest customer and service request writes are separate operations. If the customer profile is created but the request write fails, retries look up by phone before creating a profile, but the flow is not transactional. A newly created guest customer profile may remain without a linked request.
+- Nearby provider reads are capped at 500 technician profiles and 1,000 capability links per invocation. Results are filtered by approved verification, Active status, availability, Car Wash capability, provider radius and discovery radius. Data beyond those paging caps is not considered.
+- Nearby map shows the user’s search circle only. Provider exact coordinates, phone numbers and record IDs are intentionally not returned by the API; the list uses a first name and rounded distance.
+- Manual service addresses have no geocoded coordinates. Serviceability is therefore not GPS-verified for manual entry, and Customer Care must confirm it. GPS outside the 25 km pilot radius is rejected in app and server.
+- App icon and splash artwork are Pillow-generated placeholders. `com.local.mobile` / `com.local.mobile` are placeholder package identifiers.
+- Native GPS, iOS/Android map rendering, restricted Google Maps keys, EAS production signing, Accessibility review and authentication remain untested.
