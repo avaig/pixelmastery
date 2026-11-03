@@ -23,9 +23,11 @@ const BASE_SECRETS = Object.freeze({
 });
 let secrets = { ...BASE_SECRETS };
 let secretMode = 'string'; // 'string' | 'wrapped' | 'throw'
+let getSecretCalls = 0;
 globalThis.apper = {
   serve() {},
   async getSecret(name) {
+    getSecretCalls += 1;
     if (secretMode === 'throw') throw new Error('getSecret failed');
     const value = secrets[name];
     if (value === undefined) return undefined;
@@ -33,7 +35,7 @@ globalThis.apper = {
   },
 };
 
-const edge = new Function(`${testedSource}\nreturn { handler, REDIS_SCRIPTS, validateApperOperation, TABLE_ALLOWLIST, extractLookupId, guardHmac, canonicalJson, validateWashDetails, COMPLETED_TTL_SECONDS, PENDING_TTL_SECONDS };`)();
+const edge = new Function(`${testedSource}\nreturn { handler, REDIS_SCRIPTS, ENABLE_NEARBY_PROVIDERS, findNearbyProviders, validateWashDetailsForTest: validateWashDetails, WASH_CATALOG, WASH_PLATFORM_FEE, PICKUP_DROP_FEE, MAX_PER_HOUR, validateApperOperation, TABLE_ALLOWLIST, extractLookupId, guardHmac, canonicalJson, validateWashDetails, COMPLETED_TTL_SECONDS, PENDING_TTL_SECONDS };`)();
 const { handler, REDIS_SCRIPTS } = edge;
 
 // ---------------- fake Upstash Redis REST ----------------
@@ -65,14 +67,23 @@ function runRedis(command) {
       return { result: 'OK' };
     }
     case 'EVAL': {
-      const [script, numKeys, key, ...argv] = args;
-      assert.equal(Number(numKeys), 1);
-      if (script === REDIS_SCRIPTS.rateLimit) {
-        const entry = redisGet(key);
-        const count = entry ? Number(entry.value) + 1 : 1;
-        redis.set(key, { value: String(count), expiresAt: entry ? entry.expiresAt : Date.now() + Number(argv[0]) * 1000 });
-        return { result: count };
+      const [script, numKeys] = args;
+      if (script === REDIS_SCRIPTS.claimAndRate) {
+        // Exact model of CLAIM_AND_RATE_SCRIPT, executed atomically (synchronously) like Redis would.
+        assert.equal(Number(numKeys), 2);
+        const [, , idemKey, rateKey, claimJson, claimTtl, rateTtl, limit] = args;
+        const existing = redisGet(idemKey);
+        if (existing) return { result: [0, existing.value] };
+        const rateEntry = redisGet(rateKey);
+        const current = rateEntry ? Number(rateEntry.value) : 0;
+        if (current >= Number(limit)) return { result: [2, current] };
+        const count = current + 1;
+        redis.set(rateKey, { value: String(count), expiresAt: rateEntry ? rateEntry.expiresAt : Date.now() + Number(rateTtl) * 1000 });
+        redis.set(idemKey, { value: String(claimJson), expiresAt: Date.now() + Number(claimTtl) * 1000 });
+        return { result: [1, count] };
       }
+      const [, , key, ...argv] = args;
+      assert.equal(Number(numKeys), 1);
       if (script === REDIS_SCRIPTS.casUpdate) {
         const entry = redisGet(key);
         if (!entry || entry.value !== argv[0]) return { result: 0 };
@@ -173,6 +184,7 @@ function reset() {
   apperFault = null;
   secrets = { ...BASE_SECRETS };
   secretMode = 'string';
+  getSecretCalls = 0;
 }
 const writes = (table) => apperCalls.filter((call) => call.isWrite && (!table || call.table === table));
 const DEFAULT_KEY = '11111111-1111-4111-8111-111111111111';
@@ -227,7 +239,22 @@ test('source is a single apper.serve file without Deno.env or the superseded DB 
   for (const name of Object.keys(BASE_SECRETS)) assert.ok(source.includes(`'${name}'`));
   assert.equal(edge.COMPLETED_TTL_SECONDS, 604800);
   assert.equal(edge.PENDING_TTL_SECONDS, 604800);
-  assert.equal(REDIS_SCRIPTS.rateLimit, "local c=redis.call('INCR',KEYS[1]); if c==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return c");
+  assert.equal(REDIS_SCRIPTS.claimAndRate, "local v=redis.call('GET',KEYS[1]) if v then return {0,v} end local c=tonumber(redis.call('GET',KEYS[2]) or '0') if c>=tonumber(ARGV[4]) then return {2,c} end c=redis.call('INCR',KEYS[2]) if c==1 then redis.call('EXPIRE',KEYS[2],tonumber(ARGV[3])) end redis.call('SET',KEYS[1],ARGV[1],'NX','EX',tonumber(ARGV[2])) return {1,c}");
+  assert.equal('rateLimit' in REDIS_SCRIPTS, false);
+  for (const script of Object.values(REDIS_SCRIPTS)) assert.equal(script.includes('cjson'), false);
+  assert.equal(edge.MAX_PER_HOUR, 5);
+});
+
+test('new-booking decision path is one claim-and-rate EVAL (no separate GET / rate EVAL / SET NX)', async () => {
+  reset();
+  assert.equal((await call()).status, 200);
+  const h = await hashes();
+  const decision = redisCalls[0];
+  assert.deepEqual(decision.slice(0, 5), ['EVAL', REDIS_SCRIPTS.claimAndRate, 2, `idem:${h.idem}`, `rate:${h.phone}:${new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')}`]);
+  assert.deepEqual(decision.slice(6), [604800, 7200, 5]);
+  assert.equal(JSON.parse(decision[5]).state, 'pending');
+  assert.equal(redisCalls.some((c) => c[0] === 'GET' || c[0] === 'SET'), false);
+  assert.equal(redisCalls.filter((c) => c[1] === REDIS_SCRIPTS.claimAndRate).length, 1);
 });
 
 test('successful booking writes allowlisted customer/request payloads and records done in Redis', async () => {
@@ -271,10 +298,14 @@ test('successful booking writes allowlisted customer/request payloads and record
   assert.match(h.payload, /^[0-9a-f]{32}$/);
 });
 
-test('concurrent identical claims create exactly one request', async () => {
+const rateKeyFor = async (overrides) => `rate:${(await hashes(overrides)).phone}:${new Date().toISOString().slice(0, 13).replace(/[-T]/g, '')}`;
+const rateCount = async (overrides) => Number(redisGet(await rateKeyFor(overrides))?.value ?? 0);
+
+test('10 concurrent identical requests (same key) create exactly one request and consume one attempt', async () => {
   reset();
-  const results = await Promise.all(Array.from({ length: 5 }, () => call()));
+  const results = await Promise.all(Array.from({ length: 10 }, () => call()));
   assert.equal(writes('service_requests_c').length, 1);
+  assert.equal(await rateCount(), 1);
   assert.equal(writes('customer_profiles_c').length, 1);
   const created = rowsFor('service_requests_c')[0].Id;
   assert.equal(results.filter((r) => r.status === 200 && !r.body.duplicate).length, 1);
@@ -285,14 +316,17 @@ test('concurrent identical claims create exactly one request', async () => {
   }
 });
 
-test('retry after done returns the original UUID and creates nothing', async () => {
+test('retry after done returns the original UUID, creates nothing and does not increment the rate counter', async () => {
   reset();
   const first = await call();
   const before = writes().length;
   const retry = await call({ fullName: '  ZZ TEST Customer ', mobile: '+91 98765 43210' }); // canonicalised, same payload
   assert.equal(retry.status, 200);
   assert.deepEqual(retry.body, { success: true, duplicate: true, requestId: first.body.requestId, message: 'Your request was already submitted.' });
+  for (let i = 0; i < 5; i += 1) assert.equal((await call()).body.duplicate, true);
+  assert.equal((await call({ fullName: 'Different Person' })).status, 409); // mismatch does not consume either
   assert.equal(writes().length, before);
+  assert.equal(await rateCount(), 1);
 });
 
 test('same key with a different payload returns 409 and writes nothing', async () => {
@@ -318,6 +352,10 @@ test('an existing pending claim answers 202 and never creates anything, even on 
   }
   assert.equal(apperCalls.length, 0);
   assert.equal([...redis.keys()].some((key) => key.startsWith('rate:')), false); // retries do not consume rate
+  // Also with an existing rate bucket: the counter is unchanged by pending retries.
+  redis.set(await rateKeyFor(), { value: '3', expiresAt: Date.now() + 7200e3 });
+  for (let i = 0; i < 3; i += 1) assert.equal((await call()).status, 202);
+  assert.equal(await rateCount(), 3);
 });
 
 for (const [label, fault] of [
@@ -380,10 +418,60 @@ test('definitive per-record request failure releases the claim and a retry succe
   assert.equal(writes('customer_profiles_c').length, 1);
 });
 
-test('definitive 4xx customer failure and pre-write lookup failure release the claim', async () => {
+for (const [label, fault] of [
+  ['HTTP 500', () => json({ success: false, message: 'server error' }, 500)],
+  ['timeout/network error', () => { throw new DOMException('The operation timed out.', 'TimeoutError'); }],
+  ['unparseable 200', () => new Response('not json', { status: 200 })],
+  ['200 without a customer Id', () => json({ success: true, results: [{ success: true, data: {} }] })],
+  ['200 with an invalid (non-UUID) Id', () => json({ success: true, results: [{ success: true, data: { Id: 42 } }] })],
+]) {
+  test(`uncertain customer write (${label}) keeps the claim pending, creates no request, retry creates nothing`, async () => {
+    reset();
+    apperFault = (info) => (info.isWrite && info.table === 'customer_profiles_c' ? fault() : undefined);
+    const result = await call();
+    assert.equal(result.status, 202);
+    assert.deepEqual(result.body, PENDING);
+    const claim = await claimOf();
+    assert.equal(claim.state, 'pending');
+    assert.equal(claim.stage, 'customer-write-uncertain');
+    assert.equal(writes('customer_profiles_c').length, 1);
+    assert.equal(writes('service_requests_c').length, 0);
+    const h = await hashes();
+    assert.ok(ttlOf(`idem:${h.idem}`) > 604000);
+    apperFault = null;
+    const callsBefore = apperCalls.length;
+    for (let i = 0; i < 3; i += 1) {
+      const retry = await call();
+      assert.equal(retry.status, 202);
+      assert.deepEqual(retry.body, PENDING);
+    }
+    assert.equal(apperCalls.length, callsBefore); // retries make no Apper call at all
+    assert.equal(writes('service_requests_c').length, 0);
+    assert.equal(rowsFor('service_requests_c').length, 0);
+    assert.equal(await rateCount(), 1);
+  });
+}
+
+test('uncertain customer write whose stage update also fails still stays pending (never released)', async () => {
+  reset();
+  apperFault = (info) => (info.isWrite && info.table === 'customer_profiles_c' ? json({}, 503) : undefined);
+  redisFault = (command) => (command[1] === REDIS_SCRIPTS.casUpdate || command[1] === REDIS_SCRIPTS.casDelete ? json({ error: 'simulated' }) : undefined);
+  const result = await call();
+  assert.equal(result.status, 202);
+  const claim = await claimOf();
+  assert.equal(claim.state, 'pending');
+  assert.equal(claim.stage, 'claimed');
+  assert.equal(redisCalls.some((c) => c[1] === REDIS_SCRIPTS.casDelete), false);
+  assert.equal(writes('service_requests_c').length, 0);
+});
+
+test('definitive customer failures (4xx, per-record success:false) and pre-write read failures release; retry succeeds', async () => {
   for (const fault of [
     (info) => (info.isWrite && info.table === 'customer_profiles_c' ? json({ success: false, message: 'bad' }, 400) : undefined),
+    (info) => (info.isWrite && info.table === 'customer_profiles_c' ? json({ success: true, results: [{ success: false, message: 'simulated', errors: [{ fieldName: 'phone_c', message: 'test only' }] }] }) : undefined),
     (info) => (info.table === 'service_capabilities_c' ? json({ success: false }, 500) : undefined),
+    (info) => (!info.isWrite && info.table === 'customer_profiles_c' ? json({ success: false }, 500) : undefined),
+    (info) => (!info.isWrite && info.table === 'customer_profiles_c' ? (() => { throw new TypeError('fetch failed'); })() : undefined),
   ]) {
     reset();
     apperFault = fault;
@@ -393,7 +481,16 @@ test('definitive 4xx customer failure and pre-write lookup failure release the c
     apperFault = null;
     assert.equal((await call()).status, 200);
     assert.equal(rowsFor('service_requests_c').length, 1);
+    assert.equal(rowsFor('customer_profiles_c').length, 1);
   }
+});
+
+test('a phone match with an unusable Id is a pre-write lookup failure: released, no customer/request write', async () => {
+  reset();
+  rowsFor('customer_profiles_c').push({ Id: 77, phone_c: '+919876543210' });
+  assert.equal((await call()).status, 503);
+  assert.equal(writes().length, 0);
+  assert.equal(await claimOf(), null);
 });
 
 test('stage-update failure before the request write releases and creates no request', async () => {
@@ -404,7 +501,7 @@ test('stage-update failure before the request write releases and creates no requ
   assert.equal(await claimOf(), null);
 });
 
-test('rate limit: 10 parallel distinct bookings from one phone -> exactly 5 succeed, rest 429', async () => {
+test('rate limit: 10 parallel distinct bookings from one phone -> exactly 5 succeed, 5 get 429, counter == 5', async () => {
   reset();
   const results = await Promise.all(Array.from({ length: 10 }, (_, i) => call({ idempotencyKey: keyN(i + 1) })));
   assert.equal(results.filter((r) => r.status === 200).length, 5);
@@ -412,6 +509,20 @@ test('rate limit: 10 parallel distinct bookings from one phone -> exactly 5 succ
   assert.equal(limited.length, 5);
   for (const r of limited) assert.deepEqual(r.body, { success: false, message: 'Too many booking requests. Please try again later.' });
   assert.equal(writes('service_requests_c').length, 5);
+  assert.equal(await rateCount(), 5); // over-limit attempts do not increment
+  // Over-limit attempts created no claim.
+  const idemKeys = [...redis.keys()].filter((key) => key.startsWith('idem:'));
+  assert.equal(idemKeys.length, 5);
+  for (let i = 0; i < 10; i += 1) {
+    const claim = await claimOf({ idempotencyKey: keyN(i + 1) });
+    const r = results[i];
+    if (r.status === 429) assert.equal(claim, null);
+    else assert.equal(claim.state, 'done');
+  }
+  // Further over-limit attempts still neither increment nor claim.
+  assert.equal((await call({ idempotencyKey: keyN(50) })).status, 429);
+  assert.equal(await rateCount(), 5);
+  assert.equal(await claimOf({ idempotencyKey: keyN(50) }), null);
 });
 
 test('retries do not consume the rate limit; the 6th new booking in the hour is 429', async () => {
@@ -421,6 +532,9 @@ test('retries do not consume the rate limit; the 6th new booking in the hour is 
   for (let n = 2; n <= 5; n += 1) assert.equal((await call({ idempotencyKey: keyN(n) })).status, 200);
   assert.equal((await call({ idempotencyKey: keyN(6) })).status, 429);
   assert.equal(writes('service_requests_c').length, 5);
+  assert.equal(await rateCount(), 5);
+  // Retrying an existing (done) key when the phone is at its limit is still answered, not 429.
+  assert.equal((await call({ idempotencyKey: keyN(1) })).body.duplicate, true);
 });
 
 test('two different consecutive bookings from the same phone both succeed (no duplicate-by-phone block)', async () => {
@@ -431,6 +545,24 @@ test('two different consecutive bookings from the same phone both succeed (no du
   assert.deepEqual([first.status, second.status, third.status], [200, 200, 200]);
   assert.equal(new Set([first.body.requestId, second.body.requestId, third.body.requestId]).size, 3);
   assert.equal(rowsFor('customer_profiles_c').length, 1);
+});
+
+test('Redis error on the claim-and-rate script, or a malformed script result -> 503 with zero Apper calls', async () => {
+  for (const fault of [
+    (command) => (command[1] === REDIS_SCRIPTS.claimAndRate ? json({ error: 'ERR simulated script error' }) : undefined),
+    (command) => (command[1] === REDIS_SCRIPTS.claimAndRate ? (() => { throw new TypeError('fetch failed'); })() : undefined),
+    (command) => (command[1] === REDIS_SCRIPTS.claimAndRate ? json({ result: 'OK' }) : undefined),
+    (command) => (command[1] === REDIS_SCRIPTS.claimAndRate ? json({ result: [1, 'x'] }) : undefined),
+    (command) => (command[1] === REDIS_SCRIPTS.claimAndRate ? json({ result: [7, 1] }) : undefined),
+    (command) => (command[1] === REDIS_SCRIPTS.claimAndRate ? json({ result: [0, 12] }) : undefined),
+  ]) {
+    reset();
+    redisFault = fault;
+    const result = await call();
+    assert.equal(result.status, 503);
+    assert.deepEqual(result.body, { success: false, message: 'Booking is temporarily unavailable' });
+    assert.equal(apperCalls.length, 0);
+  }
 });
 
 test('Redis down, non-200, {error} or garbage fails closed with 503 before any Apper call', async () => {
@@ -554,12 +686,36 @@ test('catalog works without secrets; invalid/oversized bodies are rejected befor
   assert.equal(apperCalls.length + redisCalls.length, 0);
 });
 
-test('nearby providers needs only Apper secrets and returns coarse fields', async () => {
+test('nearbyProviders is disabled: 404-style JSON before any secret loading or Apper/Redis call', async () => {
   reset();
+  assert.equal(edge.ENABLE_NEARBY_PROVIDERS, false);
+  assert.match(source, /const ENABLE_NEARBY_PROVIDERS = false;/);
+  rowsFor('technician_profiles_c').push({ Id: IDS.provider, Name: 'Mira Singh', verification_status_c: 'Approved', status_c: 'Active', availability_c: 'Available Now', latitude_c: 25.382, longitude_c: 81.885, service_radius_km_c: 10 });
+  for (const body of [
+    { action: 'nearbyProviders', latitude: 25.382, longitude: 81.875, serviceKey: 'car-wash', radiusKm: 15 },
+    { action: 'nearbyProviders' },
+    { action: 'nearbyProviders', latitude: 'x' },
+  ]) {
+    const response = await handler(post(body));
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { success: false, message: 'This action is not available.' });
+  }
+  assert.equal(getSecretCalls, 0);
+  assert.equal(apperCalls.length + redisCalls.length, 0);
+  // catalog and createBooking are unaffected.
+  const catalog = await handler(post({ action: 'catalog' }));
+  assert.equal(catalog.status, 200);
+  assert.equal((await call()).status, 200);
+  assert.equal(writes('service_requests_c').length, 1);
+});
+
+test('retained (disabled) findNearbyProviders code still needs only Apper secrets and returns coarse fields', async () => {
+  reset();
+  const nearby = async (body) => edge.findNearbyProviders(body); // called directly; the handler route is disabled
   secrets = { APPER_API_KEY: BASE_SECRETS.APPER_API_KEY, APPER_APP_ID: BASE_SECRETS.APPER_APP_ID };
   rowsFor('technician_profiles_c').push({ Id: IDS.provider, Name: 'Mira Singh', verification_status_c: 'Approved', status_c: 'Active', availability_c: 'Available Now', latitude_c: 25.382, longitude_c: 81.885, service_radius_km_c: 10, phone_c: '+919999999999' });
   rowsFor('service_provider_capabilities_c').push({ Id: IDS.link, technician_c: IDS.provider, capability_c: IDS.capability, status_c: 'Active' });
-  const response = await handler(post({ action: 'nearbyProviders', latitude: 25.382, longitude: 81.875, serviceKey: 'car-wash', radiusKm: 75 }));
+  const response = await nearby({ action: 'nearbyProviders', latitude: 25.382, longitude: 81.875, serviceKey: 'car-wash', radiusKm: 75 });
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.radiusKm, 50);
@@ -571,7 +727,7 @@ test('nearby providers needs only Apper secrets and returns coarse fields', asyn
   assert.equal(redisCalls.length, 0);
   assert.equal(apperCalls.some((c) => c.isWrite), false);
   secrets = {};
-  assert.equal((await handler(post({ action: 'nearbyProviders', latitude: 25.382, longitude: 81.875 }))).status, 503);
+  assert.equal((await nearby({ action: 'nearbyProviders', latitude: 25.382, longitude: 81.875 })).status, 503);
 });
 
 test('no secret, HMAC key, hash or Redis key appears in any response body or console output', async () => {
