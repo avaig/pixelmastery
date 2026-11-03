@@ -1,7 +1,15 @@
 const API_ROOT = 'https://api.apper.io/v1/data';
-const IDEMPOTENCY_PREFIX = 'LOCAL_GUEST_IDEMPOTENCY:';
-const PHONE_RATE_PREFIX = 'LOCAL_GUEST_RATE_PHONE:';
-const IP_RATE_PREFIX = 'LOCAL_GUEST_RATE_IP:';
+const GUARD_TABLE = 'guest_booking_guard_c';
+const LOCATION_PENDING_PREFIX = '[LOCATION VERIFICATION PENDING] ';
+// These lookup names have NOT been verified against live records; confirm before deploy.
+const CATEGORY_NAME = 'Car Assistance';
+const CAPABILITY_NAME = 'Car Wash';
+const PICKLIST = Object.freeze({
+  customerStatus: 'Active', requestStatus: 'Open', preferredTime: 'ASAP',
+  serviceMode: 'Normal', pricingMode: 'Fixed Price', providerStatus: 'Active',
+  verificationStatus: 'Approved', availability: ['Available Now', 'Available Later'],
+  capabilityLinkStatus: ['Active', 'Approved'],
+});
 const MAX_PER_HOUR = 5;
 const MAX_PROVIDER_ROWS = 500;
 const MAX_LINK_ROWS = 1000;
@@ -13,7 +21,11 @@ const SERVICE_KEYS = new Set(['car-wash']);
 const TABLE_ALLOWLIST = Object.freeze({
   customer_profiles_c: {
     read: ['Id', 'Name', 'phone_c'],
-    write: ['Name', 'phone_c', 'location_c', 'latitude_c', 'longitude_c', 'status_c'],
+    write: ['Name', 'phone_c', 'location_c', 'status_c'],
+  },
+  [GUARD_TABLE]: {
+    read: ['Id', 'Name', 'request_id_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c'],
+    write: ['Id', 'Name', 'request_id_c', 'attempts_c', 'status_c', 'expires_at_c', 'created_at_c'],
   },
   service_requests_c: {
     read: ['Id', 'Name', 'problem_description_c', 'CreatedOn'],
@@ -196,10 +208,11 @@ function buildWashDescription(details) {
   return `Customer submitted this Car Wash quote for Customer Care review and a confirmation call. Selected options: ${itemsSummary}; LOCAL Platform Fee: ₹${WASH_PLATFORM_FEE} (once per booking)${pickupText}. Service subtotal: ₹${formatRupees(details.subtotal)}. ${totalDescription}: ₹${formatRupees(details.total)}. This is the customer-submitted menu quote, not a final confirmed bill. Customer Care must call, confirm vehicle/location and pickup/drop requirement, then issue a revised quote for customer approval if the total changes. Do not start work until the customer approves the final quote. CAR_WASH_DECISIONS_JSON:${JSON.stringify(decisions)} for their car.`;
 }
 
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+async function guardHmac(secret, domain, value) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${domain}:${value}`));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
 function getConfig() {
@@ -280,15 +293,42 @@ async function queryExactName(config, table, name) {
   const records = await queryRecords(config, table, ['Id', 'Name', 'status_c'], [
     { fieldName: 'Name', operator: 'EqualTo', values: [name] },
   ], 10);
-  return records.find((record) => record.Name === name) ?? null;
+  return records.find((record) => String(record.Name ?? '').trim().toLowerCase() === name.toLowerCase()) ?? null;
 }
 
-async function listRecentMarker(config, marker) {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  return queryRecords(config, 'service_requests_c', ['Id', 'Name', 'problem_description_c', 'CreatedOn'], [
-    { fieldName: 'problem_description_c', operator: 'Contains', values: [marker] },
-    { fieldName: 'CreatedOn', operator: 'GreaterThan', values: [oneHourAgo] },
-  ], 100);
+async function readGuardRows(config, name) {
+  const result = await apperRequest(config, 'POST', GUARD_TABLE, {
+    fields: TABLE_ALLOWLIST[GUARD_TABLE].read,
+    where: [{ fieldName: 'Name', operator: 'EqualTo', values: [name] }],
+    pagingInfo: { limit: 100, offset: 0 },
+  });
+  if (!Array.isArray(result.data) || result.data.length >= 100
+    || result.data.some((row) => row.Name !== name || !extractLookupId(row.Id))) throw new Error('Guard read failed.');
+  return result.data.sort((a, b) => Number(a.Id) - Number(b.Id));
+}
+
+function pendingIsFresh(row, nowMs) {
+  const created = Date.parse(row.created_at_c);
+  return !Number.isFinite(created) || created >= nowMs - 2 * 60 * 1000;
+}
+
+function activeClaim(row, nowMs) {
+  return row.status_c === 'Done' || (row.status_c === 'Pending' && pendingIsFresh(row, nowMs));
+}
+
+async function recordAttempt(config, name, rows, nowIso) {
+  const existing = rows[0];
+  if (existing) {
+    if (!Number.isSafeInteger(Number(existing.attempts_c)) || Number(existing.attempts_c) < 0) throw new Error('Invalid guard record.');
+    await apperRequest(config, 'PUT', `${GUARD_TABLE}/records`, { records: [{
+      Id: extractLookupId(existing.Id), attempts_c: Number(existing.attempts_c) + 1,
+    }] });
+  } else {
+    await createRecord(config, GUARD_TABLE, {
+      Name: name, status_c: 'Done', attempts_c: 1, created_at_c: nowIso,
+      expires_at_c: new Date(Date.parse(nowIso) + 2 * 60 * 60 * 1000).toISOString(),
+    });
+  }
 }
 
 function getRequestIp(req) {
@@ -311,41 +351,66 @@ async function createGuestBooking(config, req, body) {
   if (!SERVICE_KEYS.has(serviceKey)) return jsonResponse(400, { success: false, message: 'This service is not available for mobile booking yet.' });
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) return jsonResponse(400, { success: false, message: 'A valid booking attempt key is required.' });
   const coordinates = validateCoordinates(body.latitude, body.longitude);
-  if (!coordinates.valid) return jsonResponse(400, { success: false, message: 'The provided GPS location is invalid.' });
+  if (!coordinates.valid) return jsonResponse(400, { success: false, message: 'The provided location coordinates are invalid.' });
   if (coordinates.latitude !== null) {
     const distanceToArea = getDistanceKm(SERVICE_AREA.latitude, SERVICE_AREA.longitude, coordinates.latitude, coordinates.longitude);
     if (distanceToArea === null || distanceToArea > SERVICE_AREA.radiusKm) {
-      return jsonResponse(400, { success: false, message: 'This GPS location is outside the current 25 km service area around Naini, Prayagraj.' });
+      return jsonResponse(400, { success: false, message: 'This location is outside the current 25 km service area around Naini, Prayagraj.' });
     }
   }
   const washDetails = validateWashDetails(details);
   if (!washDetails) return jsonResponse(400, { success: false, message: 'Car Wash details or submitted totals do not match the current menu.' });
 
-  const safeKey = idempotencyKey;
-  const phoneHash = await sha256(mobile);
-  const ip = getRequestIp(req);
-  const ipHash = ip ? await sha256(ip) : '';
-  const idempotencyMarker = `${IDEMPOTENCY_PREFIX}${safeKey}`;
-  const phoneMarker = `${PHONE_RATE_PREFIX}${phoneHash}`;
-  const ipMarker = ipHash ? `${IP_RATE_PREFIX}${ipHash}` : '';
+  const secret = Deno.env.get('GUARD_HMAC_SECRET');
+  if (!secret) return jsonResponse(503, { success: false, message: 'Booking is temporarily unavailable' });
   try {
-    const duplicate = await listRecentMarker(config, idempotencyMarker);
-    if (duplicate.length) {
-      return jsonResponse(200, { success: true, duplicate: true, requestId: duplicate[0].Id, message: 'Your request was already submitted.' });
+    const nowIso = new Date().toISOString();
+    const nowMs = Date.parse(nowIso);
+    const hourBucket = nowIso.slice(0, 13).replace(/[-T]/g, '');
+    const phoneHmac = await guardHmac(secret, 'phone', mobile);
+    const idemHmac = await guardHmac(secret, 'idem', idempotencyKey);
+    const ip = getRequestIp(req);
+    const ipHmac = ip ? await guardHmac(secret, 'ip', ip) : null;
+    const idemName = `idem:${idemHmac}`;
+    const phoneName = `rate:${phoneHmac}:${hourBucket}`;
+    const ipName = ipHmac ? `rate:${ipHmac}:${hourBucket}` : null;
+    const priorClaims = await readGuardRows(config, idemName);
+    const done = priorClaims.find((row) => row.status_c === 'Done');
+    if (done) {
+      const requestId = extractLookupId(done.request_id_c);
+      if (!requestId) return jsonResponse(503, { success: false, message: 'Booking is temporarily unavailable' });
+      return jsonResponse(200, { success: true, duplicate: true, requestId, message: 'Your request was already submitted.' });
     }
-    const phoneRequests = await listRecentMarker(config, phoneMarker);
-    if (phoneRequests.length >= MAX_PER_HOUR) {
-      return jsonResponse(429, { success: false, message: 'Too many booking requests from this number. Please try again later.' });
+    if (priorClaims.some((row) => row.status_c === 'Pending' && pendingIsFresh(row, nowMs))) {
+      return jsonResponse(409, { success: false, message: 'A duplicate booking is in progress. Please retry shortly.' });
     }
-    if (ipMarker) {
-      const ipRequests = await listRecentMarker(config, ipMarker);
-      if (ipRequests.length >= MAX_PER_HOUR) {
-        return jsonResponse(429, { success: false, message: 'Too many booking requests from this network. Please try again later.' });
-      }
+    const phoneRows = await readGuardRows(config, phoneName);
+    const ipRows = ipName ? await readGuardRows(config, ipName) : [];
+    if ([...phoneRows, ...ipRows].some((row) => !Number.isSafeInteger(Number(row.attempts_c)) || Number(row.attempts_c) < 0)) throw new Error('Invalid guard record.');
+    if (phoneRows.some((row) => Number(row.attempts_c) >= MAX_PER_HOUR)
+      || ipRows.some((row) => Number(row.attempts_c) >= MAX_PER_HOUR)) {
+      return jsonResponse(429, { success: false, message: 'Too many booking requests. Please try again later.' });
     }
-    const category = await queryExactName(config, 'service_categories_c', 'Car Assistance');
-    const capability = await queryExactName(config, 'service_capabilities_c', 'Car Wash');
-    if (!category || !capability) return jsonResponse(503, { success: false, message: 'Car Wash booking is temporarily unavailable. Please contact Customer Care.' });
+    await recordAttempt(config, phoneName, phoneRows, nowIso);
+    if (ipName) await recordAttempt(config, ipName, ipRows, nowIso);
+    const claim = await createRecord(config, GUARD_TABLE, {
+      Name: idemName, status_c: 'Pending', attempts_c: 1, created_at_c: nowIso,
+      expires_at_c: new Date(nowMs + 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const claimId = extractLookupId(claim.Id);
+    if (!claimId) throw new Error('Invalid claim.');
+    const claims = await readGuardRows(config, idemName);
+    const winner = claims.filter((row) => activeClaim(row, nowMs))[0];
+    if (!winner) throw new Error('Claim was not visible.');
+    if (extractLookupId(winner.Id) !== claimId) {
+      await apperRequest(config, 'PUT', `${GUARD_TABLE}/records`, { records: [{ Id: claimId, status_c: 'Failed' }] });
+      return jsonResponse(409, { success: false, message: 'A duplicate booking is in progress. Please retry shortly.' });
+    }
+    let requestCreated = false;
+    try {
+    const category = await queryExactName(config, 'service_categories_c', CATEGORY_NAME);
+    const capability = await queryExactName(config, 'service_capabilities_c', CAPABILITY_NAME);
+    if (!category || !capability) throw new Error('Service lookup unavailable.');
 
     const customerSearchVariants = [mobile, mobile.slice(3)];
     const customerMatches = await Promise.all(customerSearchVariants.map((phone) => queryRecords(config, 'customer_profiles_c', ['Id', 'Name', 'phone_c'], [
@@ -358,14 +423,11 @@ async function createGuestBooking(config, req, body) {
         Name: fullName,
         phone_c: mobile,
         location_c: location,
-        ...(coordinates.latitude === null ? {} : { latitude_c: coordinates.latitude, longitude_c: coordinates.longitude }),
-        status_c: 'Active',
+        status_c: PICKLIST.customerStatus,
       });
     }
 
-    const requestId = `${IDEMPOTENCY_PREFIX}${safeKey}`;
-    const rateMarkers = [phoneMarker, ...(ipMarker ? [ipMarker] : [])].join('\n');
-    const problemDescription = `${requestId}\n${rateMarkers}\n${buildWashDescription(washDetails)}`;
+    const problemDescription = buildWashDescription(washDetails);
     const now = new Date().toISOString().replace(/\.\d{3}Z$/, '');
     const record = {
       Name: `CAR • Car Wash (${washDetails.items.reduce((sum, item) => sum + item.quantity, 0)} items)`,
@@ -374,21 +436,29 @@ async function createGuestBooking(config, req, body) {
       required_capability_c: extractLookupId(capability.Id),
       device_type_c: 'Mobile',
       problem_description_c: problemDescription,
-      location_c: location,
+      location_c: coordinates.latitude === null ? `${LOCATION_PENDING_PREFIX}${location.slice(0, 220 - LOCATION_PENDING_PREFIX.length)}` : location,
       service_area_c: 'Prayagraj',
       ...(coordinates.latitude === null ? {} : { latitude_c: coordinates.latitude, longitude_c: coordinates.longitude }),
-      status_c: 'Open',
-      preferred_time_c: 'ASAP',
+      status_c: PICKLIST.requestStatus,
+      preferred_time_c: PICKLIST.preferredTime,
       requested_at_c: now,
       scheduled_at_c: null,
-      service_mode_c: 'Normal',
-      pricing_mode_c: 'Fixed Price',
+      service_mode_c: PICKLIST.serviceMode,
+      pricing_mode_c: PICKLIST.pricingMode,
       pricing_mode_description_c: 'Submit your selected menu quote. LOCAL Customer Care will call to confirm details and pickup/drop, then send any revised quote for your approval before work starts.',
     };
     const request = await createRecord(config, 'service_requests_c', record);
-    return jsonResponse(200, { success: true, requestId: request.Id, message: 'Car Wash request submitted to LOCAL Customer Care.' });
+    requestCreated = true;
+    const requestId = extractLookupId(request.Id);
+    if (!requestId) throw new Error('Invalid request ID.');
+    await apperRequest(config, 'PUT', `${GUARD_TABLE}/records`, { records: [{ Id: claimId, status_c: 'Done', request_id_c: requestId }] });
+    return jsonResponse(200, { success: true, requestId, message: 'Car Wash request submitted to LOCAL Customer Care.' });
+    } catch {
+      if (!requestCreated) await apperRequest(config, 'PUT', `${GUARD_TABLE}/records`, { records: [{ Id: claimId, status_c: 'Failed' }] });
+      throw new Error('Booking could not be completed.');
+    }
   } catch {
-    return jsonResponse(502, { success: false, message: 'We could not complete the request right now. Please retry or contact Customer Care.' });
+    return jsonResponse(503, { success: false, message: 'Booking is temporarily unavailable' });
   }
 }
 
@@ -425,8 +495,8 @@ async function findNearbyProviders(config, body) {
   const requested = Number(body.radiusKm);
   const radiusKm = Number.isFinite(requested) && requested > 0 ? Math.min(requested, 50) : 15;
   try {
-    const capability = await queryExactName(config, 'service_capabilities_c', 'Car Wash');
-    if (!capability) return jsonResponse(200, { success: true, providers: [], radiusKm });
+    const capability = await queryExactName(config, 'service_capabilities_c', CAPABILITY_NAME);
+    if (!capability) return jsonResponse(503, { success: false, message: 'Car Wash booking is temporarily unavailable. Please contact Customer Care.' });
     const capabilityId = String(extractLookupId(capability.Id));
     const [profiles, links] = await Promise.all([
       listAll(config, 'technician_profiles_c', ['Id', 'Name', 'verification_status_c', 'status_c', 'availability_c', 'latitude_c', 'longitude_c', 'service_radius_km_c'], MAX_PROVIDER_ROWS),
@@ -434,16 +504,16 @@ async function findNearbyProviders(config, body) {
     ]);
     const providers = [];
     for (const profile of profiles) {
-      if (String(profile.verification_status_c ?? '').trim().toLowerCase() !== 'approved') continue;
-      if (String(profile.status_c ?? '').trim().toLowerCase() !== 'active') continue;
+      if (String(profile.verification_status_c ?? '').trim().toLowerCase() !== PICKLIST.verificationStatus.toLowerCase()) continue;
+      if (String(profile.status_c ?? '').trim().toLowerCase() !== PICKLIST.providerStatus.toLowerCase()) continue;
       const availability = cleanText(profile.availability_c);
       const availabilityLower = availability.toLowerCase();
-      if (!['available now', 'available later'].includes(availabilityLower)) continue;
+      if (!PICKLIST.availability.some((value) => value.toLowerCase() === availabilityLower)) continue;
       const matchedCapability = links.some((link) => {
         const linkStatus = String(link.status_c ?? '').trim().toLowerCase();
         const linkedTechnician = String(extractLookupId(link.technician_c));
         const linkedCapability = String(extractLookupId(link.capability_c));
-        return ['active', 'approved'].includes(linkStatus)
+        return PICKLIST.capabilityLinkStatus.some((value) => value.toLowerCase() === linkStatus)
           && linkedTechnician === String(profile.Id)
           && linkedCapability === capabilityId;
       });
@@ -488,19 +558,10 @@ const handler = async (req) => {
   if (action === 'catalog') {
     return jsonResponse(200, {
       success: true,
-      services: [{ serviceKey: 'car-wash', categoryName: 'Car Assistance', capabilityName: 'Car Wash', platformFee: WASH_PLATFORM_FEE, options: WASH_CATALOG }],
+      services: [{ serviceKey: 'car-wash', categoryName: CATEGORY_NAME, capabilityName: CAPABILITY_NAME, platformFee: WASH_PLATFORM_FEE, options: WASH_CATALOG }],
     });
   }
   return jsonResponse(400, { success: false, message: 'Unknown action.' });
 };
 
 apper.serve(handler);
-
-export {
-  getDistanceKm,
-  handler,
-  normalizeIndianMobile,
-  TABLE_ALLOWLIST,
-  validateApperOperation,
-  validateWashDetails,
-};
