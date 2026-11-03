@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import * as Location from 'expo-location';
+import MapView, { Marker } from 'react-native-maps';
 import { AppButton, Card, Notice, PageTitle, Screen } from '../components/Screen';
 import Field from '../components/Field';
 import { CAR_WASH_OPTIONS, calculateWashTotals } from '../services/pricing';
@@ -32,6 +33,11 @@ export default function CarWashScreen() {
   const [coordinates, setCoordinates] = useState(null);
   const [serviceable, setServiceable] = useState(null);
   const [gpsBusy, setGpsBusy] = useState(false);
+  const [geocodeBusy, setGeocodeBusy] = useState(false);
+  const [showPinPicker, setShowPinPicker] = useState(false);
+  const [pin, setPin] = useState(null);
+  const [locationSource, setLocationSource] = useState(null);
+  const [pendingVerification, setPendingVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
@@ -83,6 +89,7 @@ export default function CarWashScreen() {
       const point = { latitude: position.coords.latitude, longitude: position.coords.longitude };
       const areaCheck = checkServiceability(point.latitude, point.longitude, SERVICE_AREA);
       setCoordinates(point);
+      setLocationSource('GPS');
       setServiceable(areaCheck.serviceable);
       let address = '';
       try {
@@ -103,8 +110,49 @@ export default function CarWashScreen() {
   function editLocation(value) {
     setLocationText(value);
     setCoordinates(null);
+    setPin(null);
+    setLocationSource(null);
     setServiceable(null);
     idempotencyRef.current = { fingerprint: '', key: '' };
+  }
+
+  function usePoint(point, source) {
+    const areaCheck = checkServiceability(point.latitude, point.longitude, SERVICE_AREA);
+    setCoordinates(point);
+    setServiceable(areaCheck.serviceable);
+    setLocationSource(source);
+    idempotencyRef.current = { fingerprint: '', key: '' };
+    return areaCheck;
+  }
+
+  async function geocodeAddress(address) {
+    setGeocodeBusy(true);
+    try {
+      if (Platform.OS === 'android') {
+        const permission = await Location.getForegroundPermissionsAsync();
+        if (!permission.granted) {
+          const requested = await Location.requestForegroundPermissionsAsync();
+          if (!requested.granted) return null;
+        }
+      }
+      const results = await Location.geocodeAsync(address);
+      const candidate = results.find((result) => Number.isFinite(result.latitude) && Number.isFinite(result.longitude));
+      if (candidate) {
+        const point = { latitude: candidate.latitude, longitude: candidate.longitude };
+        usePoint(point, 'geocoded address');
+        return point;
+      }
+    } catch {
+      // Platform geocoding may be unavailable; a pin or manual-only address still works.
+    } finally {
+      setGeocodeBusy(false);
+    }
+    return null;
+  }
+
+  function choosePin(point) {
+    setPin(point);
+    usePoint(point, 'map pin');
   }
 
   async function submitBooking() {
@@ -127,8 +175,10 @@ export default function CarWashScreen() {
       setError('Choose your vehicle type and at least one wash option.');
       return;
     }
-    if (coordinates && serviceable === false) {
-      setError(`This GPS location is outside the current ${SERVICE_AREA.radiusKm} km service area around ${SERVICE_AREA.name}. Please contact Customer Care.`);
+    // Resolve a manual address on-device before deciding whether coordinates can be sent.
+    const bookingPoint = coordinates || await geocodeAddress(locationText.trim());
+    if (bookingPoint && !checkServiceability(bookingPoint.latitude, bookingPoint.longitude, SERVICE_AREA).serviceable) {
+      setError(`This location is outside the current ${SERVICE_AREA.radiusKm} km service area around ${SERVICE_AREA.name}. Please contact Customer Care.`);
       return;
     }
     const serviceDetails = {
@@ -144,7 +194,7 @@ export default function CarWashScreen() {
       name: cleanName,
       mobile: cleanMobile,
       location: locationText.trim(),
-      coordinates,
+      coordinates: bookingPoint,
       serviceDetails,
     });
     setSubmitting(true);
@@ -156,12 +206,13 @@ export default function CarWashScreen() {
         fullName: cleanName,
         mobile: cleanMobile,
         location: locationText.trim(),
-        latitude: coordinates?.latitude,
-        longitude: coordinates?.longitude,
+        latitude: bookingPoint?.latitude,
+        longitude: bookingPoint?.longitude,
         serviceKey: 'car-wash',
         serviceDetails,
         idempotencyKey: idempotencyRef.current.key,
       });
+      setPendingVerification(!bookingPoint);
       setSuccess(result.requestId || 'Submitted');
       setShowBooking(false);
     } catch (cause) {
@@ -179,6 +230,7 @@ export default function CarWashScreen() {
           <Text style={{ fontSize: 40, textAlign: 'center' }}>✓</Text>
           <Text style={{ color: THEME.ink, fontSize: 20, fontWeight: '800', textAlign: 'center' }}>Your car wash request is with LOCAL Customer Care.</Text>
           <Text style={{ color: THEME.muted, lineHeight: 21, textAlign: 'center' }}>We’ll call to confirm your vehicle, location and pickup/drop details. This is an indicative menu quote, not a final bill. Do not start work until you approve any revised quote.</Text>
+          {pendingVerification ? <Notice tone="warning">Your address has no verified coordinates. Customer Care will verify your location before dispatch or any provider offer.</Notice> : null}
           <Text style={{ color: THEME.ink, textAlign: 'center', fontWeight: '700' }}>Request reference: {success}</Text>
         </Card>
       </Screen>
@@ -264,13 +316,21 @@ export default function CarWashScreen() {
             <Field label="Full Name" value={fullName} onChangeText={(value) => { setFullName(value); idempotencyRef.current = { fingerprint: '', key: '' }; }} placeholder="Your full name" maxLength={80} />
             <Field label="Mobile Number" value={mobile} onChangeText={(value) => { setMobile(value.replace(/\D/g, '').slice(0, 10)); idempotencyRef.current = { fingerprint: '', key: '' }; }} placeholder="10-digit Indian mobile number" keyboardType="phone-pad" maxLength={10} />
             <Field label="Service Location" value={locationText} onChangeText={editLocation} placeholder="Area, street, landmark" multiline maxLength={220} />
-            <AppButton title={gpsBusy ? 'Getting your location…' : 'Use my location'} onPress={useMyLocation} disabled={gpsBusy} secondary />
-            {gpsBusy ? <ActivityIndicator color={THEME.navy} /> : null}
-            {coordinates && serviceable === true ? <Notice>GPS confirms you are within the current 25 km service area around Naini, Prayagraj.</Notice> : null}
-            {coordinates && serviceable === false ? <Notice tone="error">This GPS location is outside the current 25 km service area. We cannot accept this booking in the app.</Notice> : null}
-            {!coordinates && locationText.trim().length > 0 ? <Notice tone="warning">Manual address entered. Service coverage cannot be GPS-checked; Customer Care will confirm whether your location is within the 25 km service area.</Notice> : null}
+            <AppButton title={gpsBusy ? 'Getting your location…' : 'Use my location'} onPress={useMyLocation} disabled={gpsBusy || submitting} secondary />
+            <AppButton title={geocodeBusy ? 'Checking address…' : 'Check address on this device'} onPress={() => geocodeAddress(locationText.trim())} disabled={geocodeBusy || submitting || locationText.trim().length < 5} secondary />
+            <AppButton title={showPinPicker ? 'Hide map pin picker' : 'Drop a pin on map'} onPress={() => setShowPinPicker(!showPinPicker)} secondary />
+            {showPinPicker ? <View style={{ gap: 8 }}>
+              <Text style={{ color: THEME.muted }}>Tap the map to place a pin, or drag the pin to your service location.</Text>
+              <MapView style={{ height: 280 }} initialRegion={{ ...(coordinates || SERVICE_AREA.centre), latitudeDelta: 0.3, longitudeDelta: 0.3 }} onPress={(event) => choosePin(event.nativeEvent.coordinate)}>
+                {pin ? <Marker coordinate={pin} draggable onDragEnd={(event) => choosePin(event.nativeEvent.coordinate)} title="Service location" /> : null}
+              </MapView>
+            </View> : null}
+            {gpsBusy || geocodeBusy ? <ActivityIndicator color={THEME.navy} /> : null}
+            {coordinates && serviceable === true ? <Notice>{locationSource} coordinates are within the current 25 km service area around Naini, Prayagraj. Customer Care will confirm the address.</Notice> : null}
+            {coordinates && serviceable === false ? <Notice tone="error">This location is outside the current 25 km service area. We cannot accept this booking in the app.</Notice> : null}
+            {!coordinates && locationText.trim().length > 0 ? <Notice tone="warning">Manual address entered without coordinates. We’ll try the device geocoder when you submit (Android may request location permission for this); you can decline and still book. If no coordinates are found, Customer Care must verify before dispatch or any provider offer. You can also drop a pin.</Notice> : null}
             {error ? <Notice tone="error">{error}</Notice> : null}
-            <AppButton title={submitting ? 'Submitting…' : `Submit request · ${formatRupees(totals.total)} est.`} onPress={submitBooking} disabled={submitting} />
+            <AppButton title={submitting ? 'Submitting…' : `Submit request · ${formatRupees(totals.total)} est.`} onPress={submitBooking} disabled={submitting || gpsBusy || geocodeBusy} />
             <AppButton title="Back to options" secondary onPress={() => setShowBooking(false)} />
           </ScrollView>
         </View>
