@@ -799,6 +799,97 @@ async function readJsonBody(req) {
   }
 }
 
+
+async function runReadOnlyDiagnostics() {
+  const names = SECRET_NAMES;
+  const statuses = {};
+  const values = {};
+
+  if (typeof apper === 'undefined' || !apper || typeof apper.getSecret !== 'function') {
+    return jsonResponse(200, {
+      success: true,
+      diagnostic: {
+        secretApi: 'unavailable',
+        secrets: Object.fromEntries(names.map((name) => [name, 'unavailable'])),
+        redis: { tested: false, result: 'not-tested' },
+      },
+    });
+  }
+
+  for (const name of names) {
+    try {
+      const raw = await apper.getSecret(name);
+      const value = typeof raw === 'string'
+        ? raw.trim()
+        : (raw && typeof raw === 'object' && typeof raw.value === 'string' ? raw.value.trim() : '');
+      statuses[name] = value ? 'readable' : 'missing-or-unexpected-format';
+      values[name] = value;
+    } catch {
+      statuses[name] = 'read-error';
+      values[name] = '';
+    }
+  }
+
+  const appIdLooksValid = values.APPER_APP_ID === '7636d58bb98b42bab9f47c5875f0a825';
+  const hmacLooksValid = /^[a-f0-9]{64}$/i.test(values.GUARD_HMAC_SECRET || '');
+  let redis = { tested: false, result: 'not-tested' };
+
+  if (statuses.UPSTASH_REDIS_REST_URL === 'readable'
+      && statuses.UPSTASH_REDIS_REST_TOKEN === 'readable') {
+    let url;
+    try {
+      url = new URL(values.UPSTASH_REDIS_REST_URL);
+    } catch {
+      redis = { tested: false, result: 'invalid-url' };
+    }
+
+    if (url) {
+      if (url.protocol !== 'https:') {
+        redis = { tested: false, result: 'https-required' };
+      } else {
+        try {
+          const response = await fetchWithTimeout(url.toString().replace(/\/+$/, ''), {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${values.UPSTASH_REDIS_REST_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(['PING']),
+          }, REDIS_TIMEOUT_MS);
+
+          if (response.status !== 200) {
+            redis = { tested: true, result: 'http-error', httpStatus: response.status };
+          } else {
+            let payload;
+            try {
+              payload = await response.json();
+            } catch {
+              payload = null;
+            }
+            redis = payload && !('error' in payload) && payload.result === 'PONG'
+              ? { tested: true, result: 'PONG', httpStatus: 200 }
+              : { tested: true, result: 'unexpected-redis-response', httpStatus: 200 };
+          }
+        } catch {
+          redis = { tested: true, result: 'network-error-or-timeout' };
+        }
+      }
+    }
+  }
+
+  return jsonResponse(200, {
+    success: true,
+    diagnostic: {
+      secretApi: 'available',
+      secrets: statuses,
+      appIdFormatValid: appIdLooksValid,
+      hmacFormatValid: hmacLooksValid,
+      redis,
+      note: 'No booking claim, customer record, or service request was created. One Redis PING may have been issued.',
+    },
+  });
+}
+
 const handler = async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
   if (req.method !== 'POST') return jsonResponse(405, { success: false, message: 'Method not allowed.' });
@@ -812,6 +903,7 @@ const handler = async (req) => {
   const body = parsed.body;
   const action = cleanText(body.action);
   try {
+    if (action === 'diagnostics') return await runReadOnlyDiagnostics();
     if (action === 'createBooking') return await createGuestBooking(req, body);
     if (action === 'nearbyProviders') {
       // Disabled for the first live milestone: answered before any secret loading or Apper/Redis call.
