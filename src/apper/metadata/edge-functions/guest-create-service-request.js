@@ -804,6 +804,7 @@ async function runReadOnlyDiagnostics() {
   const names = SECRET_NAMES;
   const statuses = {};
   const values = {};
+  const secretShapes = {};
 
   if (typeof apper === 'undefined' || !apper || typeof apper.getSecret !== 'function') {
     return jsonResponse(200, {
@@ -819,6 +820,17 @@ async function runReadOnlyDiagnostics() {
   for (const name of names) {
     try {
       const raw = await apper.getSecret(name);
+      const proto = raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.getPrototypeOf(raw) : null;
+      secretShapes[name] = {
+        type: typeof raw,
+        isArray: Array.isArray(raw),
+        constructor: raw?.constructor?.name || null,
+        keys: raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.keys(raw).slice(0, 20) : [],
+        prototypeKeys: proto ? Object.getOwnPropertyNames(proto).slice(0, 20) : [],
+        valuePropertyType: raw && typeof raw === 'object' && 'value' in raw ? typeof raw.value : 'absent',
+        dataPropertyType: raw && typeof raw === 'object' && 'data' in raw ? typeof raw.data : 'absent',
+        resultPropertyType: raw && typeof raw === 'object' && 'result' in raw ? typeof raw.result : 'absent'
+      };
       const value = typeof raw === 'string'
         ? raw.trim()
         : (raw && typeof raw === 'object' && typeof raw.value === 'string' ? raw.value.trim() : '');
@@ -882,6 +894,7 @@ async function runReadOnlyDiagnostics() {
     diagnostic: {
       secretApi: 'available',
       secrets: statuses,
+      secretShapes,
       appIdFormatValid: appIdLooksValid,
       hmacFormatValid: hmacLooksValid,
       redis,
