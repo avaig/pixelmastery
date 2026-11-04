@@ -993,6 +993,16 @@ export default function CentralDispatch() {
     const customerPhone = customerProfile?.phone_c ?? customerProfile?.Phone ?? customerProfile?.mobile_c ?? '';
     const customerEmail = customerProfile?.email_c ?? customerProfile?.Email ?? '';
     const cancellationDetails = readCancellationDetails(request.problem_description_c);
+    const carWashDisplayItems = getStructuredServiceDetails(request).type === 'Car Wash'
+      ? getCarWashAdminSummary(request.problem_description_c).items.filter((item) => !/Pickup\\s*&\\s*Drop/i.test(item.name))
+      : [];
+    const carWashDisplayLabel = carWashDisplayItems
+      .map((item) => {
+        const quantity = Math.max(1, Number(item.quantity ?? 1));
+        return String(item.name || '').trim() + (quantity > 1 ? ' × ' + quantity : '');
+      })
+      .filter(Boolean)
+      .join(' · ');
 
     return (
       <div className="space-y-4">
@@ -1028,7 +1038,7 @@ export default function CentralDispatch() {
               <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-3 text-primary"><ApperIcon name="CarFront" size={26} /></div>
                 <div>
-                  <div className="font-semibold">{getDispatchServiceName(request)}{request.required_capability_c?.Name ? ' · ' + request.required_capability_c.Name : ''}</div>
+                  <div className="font-semibold">{carWashDisplayLabel || getDispatchServiceName(request)}</div>
                   <p className="mt-1 text-sm text-muted-foreground">{isFixedPriceRequest(request) ? 'Fixed package price' : request.pricing_mode_c === 'Provider Quote' ? 'Inspection / estimate required' : request.pricing_mode_c || 'Pricing not set'}</p>
                 </div>
               </div>
