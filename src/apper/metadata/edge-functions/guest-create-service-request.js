@@ -804,119 +804,6 @@ async function readJsonBody(req) {
 }
 
 
-async function runReadOnlyDiagnostics() {
-  const names = SECRET_NAMES;
-  const statuses = {};
-  const values = {};
-  const secretShapes = {};
-
-  if (typeof apper === 'undefined' || !apper || typeof apper.getSecret !== 'function') {
-    return jsonResponse(200, {
-      success: true,
-      diagnostic: {
-        secretApi: 'unavailable',
-        secrets: Object.fromEntries(names.map((name) => [name, 'unavailable'])),
-        redis: { tested: false, result: 'not-tested' },
-      },
-    });
-  }
-
-  const rawValues = {};
-  const readErrors = {};
-  const literalSecretReads = [
-    ['APPER_API_KEY', () => apper.getSecret('APPER_API_KEY')],
-    ['APPER_APP_ID', () => apper.getSecret('APPER_APP_ID')],
-    ['GUARD_HMAC_SECRET', () => apper.getSecret('GUARD_HMAC_SECRET')],
-    ['UPSTASH_REDIS_REST_URL', () => apper.getSecret('UPSTASH_REDIS_REST_URL')],
-    ['UPSTASH_REDIS_REST_TOKEN', () => apper.getSecret('UPSTASH_REDIS_REST_TOKEN')],
-  ];
-
-  for (const [name, read] of literalSecretReads) {
-    try {
-      rawValues[name] = await read();
-    } catch {
-      readErrors[name] = 'read-error';
-    }
-  }
-
-  for (const name of names) {
-    const raw = rawValues[name];
-    const proto = raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.getPrototypeOf(raw) : null;
-    secretShapes[name] = {
-      type: typeof raw,
-      isArray: Array.isArray(raw),
-      constructor: raw?.constructor?.name || null,
-      keys: raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.keys(raw).slice(0, 20) : [],
-      prototypeKeys: proto ? Object.getOwnPropertyNames(proto).slice(0, 20) : [],
-      valuePropertyType: raw && typeof raw === 'object' && 'value' in raw ? typeof raw.value : 'absent',
-      dataPropertyType: raw && typeof raw === 'object' && 'data' in raw ? typeof raw.data : 'absent',
-      resultPropertyType: raw && typeof raw === 'object' && 'result' in raw ? typeof raw.result : 'absent'
-    };
-    const value = normalizeSecret(raw);
-    statuses[name] = readErrors[name] || (value ? 'readable' : 'missing-or-unexpected-format');
-    values[name] = value;
-  }
-  const appIdLooksValid = values.APPER_APP_ID === '7636d58bb98b42bab9f47c5875f0a825';
-  const hmacLooksValid = /^[a-f0-9]{64}$/i.test(values.GUARD_HMAC_SECRET || '');
-  let redis = { tested: false, result: 'not-tested' };
-
-  if (statuses.UPSTASH_REDIS_REST_URL === 'readable'
-      && statuses.UPSTASH_REDIS_REST_TOKEN === 'readable') {
-    let url;
-    try {
-      url = new URL(values.UPSTASH_REDIS_REST_URL);
-    } catch {
-      redis = { tested: false, result: 'invalid-url' };
-    }
-
-    if (url) {
-      if (url.protocol !== 'https:') {
-        redis = { tested: false, result: 'https-required' };
-      } else {
-        try {
-          const response = await fetchWithTimeout(url.toString().replace(/\/+$/, ''), {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${values.UPSTASH_REDIS_REST_TOKEN}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(['PING']),
-          }, REDIS_TIMEOUT_MS);
-
-          if (response.status !== 200) {
-            redis = { tested: true, result: 'http-error', httpStatus: response.status };
-          } else {
-            let payload;
-            try {
-              payload = await response.json();
-            } catch {
-              payload = null;
-            }
-            redis = payload && !('error' in payload) && payload.result === 'PONG'
-              ? { tested: true, result: 'PONG', httpStatus: 200 }
-              : { tested: true, result: 'unexpected-redis-response', httpStatus: 200 };
-          }
-        } catch {
-          redis = { tested: true, result: 'network-error-or-timeout' };
-        }
-      }
-    }
-  }
-
-  return jsonResponse(200, {
-    success: true,
-    diagnostic: {
-      secretApi: 'available',
-      secrets: statuses,
-      secretShapes,
-      appIdFormatValid: appIdLooksValid,
-      hmacFormatValid: hmacLooksValid,
-      redis,
-      note: 'No booking claim, customer record, or service request was created. One Redis PING may have been issued.',
-    },
-  });
-}
-
 const handler = async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
   if (req.method !== 'POST') return jsonResponse(405, { success: false, message: 'Method not allowed.' });
@@ -930,7 +817,6 @@ const handler = async (req) => {
   const body = parsed.body;
   const action = cleanText(body.action);
   try {
-    if (action === 'diagnostics') return await runReadOnlyDiagnostics();
     if (action === 'createBooking') return await createGuestBooking(req, body);
     if (action === 'nearbyProviders') {
       // Disabled for the first live milestone: answered before any secret loading or Apper/Redis call.
