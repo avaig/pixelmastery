@@ -265,10 +265,7 @@ function extractLookupId(value) {
 // Configuration (secrets). Any missing/empty secret, a non-HTTPS Redis URL, or getSecret throwing => null,
 // which callers turn into a generic 503 before any Redis or Apper call.
 // ---------------------------------------------------------------------------------------------------------
-async function readSecret(name) {
-  // ASSUMPTION (verify in Apper before deploy): apper.getSecret(name) resolves to the secret string.
-  // A value wrapped as { value: '...' } is accepted defensively; anything else is treated as missing.
-  const raw = await apper.getSecret(name);
+function normalizeSecret(raw) {
   if (typeof raw === 'string') return raw.trim();
   if (raw && typeof raw === 'object' && typeof raw.value === 'string') return raw.value.trim();
   return '';
@@ -277,17 +274,24 @@ async function readSecret(name) {
 async function loadConfig(names = SECRET_NAMES) {
   try {
     if (typeof apper === 'undefined' || !apper || typeof apper.getSecret !== 'function') return null;
+
     const values = {};
+    // Apper provisions secrets only when each name is supplied as a string literal.
+    if (names.includes('APPER_API_KEY')) values.APPER_API_KEY = normalizeSecret(await apper.getSecret('APPER_API_KEY'));
+    if (names.includes('APPER_APP_ID')) values.APPER_APP_ID = normalizeSecret(await apper.getSecret('APPER_APP_ID'));
+    if (names.includes('GUARD_HMAC_SECRET')) values.GUARD_HMAC_SECRET = normalizeSecret(await apper.getSecret('GUARD_HMAC_SECRET'));
+    if (names.includes('UPSTASH_REDIS_REST_URL')) values.UPSTASH_REDIS_REST_URL = normalizeSecret(await apper.getSecret('UPSTASH_REDIS_REST_URL'));
+    if (names.includes('UPSTASH_REDIS_REST_TOKEN')) values.UPSTASH_REDIS_REST_TOKEN = normalizeSecret(await apper.getSecret('UPSTASH_REDIS_REST_TOKEN'));
+
     for (const name of names) {
-      const value = await readSecret(name);
-      if (!value) return null;
-      values[name] = value;
+      if (!values[name]) return null;
     }
+
     const config = { apiKey: values.APPER_API_KEY, appId: values.APPER_APP_ID };
     if (names.includes('UPSTASH_REDIS_REST_URL')) {
       let url;
       try { url = new URL(values.UPSTASH_REDIS_REST_URL); } catch { return null; }
-      if (url.protocol !== 'https:') return null; // TLS only.
+      if (url.protocol !== 'https:') return null;
       config.redisUrl = values.UPSTASH_REDIS_REST_URL.replace(/\/+$/, '');
       config.redisToken = values.UPSTASH_REDIS_REST_TOKEN;
       config.hmacSecret = values.GUARD_HMAC_SECRET;
@@ -817,31 +821,41 @@ async function runReadOnlyDiagnostics() {
     });
   }
 
-  for (const name of names) {
+  const rawValues = {};
+  const readErrors = {};
+  const literalSecretReads = [
+    ['APPER_API_KEY', () => apper.getSecret('APPER_API_KEY')],
+    ['APPER_APP_ID', () => apper.getSecret('APPER_APP_ID')],
+    ['GUARD_HMAC_SECRET', () => apper.getSecret('GUARD_HMAC_SECRET')],
+    ['UPSTASH_REDIS_REST_URL', () => apper.getSecret('UPSTASH_REDIS_REST_URL')],
+    ['UPSTASH_REDIS_REST_TOKEN', () => apper.getSecret('UPSTASH_REDIS_REST_TOKEN')],
+  ];
+
+  for (const [name, read] of literalSecretReads) {
     try {
-      const raw = await apper.getSecret(name);
-      const proto = raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.getPrototypeOf(raw) : null;
-      secretShapes[name] = {
-        type: typeof raw,
-        isArray: Array.isArray(raw),
-        constructor: raw?.constructor?.name || null,
-        keys: raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.keys(raw).slice(0, 20) : [],
-        prototypeKeys: proto ? Object.getOwnPropertyNames(proto).slice(0, 20) : [],
-        valuePropertyType: raw && typeof raw === 'object' && 'value' in raw ? typeof raw.value : 'absent',
-        dataPropertyType: raw && typeof raw === 'object' && 'data' in raw ? typeof raw.data : 'absent',
-        resultPropertyType: raw && typeof raw === 'object' && 'result' in raw ? typeof raw.result : 'absent'
-      };
-      const value = typeof raw === 'string'
-        ? raw.trim()
-        : (raw && typeof raw === 'object' && typeof raw.value === 'string' ? raw.value.trim() : '');
-      statuses[name] = value ? 'readable' : 'missing-or-unexpected-format';
-      values[name] = value;
+      rawValues[name] = await read();
     } catch {
-      statuses[name] = 'read-error';
-      values[name] = '';
+      readErrors[name] = 'read-error';
     }
   }
 
+  for (const name of names) {
+    const raw = rawValues[name];
+    const proto = raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.getPrototypeOf(raw) : null;
+    secretShapes[name] = {
+      type: typeof raw,
+      isArray: Array.isArray(raw),
+      constructor: raw?.constructor?.name || null,
+      keys: raw && (typeof raw === 'object' || typeof raw === 'function') ? Object.keys(raw).slice(0, 20) : [],
+      prototypeKeys: proto ? Object.getOwnPropertyNames(proto).slice(0, 20) : [],
+      valuePropertyType: raw && typeof raw === 'object' && 'value' in raw ? typeof raw.value : 'absent',
+      dataPropertyType: raw && typeof raw === 'object' && 'data' in raw ? typeof raw.data : 'absent',
+      resultPropertyType: raw && typeof raw === 'object' && 'result' in raw ? typeof raw.result : 'absent'
+    };
+    const value = normalizeSecret(raw);
+    statuses[name] = readErrors[name] || (value ? 'readable' : 'missing-or-unexpected-format');
+    values[name] = value;
+  }
   const appIdLooksValid = values.APPER_APP_ID === '7636d58bb98b42bab9f47c5875f0a825';
   const hmacLooksValid = /^[a-f0-9]{64}$/i.test(values.GUARD_HMAC_SECRET || '');
   let redis = { tested: false, result: 'not-tested' };
